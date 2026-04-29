@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PGx Agent MVP</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Фармакогенетический помощник</p>
+            <h1>PGx Agent MVP</h1>
+          </div>
+          <button id="loadSample" class="icon-button" type="button" title="Загрузить пример">
+            <span aria-hidden="true">↺</span>
+            <span>Пример</span>
+          </button>
+        </header>
+
+        <section class="notice" aria-label="Важное предупреждение">
+          <strong>Не медицинское назначение.</strong>
+          Этот прототип помогает собрать фармакогенетические сигналы из известных правил и подготовить вопросы врачу.
+          Не меняйте препараты или дозировки без медицинского специалиста.
+        </section>
+
+        <section class="panel profile-panel">
+          <div class="panel-header">
+            <h2>Профиль пациента</h2>
+            <span class="counter" id="profileCounter">1 профиль</span>
+          </div>
+          <div class="profile-grid">
+            <div>
+              <label for="profileSelect">Активный профиль</label>
+              <select id="profileSelect"></select>
+            </div>
+            <div>
+              <label for="profileName">Новый профиль</label>
+              <input id="profileName" type="text" placeholder="Например: Павел или Пациент 2" />
+            </div>
+            <div class="profile-actions">
+              <button id="createProfile" class="primary-button" type="button">Создать</button>
+              <button id="deleteProfile" class="secondary-button" type="button">Удалить</button>
+            </div>
+          </div>
+          <p id="profileStatus" class="file-status">Данные сохраняются локально в выбранном профиле.</p>
+        </section>
+
+        <div class="grid">
+          <section class="panel input-panel">
+            <div class="panel-header">
+              <h2>Данные пациента</h2>
+              <span class="counter" id="geneCounter">0 генов</span>
+            </div>
+
+            <label for="patientData">Вставьте фрагмент отчета, raw genotype или фенотипы</label>
+            <textarea id="patientData" spellcheck="false" placeholder="Например:
+CYP2C19 *2/*2
+CYP2D6 poor metabolizer
+SLCO1B1 rs4149056 TC
+HLA-B*57:01 negative"></textarea>
+
+            <div class="file-loader">
+              <label for="vcfFile">Или загрузите VCF-файл Генотек</label>
+              <div class="file-row">
+                <input id="vcfFile" type="file" accept=".vcf,.txt,text/plain" />
+                <button id="loadVcf" class="secondary-button" type="button">Загрузить VCF</button>
+              </div>
+              <p id="fileStatus" class="file-status">Файл читается локально в браузере и никуда не отправляется.</p>
+            </div>
+
+            <div class="controls">
+              <label for="drugSearch">Препарат или группа</label>
+              <input id="drugSearch" type="search" placeholder="Например: клопидогрел, статин, омепразол" />
+            </div>
+
+            <div class="button-row">
+              <button id="analyze" class="primary-button" type="button">Проанализировать</button>
+              <button id="clear" class="secondary-button" type="button">Очистить</button>
+            </div>
+          </section>
+
+          <section class="panel results-panel">
+            <div class="panel-header">
+              <h2>Рекомендации</h2>
+              <span class="counter" id="matchCounter">0 совпадений</span>
+            </div>
+            <div id="summary" class="summary empty">
+              Загрузите пример или вставьте данные, чтобы увидеть найденные gene-drug сигналы.
+            </div>
+            <div id="results" class="results"></div>
+          </section>
+        </div>
+
+        <section class="panel lab-panel">
+          <div class="panel-header">
+            <h2>Биохимия и другие анализы</h2>
+            <span class="counter" id="labCounter">0 записей</span>
+          </div>
+          <div class="lab-grid">
+            <div>
+              <div class="file-loader">
+                <label for="labFiles">Загрузите PDF или текстовые отчеты</label>
+                <div class="file-row">
+                  <input id="labFiles" type="file" accept=".pdf,.txt,text/plain,application/pdf" multiple />
+                  <button id="loadLabs" class="secondary-button" type="button">Разобрать</button>
+                </div>
+                <p id="labStatus" class="file-status">
+                  Текстовые PDF читаются локально. Для сканов понадобится OCR или ручная вставка текста.
+                </p>
+                <details id="labDiagnostics" class="diagnostics" hidden>
+                  <summary>Диагностика неразобранных файлов</summary>
+                  <div id="labDiagnosticsBody"></div>
+                </details>
+              </div>
+
+              <label for="labText" class="lab-text-label">Текст анализа, если PDF не распознался</label>
+              <textarea id="labText" class="compact-textarea" spellcheck="false" placeholder="Например:
+Дата анализа: 12.03.2026
+АЛТ 42 Ед/л
+АСТ 31 Ед/л
+Креатинин 97 мкмоль/л
+eGFR 82 мл/мин/1.73м2
+КФК 180 Ед/л
+Калий 4.8 ммоль/л"></textarea>
+              <div class="button-row">
+                <button id="parseLabText" class="primary-button" type="button">Добавить текст</button>
+                <button id="clearLabs" class="secondary-button" type="button">Очистить историю</button>
+              </div>
+            </div>
+
+            <div>
+              <div id="labSummary" class="summary empty">Загрузите анализы, чтобы увидеть показатели и динамику.</div>
+              <div id="labInsights" class="results"></div>
+              <div class="chart-toolbar">
+                <label for="labMetric">График показателя</label>
+                <select id="labMetric"></select>
+              </div>
+              <canvas id="labChart" width="680" height="260" aria-label="График исторических изменений"></canvas>
+              <div id="labResults" class="lab-results"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Что умеет этот MVP</h2>
+          </div>
+          <div class="capabilities">
+            <div>
+              <strong>Понимает базовые записи</strong>
+              <p>Фенотипы, diplotype-записи вида CYP2C19 *2/*17 и несколько распространенных SNP.</p>
+            </div>
+            <div>
+              <strong>Выдает объяснимые сигналы</strong>
+              <p>Показывает препарат, ген, найденный фенотип, действие и источник правила.</p>
+            </div>
+            <div>
+              <strong>Оставляет место врачу</strong>
+              <p>Отделяет справочную рекомендацию от назначения и отмечает ограничения данных.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="./data.js?v=20260429-8"></script>
+    <script src="./app.js?v=20260429-8"></script>
+  </body>
+</html>

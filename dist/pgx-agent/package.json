@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "test": "node tests/lab-parser.test.js && node tests/profile-storage.test.js"
+  }
+}
