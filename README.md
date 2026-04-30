@@ -30,4 +30,22 @@ HLA-B*58:01 positive
 Схема базы данных и описание будущей серверной архитектуры лежат в:
 
 - `supabase/migrations/001_initial_health_schema.sql`
+- `supabase/migrations/002_medication_lookup.sql`
+- `supabase/functions/lookup-medication/`
+- `supabase/functions/sync-shot-list/`
 - `docs/supabase-architecture.md`
+
+## GitHub Actions
+
+Workflow `.github/workflows/deploy.yml` запускает тесты, деплоит статику на сервер и обновляет Supabase Edge Functions.
+
+Нужные GitHub Secrets:
+
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_PATH`
+- `DEPLOY_SSH_KEY`
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_PROJECT_REF`
+
+SQL migrations пока не применяются автоматически: их безопаснее запускать вручную в Supabase SQL Editor, пока не согласован процесс миграций.

@@ -20,18 +20,32 @@ create table if not exists public.medication_evidence_flags (
     id uuid primary key default gen_random_uuid(),
     label text not null,
     aliases text[] not null default '{}'::text[],
+    groups text[] not null default '{}'::text[],
     category text not null,
     note text,
     source_url text,
     source_name text,
+    source_kind text not null default 'manual',
     updated_at timestamptz not null default now()
 );
+
+alter table public.medication_evidence_flags
+add column if not exists groups text[] not null default '{}'::text[];
+
+alter table public.medication_evidence_flags
+add column if not exists source_kind text not null default 'manual';
 
 create index if not exists medication_lookup_cache_normalized_idx
 on public.medication_lookup_cache(normalized_name);
 
 create index if not exists medication_evidence_flags_aliases_idx
 on public.medication_evidence_flags using gin(aliases);
+
+create index if not exists medication_evidence_flags_groups_idx
+on public.medication_evidence_flags using gin(groups);
+
+create unique index if not exists medication_evidence_flags_label_key
+on public.medication_evidence_flags(label);
 
 alter table public.medication_lookup_cache enable row level security;
 alter table public.medication_evidence_flags enable row level security;

@@ -43,6 +43,12 @@ const shotListSeeds = [
     note: "В источнике указан как гомеопатический антигриппин."
   },
   {
+    label: "Афлубин",
+    aliases: ["афлубин", "aflubin"],
+    category: "гомеопатия",
+    note: "Гомеопатический препарат; в источнике относится к препаратам без доказанной эффективности."
+  },
+  {
     label: "Арбидол",
     aliases: ["арбидол", "умифеновир", "umifenovir"],
     category: "не доказана эффективность",
@@ -140,7 +146,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization") || "";
     const body = await req.json().catch(() => ({}));
     const queryName = String(body.name || "").trim();
 
@@ -151,8 +156,7 @@ Deno.serve(async (req) => {
     const normalizedName = normalizeName(queryName);
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "",
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
     const cached = await readCache(supabase, normalizedName);
@@ -164,7 +168,8 @@ Deno.serve(async (req) => {
     const source = localSubstance
       ? { substance: localSubstance.substance, url: null, summary: `Локальный справочник: ${localSubstance.label}` }
       : await lookupPoiskLekarstv(queryName);
-    const shotList = findShotListMatch([queryName, source.substance || ""].join(" "));
+    const shotList = await findEvidenceFlag(supabase, [queryName, source.substance || ""].join(" ")) ||
+      findShotListMatch([queryName, source.substance || ""].join(" "));
     const result: LookupResult = {
       queryName,
       normalizedName,
@@ -303,6 +308,20 @@ function findKnownSubstance(name: string) {
 function findShotListMatch(name: string) {
   const normalized = normalizeName(name);
   return shotListSeeds.find((item) => item.aliases.some((alias) => normalized.includes(normalizeName(alias)))) || null;
+}
+
+async function findEvidenceFlag(supabase: ReturnType<typeof createClient>, value: string) {
+  const normalized = normalizeName(value);
+  const { data } = await supabase
+    .from("medication_evidence_flags")
+    .select("label, aliases, groups, category, note, source_url, source_name")
+    .order("updated_at", { ascending: false })
+    .limit(500);
+
+  return (data || []).find((item) => {
+    const aliases = Array.isArray(item.aliases) ? item.aliases : [];
+    return aliases.some((alias) => normalized.includes(normalizeName(String(alias))));
+  }) || null;
 }
 
 function normalizeName(value: string) {
