@@ -26,7 +26,36 @@
           Не меняйте препараты или дозировки без медицинского специалиста.
         </section>
 
-        <section class="panel profile-panel">
+        <section class="panel auth-panel">
+          <div class="panel-header">
+            <h2 id="authTitle">Залогиньтесь или зарегистрируйтесь, чтобы ваши данные сохранялись</h2>
+            <span class="counter" id="authMode">Локально</span>
+          </div>
+          <div id="signedInBox" class="welcome-box account-row" hidden></div>
+          <div id="magicLinkBox" class="welcome-box" hidden></div>
+          <div id="welcomeBox" class="welcome-box" hidden></div>
+          <div id="onboardingBox" class="onboarding-box" hidden>
+            <label for="displayName">Как вас зовут?</label>
+            <div class="auth-grid">
+              <input id="displayName" type="text" placeholder="Например: Павел" autocomplete="given-name" />
+              <button id="saveDisplayName" class="primary-button" type="button">Сохранить</button>
+            </div>
+          </div>
+          <div id="loginBox" class="auth-grid">
+            <div>
+              <label for="authEmail">Email</label>
+              <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="email" />
+            </div>
+            <div class="profile-actions">
+              <button id="signIn" class="primary-button" type="button">Войти</button>
+            </div>
+          </div>
+          <button id="anotherEmail" class="secondary-button" type="button" hidden>Другой email</button>
+          <button id="signOut" class="secondary-button" type="button" hidden>Выйти</button>
+          <p id="authStatus" class="file-status">Без входа данные хранятся только в этом браузере.</p>
+        </section>
+
+        <section class="panel profile-panel" hidden>
           <div class="panel-header">
             <h2>Профиль пациента</h2>
             <span class="counter" id="profileCounter">1 профиль</span>
@@ -51,24 +80,38 @@
         <div class="grid">
           <section class="panel input-panel">
             <div class="panel-header">
-              <h2>Данные пациента</h2>
+              <h2>Генетические данные на основе анализа Genotek</h2>
               <span class="counter" id="geneCounter">0 генов</span>
             </div>
 
-            <label for="patientData">Вставьте фрагмент отчета, raw genotype или фенотипы</label>
-            <textarea id="patientData" spellcheck="false" placeholder="Например:
+            <div id="geneticInputForm">
+              <div class="file-loader">
+                <label for="vcfFile">Введите данные теста Genotek</label>
+                <div class="file-row">
+                  <input id="vcfFile" type="file" accept=".vcf,.txt,text/plain" />
+                  <button id="loadVcf" class="secondary-button" type="button">Загрузить VCF</button>
+                </div>
+                <p id="fileStatus" class="file-status">Файл читается локально в браузере и никуда не отправляется.</p>
+              </div>
+
+              <label class="toggle-row">
+                <input id="textModeToggle" type="checkbox" />
+                <span>Вставить отчёт текстом</span>
+              </label>
+
+              <div id="geneticTextInput" hidden>
+                <label for="patientData">Вставьте фрагмент отчета, raw genotype или фенотипы</label>
+                <textarea id="patientData" spellcheck="false" placeholder="Например:
 CYP2C19 *2/*2
 CYP2D6 poor metabolizer
 SLCO1B1 rs4149056 TC
 HLA-B*57:01 negative"></textarea>
-
-            <div class="file-loader">
-              <label for="vcfFile">Или загрузите VCF-файл Генотек</label>
-              <div class="file-row">
-                <input id="vcfFile" type="file" accept=".vcf,.txt,text/plain" />
-                <button id="loadVcf" class="secondary-button" type="button">Загрузить VCF</button>
               </div>
-              <p id="fileStatus" class="file-status">Файл читается локально в браузере и никуда не отправляется.</p>
+            </div>
+
+            <div id="geneticDataView" hidden>
+              <label for="patientDataView">Распознанные или введенные генетические данные</label>
+              <textarea id="patientDataView" spellcheck="false" readonly></textarea>
             </div>
 
             <div class="controls">
@@ -78,6 +121,7 @@ HLA-B*57:01 negative"></textarea>
 
             <div class="button-row">
               <button id="analyze" class="primary-button" type="button">Проанализировать</button>
+              <button id="uploadOtherGenetics" class="secondary-button" type="button">Загрузить другие данные</button>
               <button id="clear" class="secondary-button" type="button">Очистить</button>
             </div>
           </section>
@@ -139,6 +183,7 @@ eGFR 82 мл/мин/1.73м2
                 <select id="labMetric"></select>
               </div>
               <canvas id="labChart" width="680" height="260" aria-label="График исторических изменений"></canvas>
+              <div id="metricDescription" class="metric-description" hidden></div>
               <div id="labResults" class="lab-results"></div>
             </div>
           </div>
@@ -167,7 +212,9 @@ eGFR 82 мл/мин/1.73м2
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="./data.js?v=20260429-8"></script>
-    <script src="./app.js?v=20260429-8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./supabase-config.js?v=20260430-8"></script>
+    <script src="./data.js?v=20260430-8"></script>
+    <script src="./app.js?v=20260430-8"></script>
   </body>
 </html>

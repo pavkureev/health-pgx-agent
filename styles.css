@@ -18,6 +18,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -100,11 +104,56 @@ h2 {
   padding: 18px;
 }
 
-.profile-grid {
+.profile-grid,
+.auth-grid {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
   gap: 12px;
   align-items: end;
+}
+
+.auth-grid {
+  grid-template-columns: minmax(260px, 1fr) auto;
+}
+
+.welcome-box,
+.onboarding-box {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #eef6f2;
+}
+
+.welcome-box strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.welcome-box p {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.account-row p {
+  margin-top: 4px;
+}
+
+.metric-description {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #eef6f2;
+  color: #36554d;
+  line-height: 1.45;
 }
 
 .profile-actions {
@@ -152,6 +201,19 @@ input {
   background: #fbfcfc;
   color: var(--ink);
   outline: none;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--ink);
+}
+
+.toggle-row input {
+  width: 18px;
+  height: 18px;
 }
 
 textarea:focus,
@@ -356,6 +418,13 @@ input[type="file"] {
   overflow-wrap: anywhere;
 }
 
+.lab-value p {
+  margin-top: 6px;
+  color: #36554d;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .button-row {
   display: flex;
   gap: 10px;
@@ -517,6 +586,7 @@ button {
   .grid,
   .lab-grid,
   .profile-grid,
+  .auth-grid,
   .capabilities {
     grid-template-columns: 1fr;
   }

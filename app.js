@@ -2,7 +2,11 @@ const { rules, phenotypeMaps, snpHints, labAnalytes } = window.PGX_DATA;
 const LAB_STORAGE_KEY = "pgx-agent-lab-records";
 const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
+const PARSER_VERSION = "2026-04-30.1";
 const KNOWN_BIRTH_DATES = new Set(["1981-06-06"]);
+const supabaseClient = window.supabase && window.PGX_SUPABASE
+  ? window.supabase.createClient(window.PGX_SUPABASE.url, window.PGX_SUPABASE.anonKey)
+  : null;
 
 const sample = `# Пример профиля
 CYP2C19 *2/*2
@@ -15,6 +19,11 @@ HLA-B*57:01 negative
 HLA-B*58:01 positive`;
 
 const patientData = document.querySelector("#patientData");
+const patientDataView = document.querySelector("#patientDataView");
+const geneticInputForm = document.querySelector("#geneticInputForm");
+const geneticTextInput = document.querySelector("#geneticTextInput");
+const geneticDataView = document.querySelector("#geneticDataView");
+const textModeToggle = document.querySelector("#textModeToggle");
 const drugSearch = document.querySelector("#drugSearch");
 const resultsEl = document.querySelector("#results");
 const summaryEl = document.querySelector("#summary");
@@ -31,12 +40,30 @@ const labInsights = document.querySelector("#labInsights");
 const labResults = document.querySelector("#labResults");
 const labMetric = document.querySelector("#labMetric");
 const labChart = document.querySelector("#labChart");
+const metricDescription = document.querySelector("#metricDescription");
 const labDiagnostics = document.querySelector("#labDiagnostics");
 const labDiagnosticsBody = document.querySelector("#labDiagnosticsBody");
 const profileSelect = document.querySelector("#profileSelect");
 const profileName = document.querySelector("#profileName");
 const profileCounter = document.querySelector("#profileCounter");
 const profileStatus = document.querySelector("#profileStatus");
+const authEmail = document.querySelector("#authEmail");
+const authTitle = document.querySelector("#authTitle");
+const authMode = document.querySelector("#authMode");
+const authStatus = document.querySelector("#authStatus");
+const signedInBox = document.querySelector("#signedInBox");
+const magicLinkBox = document.querySelector("#magicLinkBox");
+const loginBox = document.querySelector("#loginBox");
+const signOutButton = document.querySelector("#signOut");
+const anotherEmailButton = document.querySelector("#anotherEmail");
+const welcomeBox = document.querySelector("#welcomeBox");
+const onboardingBox = document.querySelector("#onboardingBox");
+const displayName = document.querySelector("#displayName");
+let currentUser = null;
+let cloudReady = false;
+let savingCloudProfile = false;
+let magicLinkSentEmail = "";
+let geneticInputOpen = true;
 let profiles = loadProfiles();
 let activeProfileId = loadActiveProfileId();
 ensureActiveProfile();
@@ -48,36 +75,57 @@ if (window.pdfjsLib) {
 
 document.querySelector("#loadSample").addEventListener("click", () => {
   patientData.value = sample;
+  patientDataView.value = sample;
   drugSearch.value = "";
   fileStatus.className = "file-status";
   fileStatus.textContent = "Загружен встроенный пример.";
+  geneticInputOpen = false;
   saveCurrentProfileData();
   analyze();
+  renderGeneticInputState();
 });
 
 document.querySelector("#createProfile").addEventListener("click", createProfile);
 document.querySelector("#deleteProfile").addEventListener("click", deleteActiveProfile);
+document.querySelector("#signIn").addEventListener("click", signIn);
+document.querySelector("#signOut").addEventListener("click", signOut);
+document.querySelector("#anotherEmail").addEventListener("click", resetMagicLinkForm);
+document.querySelector("#saveDisplayName").addEventListener("click", saveDisplayName);
+document.querySelector("#uploadOtherGenetics").addEventListener("click", showGeneticInputForm);
+textModeToggle.addEventListener("change", renderGeneticInputState);
 profileSelect.addEventListener("change", switchProfile);
 patientData.addEventListener("input", () => {
+  patientDataView.value = patientData.value;
   saveCurrentProfileData();
   analyze();
+  renderGeneticInputState();
 });
-document.querySelector("#analyze").addEventListener("click", analyze);
+document.querySelector("#analyze").addEventListener("click", () => {
+  if (patientData.value.trim()) {
+    geneticInputOpen = false;
+    renderGeneticInputState();
+  }
+  analyze();
+});
 document.querySelector("#loadVcf").addEventListener("click", loadVcfFile);
 document.querySelector("#loadLabs").addEventListener("click", loadLabFiles);
 document.querySelector("#parseLabText").addEventListener("click", addLabText);
 document.querySelector("#clearLabs").addEventListener("click", clearLabHistory);
 document.querySelector("#clear").addEventListener("click", () => {
   patientData.value = "";
+  patientDataView.value = "";
   drugSearch.value = "";
   vcfFile.value = "";
   fileStatus.className = "file-status";
   fileStatus.textContent = "Файл читается локально в браузере и никуда не отправляется.";
+  geneticInputOpen = true;
   saveCurrentProfileData();
   render([], {});
+  renderGeneticInputState();
 });
 drugSearch.addEventListener("input", analyze);
 labMetric.addEventListener("change", () => drawLabChart(labMetric.value));
+initSupabaseAuth();
 
 function normalizeText(value) {
   return value
@@ -89,6 +137,293 @@ function normalizeText(value) {
 
 function normalizeDiplotype(value) {
   return value.replace(/\s+/g, "").toUpperCase().replaceAll("X", "x");
+}
+
+async function initSupabaseAuth() {
+  if (!supabaseClient) {
+    renderAuthState();
+    return;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  currentUser = data.session?.user || null;
+  cloudReady = Boolean(currentUser);
+
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user || null;
+    cloudReady = Boolean(currentUser);
+    renderAuthState();
+    if (cloudReady) await loadCloudProfiles();
+    else applyActiveProfile();
+  });
+
+  renderAuthState();
+  if (cloudReady) await loadCloudProfiles();
+}
+
+function renderAuthState() {
+  if (!supabaseClient) {
+    authTitle.textContent = "Залогиньтесь или зарегистрируйтесь, чтобы ваши данные сохранялись";
+    authMode.textContent = "Локально";
+    authStatus.textContent = "Supabase SDK не загружен. Данные хранятся только локально.";
+    loginBox.hidden = true;
+    magicLinkBox.hidden = true;
+    anotherEmailButton.hidden = true;
+    signOutButton.hidden = true;
+    signedInBox.hidden = true;
+    signedInBox.innerHTML = "";
+    renderWelcome();
+    return;
+  }
+
+  if (currentUser) {
+    authTitle.textContent = "Аккаунт";
+    authMode.textContent = "Supabase";
+    loginBox.hidden = true;
+    magicLinkBox.hidden = true;
+    anotherEmailButton.hidden = true;
+    signedInBox.hidden = false;
+    signedInBox.innerHTML = `
+      <div>
+        <strong>Вы вошли в аккаунт с email ${escapeHtml(currentUser.email || "")}</strong>
+        <p>Профили и распознанные данные сохраняются в Supabase.</p>
+      </div>
+      <button id="signOutInline" class="secondary-button" type="button">Выйти</button>
+    `;
+    signedInBox.querySelector("#signOutInline").addEventListener("click", signOut);
+    signOutButton.hidden = true;
+    authStatus.textContent = "Аккаунт подключен.";
+    renderWelcome();
+    return;
+  }
+
+  authEmail.disabled = false;
+  authMode.textContent = "Локально";
+  authTitle.textContent = "Залогиньтесь или зарегистрируйтесь, чтобы ваши данные сохранялись";
+  loginBox.hidden = Boolean(magicLinkSentEmail);
+  magicLinkBox.hidden = !magicLinkSentEmail;
+  anotherEmailButton.hidden = !magicLinkSentEmail;
+  signOutButton.hidden = true;
+  signedInBox.hidden = true;
+  signedInBox.innerHTML = "";
+  if (magicLinkSentEmail) {
+    magicLinkBox.innerHTML = `<strong>Мы отправили ссылку для входа на email ${escapeHtml(magicLinkSentEmail)}</strong>`;
+    authStatus.textContent = "Откройте письмо и перейдите по ссылке для входа.";
+  } else {
+    authStatus.textContent = "Войдите по email, чтобы сохранять профили и анализы в Supabase. Без входа данные хранятся только в этом браузере.";
+  }
+  renderWelcome();
+}
+
+function renderWelcome() {
+  if (!currentUser) {
+    welcomeBox.hidden = true;
+    onboardingBox.hidden = true;
+    return;
+  }
+
+  const profile = getActiveProfile();
+  const name = getDisplayName(profile);
+  const needsName = !name;
+
+  onboardingBox.hidden = !needsName;
+  welcomeBox.hidden = needsName;
+
+  if (needsName) {
+    displayName.value = "";
+    authStatus.textContent = "Представьтесь, чтобы мы могли подписывать ваш профиль и приветствовать вас при входе.";
+    return;
+  }
+
+  welcomeBox.innerHTML = `
+    <strong>Рады видеть вас снова, ${escapeHtml(name)}.</strong>
+    <p>Ваши профили и распознанные данные сохраняются в Supabase.</p>
+  `;
+}
+
+function getDisplayName(profile) {
+  const name = profile?.metadata?.displayName || profile?.name || "";
+  return /^профиль\s*\d+$/i.test(name.trim()) ? "" : name.trim();
+}
+
+async function saveDisplayName() {
+  const name = displayName.value.trim();
+  if (!name) {
+    authStatus.textContent = "Введите имя.";
+    return;
+  }
+
+  const profile = getActiveProfile();
+  profile.name = name;
+  profile.metadata = { ...(profile.metadata || {}), displayName: name };
+  saveProfiles();
+
+  if (cloudReady) {
+    const { error } = await supabaseClient
+      .from("patient_profiles")
+      .update({
+        display_name: name,
+        metadata: { ...(profile.metadata || {}), displayName: name, patientData: profile.patientData || "" }
+      })
+      .eq("id", profile.id);
+
+    if (error) {
+      authStatus.textContent = `Не удалось сохранить имя: ${error.message}`;
+      return;
+    }
+  }
+
+  renderProfiles();
+  renderWelcome();
+}
+
+async function signIn() {
+  if (!supabaseClient) {
+    authStatus.textContent = "Supabase SDK не загружен.";
+    return;
+  }
+
+  const email = authEmail.value.trim();
+  if (!email) {
+    authStatus.textContent = "Введите email для входа.";
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.PGX_SUPABASE.redirectUrl || window.location.href.split("#")[0] }
+  });
+
+  if (error) {
+    authStatus.textContent = error.message?.includes("rate limit")
+      ? "Слишком много попыток входа. Подождите примерно минуту и попробуйте снова."
+      : `Не удалось отправить ссылку: ${error.message}`;
+    return;
+  }
+
+  authEmail.disabled = true;
+  magicLinkSentEmail = email;
+  renderAuthState();
+}
+
+function resetMagicLinkForm() {
+  magicLinkSentEmail = "";
+  authEmail.value = "";
+  loginBox.hidden = false;
+  renderAuthState();
+}
+
+async function signOut() {
+  if (!supabaseClient) return;
+  currentUser = null;
+  cloudReady = false;
+  magicLinkSentEmail = "";
+  signedInBox.hidden = true;
+  signedInBox.innerHTML = "";
+  loginBox.hidden = false;
+  signOutButton.hidden = true;
+  welcomeBox.hidden = true;
+  onboardingBox.hidden = true;
+  authEmail.disabled = false;
+  renderAuthState();
+  await supabaseClient.auth.signOut();
+  renderAuthState();
+  applyActiveProfile();
+}
+
+async function loadCloudProfiles() {
+  const { data, error } = await supabaseClient
+    .from("patient_profiles")
+    .select("id, display_name, metadata, created_at, updated_at")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    authStatus.textContent = `Supabase: не удалось загрузить профили (${error.message}). Использую локальные данные.`;
+    cloudReady = false;
+    applyActiveProfile();
+    return;
+  }
+
+  if (!data.length) {
+    await createCloudProfileFromLocal(getActiveProfile().name || "Профиль 1", getActiveProfile());
+    return;
+  }
+
+  profiles = data.map(mapCloudProfile);
+  if (!profiles.some((profile) => profile.id === activeProfileId)) {
+    activeProfileId = profiles[0].id;
+  }
+  await loadCloudProfileDetails(activeProfileId);
+  saveProfiles();
+  applyActiveProfile();
+}
+
+async function loadCloudProfileDetails(profileId) {
+  const profile = profiles.find((item) => item.id === profileId);
+  if (!profile) return;
+
+  const { data, error } = await supabaseClient
+    .from("lab_observations")
+    .select("id, document_id, analyte_key, analyte_label, observed_on, value, unit, reference_low, reference_high, source_line")
+    .eq("profile_id", profileId)
+    .order("observed_on", { ascending: true });
+
+  if (error) {
+    profileStatus.textContent = `Не удалось загрузить анализы из Supabase: ${error.message}`;
+    return;
+  }
+
+  profile.labRecords = observationsToLabRecords(data || []);
+}
+
+function mapCloudProfile(row) {
+  return {
+    id: row.id,
+    name: row.display_name,
+    metadata: row.metadata || {},
+    patientData: row.metadata?.patientData || "",
+    labRecords: [],
+    cloud: true
+  };
+}
+
+async function createCloudProfileFromLocal(name, localProfile) {
+  const { data: profile, error: profileError } = await supabaseClient
+    .from("patient_profiles")
+    .insert({
+      owner_user_id: currentUser.id,
+      display_name: name,
+      metadata: {
+        patientData: localProfile?.patientData || "",
+        displayName: /^профиль\s*\d+$/i.test(name.trim()) ? "" : name
+      }
+    })
+    .select("id, display_name, metadata, created_at, updated_at")
+    .single();
+
+  if (profileError) {
+    profileStatus.textContent = `Не удалось создать профиль в Supabase: ${profileError.message}`;
+    return;
+  }
+
+  const { error: memberError } = await supabaseClient
+    .from("profile_members")
+    .insert({ profile_id: profile.id, user_id: currentUser.id, role: "owner" });
+
+  if (memberError) {
+    profileStatus.textContent = `Профиль создан, но доступ не записался: ${memberError.message}`;
+    return;
+  }
+
+  profiles = [mapCloudProfile(profile)];
+  activeProfileId = profile.id;
+  labRecords = [];
+  if (localProfile?.labRecords?.length) {
+    await saveCloudLabRecords(localProfile.labRecords);
+  }
+  await loadCloudProfileDetails(profile.id);
+  saveProfiles();
+  applyActiveProfile();
 }
 
 function loadProfiles() {
@@ -139,6 +474,27 @@ function saveCurrentProfileData() {
   profile.labRecords = labRecords;
   profile.updatedAt = new Date().toISOString();
   saveProfiles();
+  saveCloudProfileMetadata();
+}
+
+async function saveCloudProfileMetadata() {
+  if (!cloudReady || savingCloudProfile) return;
+  const profile = getActiveProfile();
+  if (!profile?.id) return;
+
+  savingCloudProfile = true;
+  const { error } = await supabaseClient
+    .from("patient_profiles")
+    .update({
+      display_name: profile.name,
+      metadata: { ...(profile.metadata || {}), patientData: profile.patientData || "" }
+    })
+    .eq("id", profile.id);
+  savingCloudProfile = false;
+
+  if (error) {
+    profileStatus.textContent = `Supabase: не удалось сохранить профиль (${error.message}).`;
+  }
 }
 
 function renderProfiles() {
@@ -147,12 +503,17 @@ function renderProfiles() {
     .join("");
   profileSelect.value = activeProfileId;
   profileCounter.textContent = `${profiles.length} ${plural(profiles.length, "профиль", "профиля", "профилей")}`;
-  profileStatus.textContent = `Активен: ${getActiveProfile().name}. Данные сохраняются локально в этом профиле.`;
+  profileStatus.textContent = cloudReady
+    ? `Активен: ${getActiveProfile().name}. Данные сохраняются в Supabase.`
+    : `Активен: ${getActiveProfile().name}. Данные сохраняются локально в этом профиле.`;
+  renderWelcome();
 }
 
 function applyActiveProfile() {
   const profile = getActiveProfile();
   patientData.value = profile.patientData || "";
+  patientDataView.value = profile.patientData || "";
+  geneticInputOpen = !patientData.value.trim();
   labRecords = profile.labRecords || [];
   vcfFile.value = "";
   labFiles.value = "";
@@ -162,9 +523,24 @@ function applyActiveProfile() {
   analyze();
   renderLabHistory();
   renderLabDiagnostics([]);
+  renderGeneticInputState();
 }
 
-function createProfile() {
+function showGeneticInputForm() {
+  geneticInputOpen = true;
+  renderGeneticInputState();
+}
+
+function renderGeneticInputState() {
+  const hasData = Boolean(patientData.value.trim());
+  geneticInputForm.hidden = hasData && !geneticInputOpen;
+  geneticDataView.hidden = !hasData || geneticInputOpen;
+  geneticTextInput.hidden = !textModeToggle.checked;
+  document.querySelector("#uploadOtherGenetics").hidden = !hasData || geneticInputOpen;
+  patientDataView.value = patientData.value;
+}
+
+async function createProfile() {
   const name = profileName.value.trim();
   if (!name) {
     profileStatus.textContent = "Введите имя нового профиля.";
@@ -172,6 +548,12 @@ function createProfile() {
   }
 
   saveCurrentProfileData();
+  if (cloudReady) {
+    await createCloudProfileFromLocal(name, { patientData: "", labRecords: [] });
+    profileName.value = "";
+    return;
+  }
+
   const profile = { id: createId(), name, patientData: "", labRecords: [], createdAt: new Date().toISOString() };
   profiles.push(profile);
   activeProfileId = profile.id;
@@ -180,7 +562,23 @@ function createProfile() {
   applyActiveProfile();
 }
 
-function deleteActiveProfile() {
+async function deleteActiveProfile() {
+  if (cloudReady && profiles.length > 1) {
+    const deletedName = getActiveProfile().name;
+    const { error } = await supabaseClient.from("patient_profiles").delete().eq("id", activeProfileId);
+    if (error) {
+      profileStatus.textContent = `Не удалось удалить профиль в Supabase: ${error.message}`;
+      return;
+    }
+    profiles = profiles.filter((profile) => profile.id !== activeProfileId);
+    activeProfileId = profiles[0].id;
+    await loadCloudProfileDetails(activeProfileId);
+    saveProfiles();
+    applyActiveProfile();
+    profileStatus.textContent = `Профиль ${deletedName} удален.`;
+    return;
+  }
+
   if (profiles.length === 1) {
     const profile = getActiveProfile();
     profile.patientData = "";
@@ -201,9 +599,10 @@ function deleteActiveProfile() {
   profileStatus.textContent = `Профиль ${deletedName} удален.`;
 }
 
-function switchProfile() {
+async function switchProfile() {
   saveCurrentProfileData();
   activeProfileId = profileSelect.value;
+  if (cloudReady) await loadCloudProfileDetails(activeProfileId);
   saveProfiles();
   applyActiveProfile();
 }
@@ -293,10 +692,13 @@ async function loadVcfFile() {
       "# CYP2D6 poor metabolizer",
       "# HLA-B*58:01 positive"
     ].join("\n");
+    patientDataView.value = patientData.value;
+    geneticInputOpen = false;
     fileStatus.className = "file-status";
     fileStatus.textContent = `VCF загружен: найдено ${found} ${plural(found, "маркер", "маркера", "маркеров")}${skipped ? `, пропущено без genotype call: ${skipped}` : ""}.`;
     saveCurrentProfileData();
     analyze();
+    renderGeneticInputState();
   } catch (error) {
     fileStatus.className = "file-status error";
     fileStatus.textContent = "Не удалось прочитать файл. Проверьте, что это обычный текстовый VCF.";
@@ -371,6 +773,7 @@ async function loadLabFiles() {
 
   if (added.length) {
     labRecords = dedupeLabRecords([...labRecords, ...added]);
+    if (cloudReady) await saveCloudLabRecords(added);
     saveCurrentProfileData();
     renderLabHistory();
   }
@@ -488,7 +891,7 @@ function joinPdfRowItems(items) {
     .trim();
 }
 
-function addLabText() {
+async function addLabText() {
   if (!labText.value.trim()) {
     labStatus.className = "file-status error";
     labStatus.textContent = "Вставьте текст анализа.";
@@ -503,6 +906,7 @@ function addLabText() {
   }
 
   labRecords = dedupeLabRecords([...labRecords, record]);
+  if (cloudReady) await saveCloudLabRecords([record]);
   saveCurrentProfileData();
   renderLabHistory();
   labStatus.className = "file-status";
@@ -533,6 +937,74 @@ function parseLabReport(text, sourceName, fallbackTimestamp) {
     date: reportDate,
     values
   };
+}
+
+async function saveCloudLabRecords(records) {
+  if (!cloudReady || !records.length) return;
+  const profile = getActiveProfile();
+
+  for (const record of records) {
+    const { data: documentRow, error: documentError } = await supabaseClient
+      .from("source_documents")
+      .insert({
+        profile_id: profile.id,
+        uploaded_by: currentUser.id,
+        kind: "lab_text",
+        status: "parsed",
+        file_name: record.sourceName,
+        report_date: record.date,
+        parser_version: PARSER_VERSION
+      })
+      .select("id")
+      .single();
+
+    if (documentError) {
+      labStatus.textContent = `Supabase: документ не сохранен (${documentError.message}).`;
+      continue;
+    }
+
+    const rows = record.values.map((value) => ({
+      profile_id: profile.id,
+      document_id: documentRow.id,
+      analyte_key: value.key,
+      analyte_label: value.label,
+      observed_on: record.date,
+      value: value.value,
+      unit: value.unit,
+      source_line: value.raw,
+      parser_version: PARSER_VERSION
+    }));
+
+    const { error: observationError } = await supabaseClient.from("lab_observations").insert(rows);
+    if (observationError) {
+      labStatus.textContent = `Supabase: показатели не сохранены (${observationError.message}).`;
+    }
+  }
+}
+
+function observationsToLabRecords(observations) {
+  const byDocument = new Map();
+
+  for (const item of observations) {
+    const key = item.document_id || `${item.observed_on}-${item.analyte_key}`;
+    if (!byDocument.has(key)) {
+      byDocument.set(key, {
+        id: key,
+        sourceName: "Supabase",
+        date: item.observed_on,
+        values: []
+      });
+    }
+    byDocument.get(key).values.push({
+      key: item.analyte_key,
+      label: item.analyte_label,
+      value: Number(item.value),
+      unit: item.unit || "",
+      raw: item.source_line || ""
+    });
+  }
+
+  return [...byDocument.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function findReportDate(text, sourceName, fallbackTimestamp) {
@@ -816,7 +1288,26 @@ function dedupeLabRecords(records) {
   return [...byId.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function clearLabHistory() {
+async function clearLabHistory() {
+  if (cloudReady) {
+    const profile = getActiveProfile();
+    const { error: observationsError } = await supabaseClient
+      .from("lab_observations")
+      .delete()
+      .eq("profile_id", profile.id);
+    const { error: documentsError } = await supabaseClient
+      .from("source_documents")
+      .delete()
+      .eq("profile_id", profile.id)
+      .in("kind", ["lab_pdf", "lab_text"]);
+
+    if (observationsError || documentsError) {
+      labStatus.className = "file-status error";
+      labStatus.textContent = `Supabase: не удалось очистить историю (${observationsError?.message || documentsError?.message}).`;
+      return;
+    }
+  }
+
   labRecords = [];
   labFiles.value = "";
   labText.value = "";
@@ -878,6 +1369,10 @@ function renderLabRecord(record) {
       </div>
     </article>
   `;
+}
+
+function labDescription(key) {
+  return labAnalytes.find((item) => item.key === key)?.description || "";
 }
 
 function renderLabInsights() {
@@ -981,6 +1476,7 @@ function addThresholdSignal(signals, item, predicate, template) {
 }
 
 function drawLabChart(metricKey) {
+  renderMetricDescription(metricKey);
   const context = labChart.getContext("2d");
   const width = labChart.width;
   const height = labChart.height;
@@ -1077,6 +1573,19 @@ function drawLabChart(metricKey) {
     context.fillStyle = "#63706b";
     context.fillText(formatShortDate(point.date), x - 20, height - 18);
   });
+}
+
+function renderMetricDescription(metricKey) {
+  const description = labDescription(metricKey);
+  const metric = labAnalytes.find((item) => item.key === metricKey);
+  if (!description || !metric) {
+    metricDescription.hidden = true;
+    metricDescription.textContent = "";
+    return;
+  }
+
+  metricDescription.hidden = false;
+  metricDescription.innerHTML = `<strong>${escapeHtml(metric.label)}:</strong> ${escapeHtml(description)}`;
 }
 
 function referenceBounds(metric) {

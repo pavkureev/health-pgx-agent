@@ -204,70 +204,80 @@ window.PGX_DATA = {
       label: "eGFR",
       aliases: ["egfr", "скф", "рскф", "скорость клубочковой фильтрации"],
       unit: "мл/мин/1.73м2",
-      reference: { min: 60, max: null }
+      reference: { min: 60, max: null },
+      description: "Оценка фильтрационной функции почек; помогает понять, нужна ли коррекция доз лекарств, выводимых почками."
     },
     {
       key: "creatinine",
       label: "Креатинин",
       aliases: ["креатинин", "creatinine"],
       unit: "мкмоль/л",
-      reference: { min: 62, max: 106 }
+      reference: { min: 62, max: 106 },
+      description: "Маркер функции почек и мышечного обмена; используется вместе с eGFR для оценки почечного клиренса."
     },
     {
       key: "alt",
       label: "АЛТ",
       aliases: ["алт", "аланинаминотрансфераза", "alt", "alat"],
       unit: "Ед/л",
-      reference: { min: null, max: 41 }
+      reference: { min: null, max: 41 },
+      description: "Фермент печени; повышение может указывать на повреждение клеток печени и важно при оценке гепатотоксичных препаратов."
     },
     {
       key: "ast",
       label: "АСТ",
       aliases: ["аст", "аспартатаминотрансфераза", "ast", "asat"],
       unit: "Ед/л",
-      reference: { min: null, max: 40 }
+      reference: { min: null, max: 40 },
+      description: "Фермент печени, мышц и сердца; интерпретируется вместе с АЛТ, КФК и клиническим контекстом."
     },
     {
       key: "bilirubin",
       label: "Билирубин общий",
       aliases: ["билирубин общий", "общий билирубин", "total bilirubin", "bilirubin"],
       unit: "мкмоль/л",
-      reference: { min: 3.4, max: 20.5 }
+      reference: { min: 3.4, max: 20.5 },
+      description: "Показатель обмена гемоглобина и желчевыведения; важен при оценке печени и желчных путей."
     },
     {
       key: "ck",
       label: "КФК",
       aliases: ["кфк", "креатинкиназа", "ck", "creatine kinase"],
       unit: "Ед/л",
-      reference: { min: null, max: 190 }
+      reference: { min: null, max: 190 },
+      description: "Фермент мышц; важен при мышечных симптомах и оценке переносимости статинов."
     },
     {
       key: "potassium",
       label: "Калий",
       aliases: ["калий", "potassium", "k+"],
       unit: "ммоль/л",
-      reference: { min: 3.5, max: 5.1 }
+      reference: { min: 3.5, max: 5.1 },
+      description: "Ключевой электролит для работы сердца и мышц; важен при диуретиках, ИАПФ/БРА и риске аритмий."
     },
     {
       key: "sodium",
       label: "Натрий",
       aliases: ["натрий", "sodium", "na+"],
       unit: "ммоль/л",
-      reference: { min: 136, max: 145 }
+      reference: { min: 136, max: 145 },
+      description: "Основной электролит крови; отражает водно-солевой баланс и может меняться при диуретиках и эндокринных нарушениях."
     },
     {
       key: "glucose",
       label: "Глюкоза",
       aliases: ["глюкоза", "glucose"],
       unit: "ммоль/л",
-      reference: { min: 3.9, max: 5.5 }
+      reference: { min: 3.9, max: 5.5 },
+      description: "Текущий уровень сахара крови; зависит от приема пищи и используется для оценки углеводного обмена."
     },
     {
       key: "hba1c",
       label: "HbA1c",
       aliases: ["hba1c", "гликированный гемоглобин", "гликированный hb"],
       unit: "%",
-      reference: { min: null, max: 5.7 }
+      reference: { min: null, max: 5.7 },
+      description: "Средний уровень глюкозы за последние 2-3 месяца; помогает оценивать риск и контроль диабета."
     },
     {
       key: "total_cholesterol",
@@ -285,7 +295,8 @@ window.PGX_DATA = {
         "cholesterol total"
       ],
       unit: "ммоль/л",
-      reference: { min: null, max: 5.2 }
+      reference: { min: null, max: 5.2 },
+      description: "Суммарный холестерин крови; полезен как общий ориентир, но риск точнее оценивается по ЛПНП, ЛПВП и триглицеридам."
     },
     {
       key: "ldl",
@@ -306,7 +317,8 @@ window.PGX_DATA = {
         "low density lipoprotein"
       ],
       unit: "ммоль/л",
-      reference: { min: null, max: 1.8 }
+      reference: { min: null, max: 1.8 },
+      description: "Атерогенная фракция холестерина; главный целевой показатель при снижении сердечно-сосудистого риска."
     },
     {
       key: "crp",
@@ -321,7 +333,8 @@ window.PGX_DATA = {
         "c-reactive protein"
       ],
       unit: "мг/л",
-      reference: { min: null, max: 5.0 }
+      reference: { min: null, max: 5.0 },
+      description: "Маркер воспаления; сам по себе не указывает причину, но помогает оценивать инфекционный/воспалительный контекст."
     },
     {
       key: "hdl",
@@ -339,56 +352,64 @@ window.PGX_DATA = {
         "high density lipoprotein"
       ],
       unit: "ммоль/л",
-      reference: { min: 1.0, max: null }
+      reference: { min: 1.0, max: null },
+      description: "Антиатерогенная фракция холестерина; участвует в обратном транспорте холестерина."
     },
     {
       key: "triglycerides",
       label: "Триглицериды",
       aliases: ["триглицериды", "тг", "triglycerides", "tg"],
       unit: "ммоль/л",
-      reference: { min: null, max: 1.7 }
+      reference: { min: null, max: 1.7 },
+      description: "Жиры крови, чувствительные к питанию, алкоголю, инсулинорезистентности и ряду лекарств."
     },
     {
       key: "non_hdl",
       label: "Не-ЛПВП",
       aliases: ["холестерин не-лпвп", "не-лпвп", "не лпвп", "non-hdl", "non hdl"],
       unit: "ммоль/л",
-      reference: { min: null, max: 3.8 }
+      reference: { min: null, max: 3.8 },
+      description: "Все атерогенные фракции холестерина кроме ЛПВП; полезен при повышенных триглицеридах."
     },
     {
       key: "atherogenic_index",
       label: "Коэффициент атерогенности",
       aliases: ["коэффициент атерогенности", "индекс атерогенности", "ка", "atherogenic index"],
       unit: "",
-      reference: { min: null, max: 3.0 }
+      reference: { min: null, max: 3.0 },
+      description: "Расчетный индекс соотношения атерогенных и защитных липидных фракций."
     },
     {
       key: "tsh",
       label: "ТТГ",
       aliases: ["ттг", "tsh", "thyroid stimulating hormone"],
       unit: "мЕд/л",
-      reference: { min: 0.4, max: 4.0 }
+      reference: { min: 0.4, max: 4.0 },
+      description: "Гормон регуляции щитовидной железы; важен для обмена веществ, липидов, пульса и самочувствия."
     },
     {
       key: "ferritin",
       label: "Ферритин",
       aliases: ["ферритин", "ferritin"],
       unit: "мкг/л",
-      reference: { min: 30, max: 400 }
+      reference: { min: 30, max: 400 },
+      description: "Запас железа в организме; может повышаться при воспалении, поэтому интерпретируется вместе с CRP и анализом крови."
     },
     {
       key: "b12",
       label: "B12",
       aliases: ["витамин b12", "b12", "цианокобаламин"],
       unit: "пг/мл",
-      reference: { min: 200, max: 900 }
+      reference: { min: 200, max: 900 },
+      description: "Витамин, важный для нервной системы и кроветворения; дефицит может влиять на усталость и анемию."
     },
     {
       key: "vitamin_d",
       label: "Витамин D",
       aliases: ["25-oh витамин d", "25(oh)d", "витамин d", "25-oh d"],
       unit: "нг/мл",
-      reference: { min: 30, max: 100 }
+      reference: { min: 30, max: 100 },
+      description: "Основной показатель обеспеченности витамином D; связан с костным обменом и рядом общих рисков."
     }
   ]
 };
