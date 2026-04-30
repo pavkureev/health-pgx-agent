@@ -47,5 +47,9 @@ Workflow `.github/workflows/deploy.yml` запускает тесты, депл�
 - `DEPLOY_SSH_KEY`
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PROJECT_REF`
+- `SUPABASE_ANON_KEY`
+- `SHOT_LIST_SYNC_SECRET`
 
 SQL migrations пока не применяются автоматически: их безопаснее запускать вручную в Supabase SQL Editor, пока не согласован процесс миграций.
+
+Workflow `Sync shot list` запускается вручную из GitHub Actions и обновляет `medication_evidence_flags` через Edge Function `sync-shot-list`.

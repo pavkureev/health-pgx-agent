@@ -1,0 +1,33 @@
+name: Sync shot list
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-shot-list:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync medication evidence flags
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SHOT_LIST_SYNC_SECRET: ${{ secrets.SHOT_LIST_SYNC_SECRET }}
+        run: |
+          response_file="$(mktemp)"
+          status="$(
+            curl -sS -o "$response_file" -w "%{http_code}" \
+              -X POST "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/sync-shot-list" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "x-sync-secret: ${SHOT_LIST_SYNC_SECRET}" \
+              -H "Content-Type: application/json" \
+              -d "{}"
+          )"
+
+          cat "$response_file"
+          echo
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "sync-shot-list failed with HTTP $status"
+            exit 1
+          fi
