@@ -189,6 +189,75 @@ eGFR 82 мл/мин/1.73м2
           </div>
         </section>
 
+        <section class="panel decision-panel">
+          <div class="panel-header">
+            <h2>Проверки и интеграции</h2>
+            <span class="counter" id="decisionCounter">0 сигналов</span>
+          </div>
+          <div class="decision-grid">
+            <section class="decision-section">
+              <div class="section-title">
+                <h3>Качество данных</h3>
+                <span id="qualityCounter" class="mini-counter">0</span>
+              </div>
+              <div id="qualityChecks" class="signal-list"></div>
+            </section>
+
+            <section class="decision-section">
+              <div class="section-title">
+                <h3>Клинические проверки</h3>
+                <span id="clinicalCounter" class="mini-counter">0</span>
+              </div>
+              <div id="clinicalChecks" class="signal-list"></div>
+            </section>
+
+            <section class="decision-section">
+              <div class="section-title">
+                <h3>Фармакогенетика</h3>
+                <span id="pgxCounter" class="mini-counter">0</span>
+              </div>
+              <div id="pgxCoverage" class="signal-list"></div>
+            </section>
+
+            <section class="decision-section">
+              <div class="section-title">
+                <h3>Интеграции и безопасность</h3>
+                <span id="integrationCounter" class="mini-counter">0</span>
+              </div>
+              <div id="integrationChecks" class="signal-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="panel medication-panel">
+          <div class="panel-header">
+            <h2>Лекарственный профиль</h2>
+            <span class="counter" id="medicationCounter">0 препаратов</span>
+          </div>
+          <div class="medication-grid">
+            <div>
+              <label for="medicationName">Препарат</label>
+              <input id="medicationName" type="text" placeholder="Например: розувастатин" />
+            </div>
+            <div>
+              <label for="medicationDose">Доза и режим</label>
+              <input id="medicationDose" type="text" placeholder="Например: 10 мг вечером" />
+            </div>
+            <div>
+              <label for="medicationNote">Комментарий</label>
+              <input id="medicationNote" type="text" placeholder="Зачем назначен или что беспокоит" />
+            </div>
+            <button id="addMedication" class="primary-button" type="button">Добавить</button>
+          </div>
+          <div class="button-row">
+            <button id="lookupMedications" class="secondary-button" type="button">Уточнить действующие вещества</button>
+          </div>
+          <div id="medicationList" class="medication-list"></div>
+          <div id="medicationSummary" class="metric-description" hidden></div>
+          <p id="medicationLookupStatus" class="file-status"></p>
+          <div id="medicationChecks" class="results"></div>
+        </section>
+
         <section class="panel">
           <div class="panel-header">
             <h2>Что умеет этот MVP</h2>
@@ -213,8 +282,8 @@ eGFR 82 мл/мин/1.73м2
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260430-8"></script>
-    <script src="./data.js?v=20260430-8"></script>
-    <script src="./app.js?v=20260430-8"></script>
+    <script src="./supabase-config.js?v=20260430-15"></script>
+    <script src="./data.js?v=20260430-15"></script>
+    <script src="./app.js?v=20260430-15"></script>
   </body>
 </html>

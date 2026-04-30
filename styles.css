@@ -156,6 +156,141 @@ h2 {
   line-height: 1.45;
 }
 
+.decision-panel,
+.medication-panel {
+  overflow: hidden;
+}
+
+.decision-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.decision-section {
+  min-height: 180px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.section-title h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.mini-counter {
+  min-width: 28px;
+  height: 26px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--accent-strong);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.signal-list {
+  display: grid;
+  gap: 8px;
+}
+
+.signal-item {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.signal-item.high {
+  border-left-color: var(--danger);
+}
+
+.signal-item.moderate {
+  border-left-color: #c17922;
+}
+
+.signal-item.low {
+  border-left-color: #6f9d8f;
+}
+
+.signal-item strong {
+  display: block;
+  font-size: 14px;
+}
+
+.signal-item p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.medication-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1.2fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.medication-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.medication-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(140px, 0.9fr) minmax(180px, 1.2fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.medication-row span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.medication-row span small {
+  display: block;
+  margin-top: 4px;
+  color: #7b8783;
+  font-size: 12px;
+}
+
+.unknown-substance {
+  color: var(--muted);
+}
+
+.medication-row a {
+  color: var(--accent-strong);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.medication-row a:hover {
+  text-decoration: underline;
+}
+
+.medication-row strong {
+  overflow-wrap: anywhere;
+}
+
 .profile-actions {
   display: flex;
   gap: 10px;
@@ -587,6 +722,9 @@ button {
   .lab-grid,
   .profile-grid,
   .auth-grid,
+  .decision-grid,
+  .medication-grid,
+  .medication-row,
   .capabilities {
     grid-template-columns: 1fr;
   }

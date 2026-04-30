@@ -198,6 +198,415 @@ window.PGX_DATA = {
       calls: { AA: "normal metabolizer", AC: "intermediate metabolizer", CA: "intermediate metabolizer", CC: "poor metabolizer" }
     }
   ],
+  medicationKnowledge: [
+    {
+      substance: "rosuvastatin",
+      label: "Розувастатин",
+      aliases: [
+        "розувастатин",
+        "rosuvastatin",
+        "крестор",
+        "сувардио",
+        "розукард",
+        "розулип",
+        "мертенил",
+        "роксера",
+        "розарт",
+        "розистарк",
+        "росукор",
+        "реддистатин",
+        "редистатин",
+        "тевастор",
+        "тевастор-тева",
+        "фастронг",
+        "правапрес"
+      ],
+      group: "statin"
+    },
+    {
+      substance: "atorvastatin",
+      label: "Аторвастатин",
+      aliases: ["аторвастатин", "atorvastatin", "липримар", "аторис", "торвакард", "торвазин", "тulip", "тулип", "липонорм", "аторвастатин-тева"],
+      group: "statin"
+    },
+    {
+      substance: "atorvastatin-ezetimibe",
+      label: "Аторвастатин + Эзетимиб",
+      aliases: ["торвазин+", "торвазин плюс", "аторвастатин эзетимиб", "аторвастатин + эзетимиб"],
+      group: "statin_combo"
+    },
+    {
+      substance: "simvastatin",
+      label: "Симвастатин",
+      aliases: ["симвастатин", "simvastatin", "зокор", "вазилип"],
+      group: "statin"
+    },
+    {
+      substance: "clopidogrel",
+      label: "Клопидогрел",
+      aliases: ["клопидогрел", "clopidogrel", "плавикс", "зилт", "лопирел", "плагрил", "клопидекс", "эгитромб"],
+      group: "antiplatelet"
+    },
+    {
+      substance: "omeprazole",
+      label: "Омепразол",
+      aliases: ["омепразол", "omeprazole", "омез", "ультоп", "омелик", "лосек", "гастрозол", "оританол"],
+      group: "ppi"
+    },
+    {
+      substance: "esomeprazole",
+      label: "Эзомепразол",
+      aliases: ["эзомепразол", "esomeprazole", "нексиум"],
+      group: "ppi"
+    },
+    {
+      substance: "pantoprazole",
+      label: "Пантопразол",
+      aliases: ["пантопразол", "pantoprazole", "контролок", "нольпаза"],
+      group: "ppi"
+    },
+    {
+      substance: "rabeprazole",
+      label: "Рабепразол",
+      aliases: ["рабепразол", "rabeprazole", "разо", "париет", "хайрабезол", "зульбекс"],
+      group: "ppi"
+    },
+    {
+      substance: "rebamipide",
+      label: "Ребамипид",
+      aliases: ["ребамипид", "rebamipide", "ребагит"],
+      group: "gastroprotective"
+    },
+    {
+      substance: "ibuprofen",
+      label: "Ибупрофен",
+      aliases: ["ибупрофен", "ibuprofen", "нурофен", "эврофаст", "миг", "ибуклин"],
+      group: "nsaid"
+    },
+    {
+      substance: "diclofenac",
+      label: "Диклофенак",
+      aliases: ["диклофенак", "diclofenac", "вольтарен", "ортофен", "диклак", "наклофен"],
+      group: "nsaid"
+    },
+    {
+      substance: "celecoxib",
+      label: "Целекоксиб",
+      aliases: ["целекоксиб", "celecoxib", "целебрекс"],
+      group: "nsaid"
+    },
+    {
+      substance: "meloxicam",
+      label: "Мелоксикам",
+      aliases: ["мелоксикам", "meloxicam", "мовалис", "амелотекс", "мовасин"],
+      group: "nsaid"
+    },
+    {
+      substance: "codeine",
+      label: "Кодеин",
+      aliases: ["кодеин", "codeine"],
+      group: "opioid_cyp2d6"
+    },
+    {
+      substance: "tramadol",
+      label: "Трамадол",
+      aliases: ["трамадол", "tramadol", "трамал"],
+      group: "opioid_cyp2d6"
+    },
+    {
+      substance: "warfarin",
+      label: "Варфарин",
+      aliases: ["варфарин", "warfarin"],
+      group: "anticoagulant"
+    },
+    {
+      substance: "rivaroxaban",
+      label: "Ривароксабан",
+      aliases: ["ривароксабан", "rivaroxaban", "ксарелто", "xarelto"],
+      group: "anticoagulant"
+    },
+    {
+      substance: "apixaban",
+      label: "Апиксабан",
+      aliases: ["апиксабан", "apixaban", "эликвис", "eliquis"],
+      group: "anticoagulant"
+    },
+    {
+      substance: "dabigatran",
+      label: "Дабигатран",
+      aliases: ["дабигатран", "dabigatran", "прадакса", "pradaxa"],
+      group: "anticoagulant"
+    },
+    {
+      substance: "aspirin",
+      label: "Ацетилсалициловая кислота",
+      aliases: ["аспирин", "ацетилсалициловая кислота", "тромбо асс", "кардиомагнил", "aspirin"],
+      group: "antiplatelet_asa"
+    },
+    {
+      substance: "bisoprolol",
+      label: "Бисопролол",
+      aliases: ["бисопролол", "bisoprolol", "конкор", "конкор кор", "нипертен", "дорез", "бидоп", "коронал"],
+      group: "beta_blocker"
+    },
+    {
+      substance: "carvedilol",
+      label: "Карведилол",
+      aliases: ["карведилол", "carvedilol", "дилатор", "дилатренд", "кардил"],
+      group: "beta_blocker"
+    },
+    {
+      substance: "amlodipine",
+      label: "Амлодипин",
+      aliases: ["амлодипин", "amlodipine", "норваск", "нормодипин", "амлотоп", "калчек"],
+      group: "calcium_channel_blocker"
+    },
+    {
+      substance: "perindopril",
+      label: "Периндоприл",
+      aliases: ["периндоприл", "perindopril", "престариум", "перинева"],
+      group: "ace_inhibitor"
+    },
+    {
+      substance: "enalapril",
+      label: "Эналаприл",
+      aliases: ["эналаприл", "enalapril", "энап", "ренитек", "энам"],
+      group: "ace_inhibitor"
+    },
+    {
+      substance: "losartan",
+      label: "Лозартан",
+      aliases: ["лозартан", "losartan", "лориста", "лозап", "козаар"],
+      group: "arb"
+    },
+    {
+      substance: "valsartan",
+      label: "Валсартан",
+      aliases: ["валсартан", "valsartan", "диован", "валз", "нортриван"],
+      group: "arb"
+    },
+    {
+      substance: "candesartan",
+      label: "Кандесартан",
+      aliases: ["кандесартан", "candesartan", "атаканд", "гипосарт"],
+      group: "arb"
+    },
+    {
+      substance: "azilsartan medoxomil",
+      label: "Азилсартан медоксомил",
+      aliases: ["азилсартан", "azilsartan", "эдарби", "edarbi"],
+      group: "arb"
+    },
+    {
+      substance: "indapamide",
+      label: "Индапамид",
+      aliases: ["индапамид", "indapamide", "арифон", "равел"],
+      group: "diuretic"
+    },
+    {
+      substance: "spironolactone",
+      label: "Спиронолактон",
+      aliases: ["спиронолактон", "spironolactone", "верошпирон"],
+      group: "potassium_sparing_diuretic"
+    },
+    {
+      substance: "eplerenone",
+      label: "Эплеренон",
+      aliases: ["эплеренон", "eplerenone", "инспра", "эплепрес"],
+      group: "potassium_sparing_diuretic"
+    },
+    {
+      substance: "ezetimibe",
+      label: "Эзетимиб",
+      aliases: ["эзетимиб", "ezetimibe", "эзетрол", "отрио"],
+      group: "lipid_lowering"
+    },
+    {
+      substance: "fenofibrate",
+      label: "Фенофибрат",
+      aliases: ["фенофибрат", "fenofibrate", "трайкор", "липантил"],
+      group: "fibrate"
+    },
+    {
+      substance: "metformin",
+      label: "Метформин",
+      aliases: ["метформин", "metformin", "глюкофаж", "сиофор", "форметин"],
+      group: "antidiabetic"
+    },
+    {
+      substance: "levothyroxine",
+      label: "Левотироксин",
+      aliases: ["левотироксин", "levothyroxine", "эутирокс", "l-тироксин", "л-тироксин"],
+      group: "thyroid_hormone"
+    },
+    {
+      substance: "azithromycin",
+      label: "Азитромицин",
+      aliases: ["азитромицин", "azithromycin", "сумамед", "азитрокс", "затрин", "зитролид"],
+      group: "macrolide"
+    },
+    {
+      substance: "clarithromycin",
+      label: "Кларитромицин",
+      aliases: ["кларитромицин", "clarithromycin", "клацид", "клабакс", "фромилид"],
+      group: "macrolide"
+    },
+    {
+      substance: "levocetirizine",
+      label: "Левоцетиризин",
+      aliases: ["левоцетиризин", "levocetirizine", "супрастинекс", "ксизал", "зилола", "алерон"],
+      group: "antihistamine"
+    },
+    {
+      substance: "memantine",
+      label: "Мемантин",
+      aliases: ["мемантин", "memantine", "акатинол мемантин", "когномем", "меманталь", "меморель"],
+      group: "nmda_antagonist"
+    },
+    {
+      substance: "pancreatin",
+      label: "Панкреатин",
+      aliases: ["панкреатин", "pancreatin", "креон", "микразим", "креоста", "мезим", "панзинорм"],
+      group: "enzyme"
+    },
+    {
+      substance: "saccharomyces boulardii",
+      label: "Saccharomyces boulardii",
+      aliases: ["энтерол", "enterol", "saccharomyces boulardii", "сахаромицеты булардии"],
+      group: "probiotic"
+    },
+    {
+      substance: "bismuth tripotassium dicitrate",
+      label: "Висмута трикалия дицитрат",
+      aliases: ["де-нол", "денол", "de-nol", "висмута трикалия дицитрат", "висмута субцитрат", "bismuth"],
+      group: "bismuth"
+    },
+    {
+      substance: "glucosamine-chondroitin",
+      label: "Глюкозамин + Хондроитин сульфат натрия",
+      aliases: ["артра", "artra", "глюкозамин хондроитин", "глюкозамин + хондроитин"],
+      group: "chondroprotective"
+    },
+    {
+      substance: "amoxicillin-clavulanic acid",
+      label: "Амоксициллин + Клавулановая кислота",
+      aliases: ["амоксиклав", "amoxiclav", "аугментин", "augmentin", "амоксициллин клавулановая кислота"],
+      group: "penicillin_combo"
+    },
+    {
+      substance: "trimetazidine",
+      label: "Триметазидин",
+      aliases: ["триметазидин", "trimetazidine", "предуктал"],
+      group: "metabolic"
+    }
+  ],
+  shotListMedications: [
+    {
+      label: "Хондропротекторы",
+      aliases: [
+        "хондропротектор",
+        "хондропротекторы",
+        "глюкозамин",
+        "хондроитин",
+        "хондроитина сульфат",
+        "glucosamine",
+        "chondroitin"
+      ],
+      groups: ["chondroprotective"],
+      category: "не доказана эффективность",
+      note: "Групповой флаг: хондропротекторы в источнике отнесены к препаратам с недоказанной эффективностью."
+    },
+    {
+      label: "Агри",
+      aliases: ["агри"],
+      category: "гомеопатия",
+      note: "В источнике указан как гомеопатический антигриппин."
+    },
+    {
+      label: "Арбидол",
+      aliases: ["арбидол", "умифеновир", "umifenovir"],
+      category: "не доказана эффективность",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Валидол",
+      aliases: ["валидол"],
+      category: "не доказана эффективность",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Валокордин",
+      aliases: ["валокордин", "корвалол"],
+      category: "устаревший подход",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Винпоцетин",
+      aliases: ["винпоцетин", "кавинтон"],
+      category: "не доказана эффективность",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Пирацетам",
+      aliases: ["пирацетам", "ноотропил"],
+      category: "не доказана эффективность",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Римантадин",
+      aliases: ["римантадин", "ремантадин"],
+      category: "устаревший противовирусный",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Триметазидин",
+      aliases: ["триметазидин", "предуктал"],
+      category: "не доказана эффективность",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Фенотропил",
+      aliases: ["фенотропил", "фонтурацетам"],
+      category: "не доказана эффективность",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Хондроитинсульфат",
+      aliases: ["хондроитин", "хондроитинсульфат"],
+      category: "не доказана эффективность",
+      note: "Упоминается в перечне устаревших препаратов с недоказанной эффективностью."
+    },
+    {
+      label: "Церебролизин",
+      aliases: ["церебролизин", "cerebrolysin"],
+      category: "нет убедительных исследований",
+      note: "В источнике отмечены отсутствие спецификации состава, механизма действия и высококачественных исследований."
+    },
+    {
+      label: "Циклоферон",
+      aliases: ["циклоферон", "cycloferon"],
+      category: "нет исследований достаточного качества",
+      note: "В источнике описан как индуктор интерферона без доказанной клинической эффективности в крупных международных исследованиях."
+    },
+    {
+      label: "Актовегин",
+      aliases: ["актовегин", "солкосерил", "actovegin", "solcoseryl"],
+      category: "нет убедительных исследований",
+      note: "В источнике указан как препарат без ясного механизма действия и доказательств эффективности."
+    },
+    {
+      label: "Адаптол",
+      aliases: ["адаптол", "мебикар", "мебикс", "adaptol"],
+      category: "нет исследований",
+      note: "В источнике отмечено отсутствие данных в Cochrane/PubMed/FDA/RXlist/ВОЗ для действующего вещества."
+    },
+    {
+      label: "Адеметионин",
+      aliases: ["адеметионин", "гептрал", "гептор", "sam-e", "ademetionine"],
+      category: "спорная доказательность",
+      note: "В источнике описаны противоречивые данные и отсутствие точных подтверждений по заявленным показаниям."
+    }
+  ],
   labAnalytes: [
     {
       key: "egfr",

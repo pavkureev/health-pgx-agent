@@ -1,4 +1,4 @@
-const { rules, phenotypeMaps, snpHints, labAnalytes } = window.PGX_DATA;
+const { rules, phenotypeMaps, snpHints, labAnalytes, medicationKnowledge, shotListMedications } = window.PGX_DATA;
 const LAB_STORAGE_KEY = "pgx-agent-lab-records";
 const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
@@ -59,6 +59,24 @@ const anotherEmailButton = document.querySelector("#anotherEmail");
 const welcomeBox = document.querySelector("#welcomeBox");
 const onboardingBox = document.querySelector("#onboardingBox");
 const displayName = document.querySelector("#displayName");
+const decisionPanel = document.querySelector(".decision-panel");
+const decisionCounter = document.querySelector("#decisionCounter");
+const qualityCounter = document.querySelector("#qualityCounter");
+const clinicalCounter = document.querySelector("#clinicalCounter");
+const pgxCounter = document.querySelector("#pgxCounter");
+const integrationCounter = document.querySelector("#integrationCounter");
+const qualityChecks = document.querySelector("#qualityChecks");
+const clinicalChecks = document.querySelector("#clinicalChecks");
+const pgxCoverage = document.querySelector("#pgxCoverage");
+const integrationChecks = document.querySelector("#integrationChecks");
+const medicationName = document.querySelector("#medicationName");
+const medicationDose = document.querySelector("#medicationDose");
+const medicationNote = document.querySelector("#medicationNote");
+const medicationCounter = document.querySelector("#medicationCounter");
+const medicationList = document.querySelector("#medicationList");
+const medicationSummary = document.querySelector("#medicationSummary");
+const medicationLookupStatus = document.querySelector("#medicationLookupStatus");
+const medicationChecks = document.querySelector("#medicationChecks");
 let currentUser = null;
 let cloudReady = false;
 let savingCloudProfile = false;
@@ -92,6 +110,8 @@ document.querySelector("#signOut").addEventListener("click", signOut);
 document.querySelector("#anotherEmail").addEventListener("click", resetMagicLinkForm);
 document.querySelector("#saveDisplayName").addEventListener("click", saveDisplayName);
 document.querySelector("#uploadOtherGenetics").addEventListener("click", showGeneticInputForm);
+document.querySelector("#addMedication").addEventListener("click", addMedication);
+document.querySelector("#lookupMedications").addEventListener("click", lookupMissingMedicationSubstances);
 textModeToggle.addEventListener("change", renderGeneticInputState);
 profileSelect.addEventListener("change", switchProfile);
 patientData.addEventListener("input", () => {
@@ -296,7 +316,7 @@ async function signIn() {
 
   if (error) {
     authStatus.textContent = error.message?.includes("rate limit")
-      ? "Слишком много попыток входа. Подождите примерно минуту и попробуйте снова."
+      ? "Лимит отправки писем Supabase исчерпан. Для стабильного входа нужно подключить Custom SMTP в Supabase Auth."
       : `Не удалось отправить ссылку: ${error.message}`;
     return;
   }
@@ -395,6 +415,7 @@ async function createCloudProfileFromLocal(name, localProfile) {
       display_name: name,
       metadata: {
         patientData: localProfile?.patientData || "",
+        medications: localProfile?.metadata?.medications || [],
         displayName: /^профиль\s*\d+$/i.test(name.trim()) ? "" : name
       }
     })
@@ -439,6 +460,7 @@ function loadProfiles() {
     {
       id: createId(),
       name: "Профиль 1",
+      metadata: {},
       patientData: localStorage.getItem("pgx-agent-patient-data") || "",
       labRecords: loadLegacyLabRecords()
     }
@@ -451,7 +473,7 @@ function loadActiveProfileId() {
 
 function ensureActiveProfile() {
   if (!profiles.length) {
-    profiles = [{ id: createId(), name: "Профиль 1", patientData: "", labRecords: [] }];
+    profiles = [{ id: createId(), name: "Профиль 1", metadata: {}, patientData: "", labRecords: [] }];
   }
   if (!profiles.some((profile) => profile.id === activeProfileId)) {
     activeProfileId = profiles[0].id;
@@ -524,6 +546,7 @@ function applyActiveProfile() {
   renderLabHistory();
   renderLabDiagnostics([]);
   renderGeneticInputState();
+  renderHealthBlocks();
 }
 
 function showGeneticInputForm() {
@@ -554,7 +577,7 @@ async function createProfile() {
     return;
   }
 
-  const profile = { id: createId(), name, patientData: "", labRecords: [], createdAt: new Date().toISOString() };
+  const profile = { id: createId(), name, metadata: {}, patientData: "", labRecords: [], createdAt: new Date().toISOString() };
   profiles.push(profile);
   activeProfileId = profile.id;
   profileName.value = "";
@@ -1329,6 +1352,7 @@ function renderLabHistory() {
     labInsights.innerHTML = "";
     labResults.innerHTML = "";
     drawLabChart("");
+    renderHealthBlocks();
     return;
   }
 
@@ -1344,6 +1368,7 @@ function renderLabHistory() {
   labInsights.innerHTML = renderLabInsights();
   labResults.innerHTML = labRecords.map(renderLabRecord).join("");
   drawLabChart(labMetric.value);
+  renderHealthBlocks();
 }
 
 function availableLabMetrics() {
@@ -1473,6 +1498,652 @@ function addThresholdSignal(signals, item, predicate, template) {
     value: `${formatNumber(item.value)} ${item.unit}`,
     date: item.date
   });
+}
+
+function renderHealthBlocks() {
+  const showDecisionPanel = currentUser?.email?.toLowerCase() === "pkureev@gmail.com";
+  decisionPanel.hidden = !showDecisionPanel;
+
+  const qualitySignals = dataQualitySignals();
+  const clinicalSignals = expandedClinicalSignals();
+  const pgxSignals = pgxCoverageSignals();
+  const integrationSignals = integrationStatusSignals();
+  const medicationSignals = medicationRiskSignals();
+  const total = [
+    ...qualitySignals.filter((item) => item.severity !== "low"),
+    ...clinicalSignals.filter((item) => item.severity !== "low"),
+    ...pgxSignals.filter((item) => item.severity !== "low"),
+    ...medicationSignals
+  ].length;
+
+  if (showDecisionPanel) {
+    decisionCounter.textContent = `${total} ${plural(total, "сигнал", "сигнала", "сигналов")}`;
+    renderSignalList(qualityChecks, qualityCounter, qualitySignals);
+    renderSignalList(clinicalChecks, clinicalCounter, clinicalSignals);
+    renderSignalList(pgxCoverage, pgxCounter, pgxSignals);
+    renderSignalList(integrationChecks, integrationCounter, integrationSignals);
+  }
+  renderMedicationProfile(medicationSignals);
+}
+
+function renderSignalList(container, counter, signals) {
+  counter.textContent = signals.length;
+  container.innerHTML = signals.length
+    ? signals.map(renderSignalItem).join("")
+    : renderSignalItem({
+        severity: "low",
+        title: "Пока нет активных сигналов",
+        body: "Этот блок начнет заполняться после загрузки генетики, анализов или списка препаратов."
+      });
+}
+
+function renderSignalItem(signal) {
+  return `
+    <article class="signal-item ${escapeHtml(signal.severity || "low")}">
+      <strong>${escapeHtml(signal.title)}</strong>
+      <p>${escapeHtml(signal.body)}</p>
+    </article>
+  `;
+}
+
+function dataQualitySignals() {
+  const signals = [];
+  const { profile } = parseProfile(patientData.value);
+  const geneCount = Object.keys(profile).length;
+  const totalValues = labRecords.reduce((sum, record) => sum + record.values.length, 0);
+
+  signals.push({
+    severity: geneCount ? "low" : "moderate",
+    title: geneCount ? `Распознано ${geneCount} генетических маркеров` : "Нет генетических данных",
+    body: geneCount
+      ? "Фармакогенетический блок может сопоставлять найденные маркеры с правилами в базе MVP."
+      : "Загрузите VCF Genotek или вставьте текст отчета, чтобы появились gene-drug проверки."
+  });
+
+  signals.push({
+    severity: labRecords.length ? "low" : "moderate",
+    title: labRecords.length ? `Загружено ${labRecords.length} отчетов` : "Нет истории анализов",
+    body: labRecords.length
+      ? `В истории найдено ${totalValues} ${plural(totalValues, "показатель", "показателя", "показателей")}.`
+      : "Загрузите PDF или текстовые результаты, чтобы появились графики и клинические сигналы."
+  });
+
+  const duplicates = duplicateLabValues();
+  if (duplicates.length) {
+    signals.push({
+      severity: "moderate",
+      title: "Есть похожие дубли",
+      body: `Найдено ${duplicates.length} ${plural(duplicates.length, "повтор", "повтора", "повторов")} с одинаковой датой, показателем и значением. Стоит проверить источники.`
+    });
+  }
+
+  const outliers = suspiciousLabValues();
+  if (outliers.length) {
+    signals.push({
+      severity: "moderate",
+      title: "Есть подозрительные значения",
+      body: outliers.slice(0, 3).map((item) => `${item.label}: ${formatNumber(item.value)} ${item.unit}`).join("; ")
+    });
+  }
+
+  return signals;
+}
+
+function duplicateLabValues() {
+  const seen = new Set();
+  const duplicates = [];
+  for (const record of labRecords) {
+    for (const value of record.values) {
+      const key = [record.date, value.key, value.value, value.unit].join("|");
+      if (seen.has(key)) duplicates.push(value);
+      else seen.add(key);
+    }
+  }
+  return duplicates;
+}
+
+function suspiciousLabValues() {
+  const suspicious = [];
+  for (const record of labRecords) {
+    for (const value of record.values) {
+      const analyte = labAnalytes.find((item) => item.key === value.key);
+      const reference = analyte?.reference || {};
+      const high = reference.max;
+      const low = reference.min;
+      if (value.value < 0) suspicious.push(value);
+      else if (high && value.value > high * 6) suspicious.push(value);
+      else if (low && value.value < low / 6) suspicious.push(value);
+    }
+  }
+  return suspicious;
+}
+
+function expandedClinicalSignals() {
+  const signals = [...labClinicalSignals()];
+  const latest = latestLabValues();
+
+  if (latest.ferritin && latest.crp && latest.crp.value > 5) {
+    signals.push({
+      severity: "moderate",
+      title: "Ферритин интерпретировать с воспалением",
+      metric: "Ферритин + CRP",
+      body: "При повышенном C-реактивном белке ферритин может отражать не только запас железа, но и воспалительный контекст.",
+      value: `${formatNumber(latest.ferritin.value)} ${latest.ferritin.unit}`,
+      date: latest.ferritin.date
+    });
+  }
+
+  if (latest.alt && latest.ast && latest.alt.value > latest.ast.value * 2 && latest.alt.value > 41) {
+    signals.push({
+      severity: "moderate",
+      title: "АЛТ выше АСТ",
+      metric: "АЛТ/АСТ",
+      body: "Такой паттерн полезно учитывать при препаратах с печеночным метаболизмом и при поиске причины повышения трансаминаз.",
+      value: `${formatNumber(latest.alt.value)} / ${formatNumber(latest.ast.value)}`,
+      date: latest.alt.date
+    });
+  }
+
+  if (!signals.length) {
+    signals.push({
+      severity: "low",
+      title: "Критичных отклонений не найдено",
+      body: "По текущим поддерживаемым показателям нет активных пороговых сигналов. Это не заменяет медицинскую интерпретацию."
+    });
+  }
+
+  return signals;
+}
+
+function pgxCoverageSignals() {
+  const { profile } = parseProfile(patientData.value);
+  const genes = Object.keys(profile);
+  const signals = [];
+  const coveredGenes = [...new Set(rules.map((rule) => rule.gene))];
+  const foundCovered = genes.filter((gene) => coveredGenes.includes(gene));
+  const missingHighValue = ["DPYD", "VKORC1", "CYP3A5", "UGT1A1", "HLA-A*31:01", "HLA-B*15:02", "ABCG2", "CYP4F2"]
+    .filter((gene) => !genes.includes(gene));
+
+  signals.push({
+    severity: foundCovered.length ? "low" : "moderate",
+    title: foundCovered.length ? `Покрыто ${foundCovered.length} gene-drug генов` : "Нет совпадений с правилами MVP",
+    body: foundCovered.length
+      ? `Найдены: ${foundCovered.join(", ")}. Эти гены уже используются в рекомендациях.`
+      : "После загрузки VCF появится проверка по клопидогрелу, статинам, НПВС, ИПП, опиоидам, тиопуринам и HLA-сигналам."
+  });
+
+  signals.push({
+    severity: "low",
+    title: "Следующие расширения базы",
+    body: `Полезно добавить: ${missingHighValue.slice(0, 6).join(", ")}. Это расширит онкологию, антикоагулянты, трансплантологию и HLA-риски.`
+  });
+
+  return signals;
+}
+
+function integrationStatusSignals() {
+  return [
+    {
+      severity: cloudReady ? "low" : "moderate",
+      title: cloudReady ? "Supabase подключен" : "Работа в локальном режиме",
+      body: cloudReady
+        ? "Профиль, имя и распознанные показатели сохраняются в базе аккаунта."
+        : "Без входа данные хранятся только в этом браузере."
+    },
+    {
+      severity: "moderate",
+      title: "Исходные PDF пока не сохраняются",
+      body: "Сейчас сохраняются распознанные показатели. Следующий шаг: Supabase Storage для исходных файлов и повторной проверки."
+    },
+    {
+      severity: "moderate",
+      title: "OCR не подключен",
+      body: "Текстовые PDF читаются хорошо, но сканы требуют OCR-слоя перед разбором."
+    },
+    {
+      severity: "low",
+      title: "RLS включен в схеме",
+      body: "Миграция использует Row Level Security; браузер работает только с publishable key."
+    }
+  ];
+}
+
+function currentMedications() {
+  return (getActiveProfile()?.metadata?.medications || []).map((item) => enrichMedication(item));
+}
+
+function saveCurrentMedications(medications) {
+  const profile = getActiveProfile();
+  profile.metadata = { ...(profile.metadata || {}), medications: medications.map((item) => enrichMedication(item)) };
+  saveCurrentProfileData();
+}
+
+async function addMedication() {
+  const name = medicationName.value.trim();
+  if (!name) return;
+
+  const id = `med-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const medications = [
+    ...currentMedications(),
+    {
+      id,
+      name,
+      dose: medicationDose.value.trim(),
+      note: medicationNote.value.trim()
+    }
+  ];
+  medicationName.value = "";
+  medicationDose.value = "";
+  medicationNote.value = "";
+  saveCurrentMedications(medications);
+  renderHealthBlocks();
+  await lookupMedicationById(id, { silent: true });
+}
+
+function enrichMedication(medication) {
+  const known = identifyMedication(medication.name);
+  const cleanedSubstanceLabel = cleanMedicationSubstanceLabel(medication.substanceLabel || medication.substance || "");
+  const substanceLabel = known?.label || cleanedSubstanceLabel || "";
+  const group = known?.group || medication.group || "";
+  const shotList = findShotListMedication(medication.name, substanceLabel, group);
+  return {
+    ...medication,
+    substance: known?.substance || cleanMedicationSubstanceLabel(medication.substance || "") || "",
+    substanceLabel,
+    group,
+    sourceName: medication.sourceName || "",
+    sourceUrl: medication.sourceUrl || "",
+    lookupConfidence: medication.lookupConfidence ?? null,
+    shotList
+  };
+}
+
+function identifyMedication(name) {
+  const normalized = normalizeText(name || "");
+  return medicationKnowledge.find((item) => item.aliases.some((alias) => normalized.includes(normalizeText(alias)))) || null;
+}
+
+function findShotListMedication(name, substanceLabel = "", group = "") {
+  const normalized = normalizeText([name, substanceLabel].filter(Boolean).join(" "));
+  return shotListMedications.find((item) => {
+    const aliasMatch = item.aliases.some((alias) => normalized.includes(normalizeText(alias)));
+    const groupMatch = group && (item.groups || []).includes(group);
+    return aliasMatch || groupMatch;
+  }) || null;
+}
+
+function removeMedication(id) {
+  saveCurrentMedications(currentMedications().filter((item) => item.id !== id));
+  renderHealthBlocks();
+}
+
+function renderMedicationProfile(signals) {
+  const medications = currentMedications();
+  medicationCounter.textContent = `${medications.length} ${plural(medications.length, "препарат", "препарата", "препаратов")}`;
+  medicationList.innerHTML = medications.length
+    ? medications.map((item) => `
+      <article class="medication-row">
+        <strong>${escapeHtml(item.name)}</strong>
+        <span>${medicationSubstanceHtml(item)}</span>
+        <span>${escapeHtml(item.dose || "Доза не указана")}</span>
+        <span>${escapeHtml(medicationRowNote(item))}</span>
+        <button class="secondary-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
+      </article>
+    `).join("")
+    : `<p class="file-status">Добавьте текущие препараты, чтобы сопоставить их с генетикой и анализами.</p>`;
+
+  if (typeof medicationList.querySelectorAll === "function") {
+    medicationList.querySelectorAll("[data-remove-medication]").forEach((button) => {
+      button.addEventListener("click", () => removeMedication(button.dataset.removeMedication));
+    });
+  }
+
+  const identified = medications.filter((item) => item.substanceLabel).length;
+  medicationSummary.hidden = !medications.length;
+  medicationSummary.innerHTML = medications.length
+    ? `<strong>Действующее вещество:</strong> определено для ${identified} из ${medications.length} ${plural(medications.length, "препарата", "препаратов", "препаратов")}. Если поле не определилось, откройте проверку на ПоискЛекарств или введите международное название вместо торгового.`
+    : "";
+  if (!medications.length) medicationLookupStatus.textContent = "";
+  medicationChecks.innerHTML = signals.length ? signals.map(renderMedicationSignal).join("") : "";
+}
+
+function medicationSubstanceHtml(item) {
+  if (item.substanceLabel) {
+    const source = medicationSourceLabel(item);
+    return `${escapeHtml(item.substanceLabel)}${source ? `<small>${escapeHtml(source)}</small>` : ""}`;
+  }
+  return `
+    <span class="unknown-substance">Не определено</span>
+    <small>
+      <a href="${escapeHtml(googleMedicationSearchUrl(item.name))}" target="_blank" rel="noopener noreferrer">искать в Google</a>
+    </small>
+  `;
+}
+
+function medicationSourceLabel(item) {
+  if (!item.sourceName) return "";
+  const labels = {
+    "local medication dictionary": "Справочник",
+    "poisklekarstv.com": "ПоискЛекарств"
+  };
+  return `Источник: ${labels[item.sourceName] || item.sourceName}`;
+}
+
+async function lookupMissingMedicationSubstances() {
+  const medications = currentMedications();
+  const targets = medications.filter((item) => !item.substanceLabel);
+  if (!medications.length) {
+    medicationLookupStatus.textContent = "Добавьте препараты, чтобы уточнить действующие вещества.";
+    return;
+  }
+  if (!targets.length) {
+    medicationLookupStatus.textContent = "Для всех препаратов действующее вещество уже определено.";
+    return;
+  }
+
+  medicationLookupStatus.textContent = `Уточняю ${targets.length} ${plural(targets.length, "препарат", "препарата", "препаратов")} через backend...`;
+  let updated = 0;
+  for (const item of targets) {
+    const didUpdate = await lookupMedicationById(item.id, { silent: true });
+    if (didUpdate) updated += 1;
+  }
+  medicationLookupStatus.textContent = updated
+    ? `Обновлено ${updated} ${plural(updated, "препарат", "препарата", "препаратов")}.`
+    : "Backend не нашел новых действующих веществ.";
+}
+
+async function lookupMedicationById(id, options = {}) {
+  const medications = currentMedications();
+  const medication = medications.find((item) => item.id === id);
+  if (!medication || medication.substanceLabel) return false;
+
+  const result = await lookupMedicationBackend(medication.name);
+  if (!result?.substanceLabel && !result?.shotListCategory) {
+    if (!options.silent) medicationLookupStatus.textContent = `Не удалось уточнить: ${medication.name}.`;
+    return false;
+  }
+
+  const known = result.substanceLabel ? identifyMedication(result.substanceLabel) : null;
+  const updated = medications.map((item) => {
+    if (item.id !== id) return item;
+    return enrichMedication({
+      ...item,
+      substance: result.substance || item.substance,
+      substanceLabel: result.substanceLabel || item.substanceLabel,
+      group: item.group || known?.group || "",
+      sourceName: result.sourceName || item.sourceName,
+      sourceUrl: result.sourceUrl || item.sourceUrl,
+      lookupConfidence: result.confidence ?? item.lookupConfidence,
+      shotList: result.shotListCategory
+        ? {
+            label: result.shotListMatch || item.name,
+            category: result.shotListCategory,
+            note: result.shotListNote || ""
+          }
+        : item.shotList
+    });
+  });
+  saveCurrentMedications(updated);
+  renderHealthBlocks();
+  return true;
+}
+
+async function lookupMedicationBackend(name) {
+  if (!supabaseClient || !window.PGX_SUPABASE?.url) {
+    medicationLookupStatus.textContent = "Backend недоступен: Supabase SDK не загружен.";
+    return null;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  const token = data.session?.access_token || window.PGX_SUPABASE.anonJwt || "";
+  const apiKey = window.PGX_SUPABASE.anonJwt || token;
+  if (!token) {
+    medicationLookupStatus.textContent = "Войдите в аккаунт, чтобы уточнять препараты через backend.";
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${window.PGX_SUPABASE.url}/functions/v1/lookup-medication`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name })
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      medicationLookupStatus.textContent = `Backend не ответил: ${payload?.message || payload?.error || response.status}`;
+      return null;
+    }
+    return payload;
+  } catch (error) {
+    medicationLookupStatus.textContent = `Backend недоступен: ${error.message}`;
+    return null;
+  }
+}
+
+function poiskLekarstvUrl(name) {
+  const slug = transliterateForSlug(name);
+  return slug
+    ? `https://www.poisklekarstv.com/catalog/${encodeURIComponent(slug)}.html`
+    : `https://www.poisklekarstv.com/`;
+}
+
+function googleMedicationSearchUrl(name) {
+  const query = `${name} действующее вещество`;
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}
+
+function cleanMedicationSubstanceLabel(value) {
+  return String(value || "")
+    .replace(/\s*poisklekarstv\.com\s*,?\s*\d+%?/gi, "")
+    .replace(/\s+(категория|болезни|цена|цены|производитель|форма выпуска|фармакологическое действие|состав|аналоги|отзывы|инструкция)(\s|:|-|$).*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function transliterateForSlug(value) {
+  const map = {
+    а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y",
+    к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f",
+    х: "h", ц: "c", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya"
+  };
+  return normalizeText(value)
+    .trim()
+    .split("")
+    .map((char) => map[char] ?? char)
+    .join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function medicationRowNote(item) {
+  const parts = [];
+  if (item.note) parts.push(item.note);
+  if (item.shotList) parts.push(`РСП: ${item.shotList.category}`);
+  return parts.join(" · ") || "Комментарий не указан";
+}
+
+function renderMedicationSignal(signal) {
+  return `
+    <article class="result-card ${escapeHtml(signal.severity)}">
+      <div class="result-title">
+        <strong>${escapeHtml(signal.title)}</strong>
+        <span class="badge">${escapeHtml(signal.medication)}</span>
+      </div>
+      <p class="recommendation">${escapeHtml(signal.body)}</p>
+      <p class="source">${escapeHtml(signal.source)}</p>
+    </article>
+  `;
+}
+
+function medicationRiskSignals() {
+  const medications = currentMedications();
+  if (!medications.length) return [];
+
+  const { profile } = parseProfile(patientData.value);
+  const latest = latestLabValues();
+  const signals = [];
+  for (const medication of medications) {
+    const name = normalizeText(medication.name);
+    const has = (...needles) => needles.some((needle) => name.includes(normalizeText(needle)));
+    const isGroup = (...groups) => groups.includes(medication.group);
+
+    if (medication.shotList) {
+      signals.push({
+        severity: medication.shotList.category === "гомеопатия" ? "high" : "moderate",
+        medication: medication.name,
+        title: `Расстрельный список: ${medication.shotList.category}`,
+        body: `${medication.shotList.label}: ${medication.shotList.note}`,
+        source: "Encyclopedia Pathologica, Расстрельный список препаратов"
+      });
+    }
+
+    if (isGroup("statin", "statin_combo") || has("статин", "розувастатин", "аторвастатин", "симвастатин", "rosuvastatin", "atorvastatin", "simvastatin")) {
+      if (["decreased function", "poor function"].includes(profile.SLCO1B1)) {
+        signals.push({
+          severity: profile.SLCO1B1 === "poor function" ? "high" : "moderate",
+          medication: medication.name,
+          title: "Статин + SLCO1B1",
+          body: "Найден фармакогенетический сигнал повышенного риска мышечных симптомов для отдельных статинов.",
+          source: "CPIC/FDA statin PGx"
+        });
+      }
+      if (latest.ck && latest.ck.value > 190) {
+        signals.push({
+          severity: "moderate",
+          medication: medication.name,
+          title: "Статин + повышенная КФК",
+          body: `Последняя КФК ${formatNumber(latest.ck.value)} ${latest.ck.unit}. Это полезный контекст для оценки переносимости статина.`,
+          source: `Анализ от ${formatDate(latest.ck.date)}`
+        });
+      }
+    }
+
+    if (isGroup("antiplatelet") || has("клопидогрел", "clopidogrel", "плавикс")) {
+      if (["poor metabolizer", "intermediate metabolizer"].includes(profile.CYP2C19)) {
+        signals.push({
+          severity: profile.CYP2C19 === "poor metabolizer" ? "high" : "moderate",
+          medication: medication.name,
+          title: "Клопидогрел + CYP2C19",
+          body: "Сниженная функция CYP2C19 может уменьшать образование активного метаболита клопидогрела.",
+          source: "CPIC/FDA CYP2C19-clopidogrel"
+        });
+      }
+    }
+
+    if (isGroup("nsaid") || has("нпвс", "ибупрофен", "диклофенак", "целекоксиб", "meloxicam", "ibuprofen", "diclofenac", "celecoxib")) {
+      if (latest.egfr && latest.egfr.value < 60) {
+        signals.push({
+          severity: "high",
+          medication: medication.name,
+          title: "НПВС + сниженная eGFR",
+          body: "Сниженная фильтрация почек может повышать риск нежелательных эффектов НПВС.",
+          source: `Анализ от ${formatDate(latest.egfr.date)}`
+        });
+      }
+      if (["poor metabolizer", "intermediate metabolizer"].includes(profile.CYP2C9)) {
+        signals.push({
+          severity: "moderate",
+          medication: medication.name,
+          title: "НПВС + CYP2C9",
+          body: "Сниженная функция CYP2C9 может повышать экспозицию ряда НПВС.",
+          source: "CPIC CYP2C9-NSAIDs"
+        });
+      }
+    }
+
+    if (isGroup("opioid_cyp2d6") || has("кодеин", "трамадол", "codeine", "tramadol")) {
+      if (["poor metabolizer", "ultrarapid metabolizer"].includes(profile.CYP2D6)) {
+        signals.push({
+          severity: "high",
+          medication: medication.name,
+          title: "Опиоид + CYP2D6",
+          body: "Для кодеина и трамадола крайние фенотипы CYP2D6 могут менять эффективность или риск токсичности.",
+          source: "CPIC CYP2D6-opioids"
+        });
+      }
+    }
+
+    if (isGroup("ppi") || has("омепразол", "эзомепразол", "пантопразол", "omeprazole", "esomeprazole", "pantoprazole")) {
+      if (["poor metabolizer", "rapid metabolizer", "ultrarapid metabolizer"].includes(profile.CYP2C19)) {
+        signals.push({
+          severity: "moderate",
+          medication: medication.name,
+          title: "ИПП + CYP2C19",
+          body: "Фенотип CYP2C19 может влиять на экспозицию и эффект ингибиторов протонной помпы.",
+          source: "CPIC CYP2C19-PPIs"
+        });
+      }
+    }
+  }
+
+  return [...signals, ...medicationInteractionSignals(medications)];
+}
+
+function medicationInteractionSignals(medications) {
+  const signals = [];
+  const groups = (group) => medications.filter((item) => item.group === group);
+  const firstNames = (items) => items.map((item) => item.name).join(" + ");
+  const nsaids = groups("nsaid");
+  const antiplatelets = [...groups("antiplatelet"), ...groups("antiplatelet_asa")];
+  const anticoagulants = groups("anticoagulant");
+  const ppis = groups("ppi");
+  const clopidogrels = groups("antiplatelet");
+
+  if (nsaids.length > 1) {
+    signals.push({
+      severity: "high",
+      medication: firstNames(nsaids),
+      title: "Два НПВС одновременно",
+      body: "Комбинация нескольких НПВС обычно повышает риск желудочно-кишечных, почечных и сердечно-сосудистых нежелательных эффектов без понятного выигрыша.",
+      source: "Локальное правило medication profile"
+    });
+  }
+
+  if (nsaids.length && antiplatelets.length) {
+    signals.push({
+      severity: "moderate",
+      medication: firstNames([...nsaids, ...antiplatelets]),
+      title: "НПВС + антиагрегант",
+      body: "Такое сочетание может повышать риск кровотечений и повреждения ЖКТ; важны показания, срок приема и гастропротекция.",
+      source: "Локальное правило medication profile"
+    });
+  }
+
+  if (nsaids.length && anticoagulants.length) {
+    signals.push({
+      severity: "high",
+      medication: firstNames([...nsaids, ...anticoagulants]),
+      title: "НПВС + антикоагулянт",
+      body: "Комбинация может существенно повышать риск кровотечений; требует отдельной оценки врачом.",
+      source: "Локальное правило medication profile"
+    });
+  }
+
+  if (anticoagulants.length && antiplatelets.length) {
+    signals.push({
+      severity: "high",
+      medication: firstNames([...anticoagulants, ...antiplatelets]),
+      title: "Антикоагулянт + антиагрегант",
+      body: "Комбинация может быть оправдана только при конкретных показаниях и повышает риск кровотечений.",
+      source: "Локальное правило medication profile"
+    });
+  }
+
+  if (clopidogrels.length && ppis.some((item) => ["omeprazole", "esomeprazole"].includes(item.substance))) {
+    signals.push({
+      severity: "moderate",
+      medication: firstNames([...clopidogrels, ...ppis]),
+      title: "Клопидогрел + омепразол/эзомепразол",
+      body: "Омепразол и эзомепразол могут быть нежелательны как сопутствующие ИПП при клопидогреле из-за CYP2C19-контекста; пантопразол часто рассматривают как более нейтральный вариант.",
+      source: "Локальное правило medication profile + CYP2C19 context"
+    });
+  }
+
+  return signals;
 }
 
 function drawLabChart(metricKey) {
@@ -1729,6 +2400,7 @@ function render(matches, profile) {
     summaryEl.className = "summary empty";
     summaryEl.textContent = "Загрузите пример или вставьте данные, чтобы увидеть найденные gene-drug сигналы.";
     resultsEl.innerHTML = "";
+    renderHealthBlocks();
     return;
   }
 
@@ -1738,6 +2410,7 @@ function render(matches, profile) {
       ? `Распознано: ${genes.join(", ")}. Для выбранного фильтра активных рекомендаций не найдено.`
       : "Не удалось надежно распознать генетические маркеры. Попробуйте формат вроде CYP2C19 *2/*2 или rs4149056 TC.";
     resultsEl.innerHTML = "";
+    renderHealthBlocks();
     return;
   }
 
@@ -1746,6 +2419,7 @@ function render(matches, profile) {
   summaryEl.textContent = `Найдено ${matches.length} ${plural(matches.length, "сигнал", "сигнала", "сигналов")}. ${highCount ? `Высокий приоритет: ${highCount}. ` : ""}Проверьте это с врачом до любых изменений терапии.`;
 
   resultsEl.innerHTML = matches.map(renderCard).join("");
+  renderHealthBlocks();
 }
 
 function renderCard(match) {
