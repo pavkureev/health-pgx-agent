@@ -25,6 +25,11 @@ HLA-B*58:01 positive
 
 Инструкция и пример nginx-конфига лежат в `deploy/`.
 
+Краткий контекст для новых Codex-чатов:
+
+- `docs/codex-context.md`
+- `docs/maintenance.md`
+
 ## Supabase
 
 Схема базы данных и описание будущей серверной архитектуры лежат в:
