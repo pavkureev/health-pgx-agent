@@ -3,3 +3,7 @@ node_modules/
 *.log
 *.bundle
 *.tar.gz
+._*
+.vscode/
+dist/
+supabase/.temp/
