@@ -45,6 +45,17 @@ For Supabase security warning `rls_disabled_in_public`, run:
 
 The final diagnostic query in that migration should return zero rows.
 
+If profiles or lab history disappear after enabling RLS, run:
+
+```sql
+-- supabase/migrations/004_backfill_profile_owner_memberships.sql
+-- supabase/migrations/005_allow_profile_owner_child_rows.sql
+```
+
+The final diagnostic query in `004` should return zero rows. The final
+diagnostic query in `005` should show owner membership and non-zero lab counts
+for the affected profile.
+
 ## Manual shot-list sync
 
 GitHub Actions → `Sync shot list` → `Run workflow`.
