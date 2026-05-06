@@ -2,6 +2,14 @@ const fs = require("fs");
 const vm = require("vm");
 const assert = require("assert");
 
+const dataScripts = [
+  "data/pgx-rules.js",
+  "data/lab-analytes.js",
+  "data/medication-knowledge.js",
+  "data/evidence-flags.js",
+  "data.js"
+];
+
 const elements = new Map();
 const store = new Map();
 const context2d = new Proxy(
@@ -54,7 +62,9 @@ const context = {
 };
 
 vm.createContext(context);
-vm.runInContext(fs.readFileSync("data.js", "utf8"), context);
+for (const script of dataScripts) {
+  vm.runInContext(fs.readFileSync(script, "utf8"), context);
+}
 vm.runInContext(fs.readFileSync("app.js", "utf8"), context);
 
 el("#patientData").value = "CYP2C19 *2/*2";

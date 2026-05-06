@@ -16,7 +16,11 @@
 - `index.html` — разметка приложения.
 - `styles.css` — стили.
 - `app.js` — основная клиентская логика.
-- `data.js` — справочники PGx, анализов, лекарств и evidence flags.
+- `data.js` — маленький сборщик `window.PGX_DATA`.
+- `data/pgx-rules.js` — PGx rules, phenotype maps и SNP hints.
+- `data/lab-analytes.js` — справочник лабораторных показателей.
+- `data/medication-knowledge.js` — локальный лекарственный справочник.
+- `data/evidence-flags.js` — локальные evidence flags / shot list.
 - `supabase-config.js` — публичная Supabase конфигурация.
 - `supabase/functions/lookup-medication/index.ts` — Edge Function для определения действующего вещества и evidence flags.
 - `supabase/functions/sync-shot-list/index.ts` — Edge Function для обновления `medication_evidence_flags`.
@@ -35,10 +39,25 @@
 
 Обычный путь: push в `main`.
 
+Обычный git flow:
+
+```bash
+git status
+git add .
+git commit -m "..."
+git push
+```
+
+После `git push` деплой идёт через GitHub Actions.
+
 GitHub Actions:
 
 - `Deploy health PGx agent` прогоняет тесты, деплоит статику на сервер и Edge Functions.
 - `Sync shot list` запускается вручную и вызывает `sync-shot-list`.
+
+Ручной запуск shot list sync:
+
+GitHub → Actions → `Sync shot list` → `Run workflow`.
 
 Нужные secrets уже настроены в GitHub:
 
@@ -59,9 +78,12 @@ npm test
 
 ## Важные правила
 
-- Не коммитить `dist/`, архивы, `.temp`, `._*`, `.vscode/`.
-- После изменения `index.html`/`app.js`/`data.js`/`styles.css` повышать query string версии скриптов.
+- Не коммитить `dist/`, `*.tar.gz`, `*.bundle`, `._*`, `.vscode/`, `supabase/.temp/`.
+- После изменения frontend scripts повышать query version в `index.html`.
+- Не хранить service role key в браузере и не писать его в чат.
 - Медицинские рекомендации показывать как справочные сигналы, не как назначение лечения.
+- Медицинские выводы формулировать как справочные сигналы и вопросы к врачу.
+- При работе с “расстрельным списком” указывать, что это критический справочный источник, не регуляторная база.
 - Для новых таблиц Supabase включать RLS.
 
 ## Текущие ближайшие задачи

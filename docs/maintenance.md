@@ -15,9 +15,11 @@ Use `main` as the deploy branch. GitHub Actions deploys on push.
 ```bash
 git status
 git add .
-git commit -m "Describe change"
+git commit -m "..."
 git push
 ```
+
+After `git push`, deployment runs through GitHub Actions.
 
 Avoid committing generated artifacts. `.gitignore` excludes:
 
@@ -28,13 +30,26 @@ Avoid committing generated artifacts. `.gitignore` excludes:
 - `.vscode/`
 - `supabase/.temp/`
 
+After changing frontend scripts, bump their query version in `index.html`.
+Never store a service role key in browser code.
+
 ## Manual SQL migrations
 
 Run SQL in Supabase SQL Editor for now. CI intentionally does not apply migrations.
 
+For Supabase security warning `rls_disabled_in_public`, run:
+
+```sql
+-- supabase/migrations/003_repair_public_rls.sql
+```
+
+The final diagnostic query in that migration should return zero rows.
+
 ## Manual shot-list sync
 
 GitHub Actions → `Sync shot list` → `Run workflow`.
+
+Treat the shot list as a critical reference source, not a regulatory database.
 
 Expected successful response:
 
