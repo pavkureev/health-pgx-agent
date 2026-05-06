@@ -24,6 +24,7 @@
 - `supabase-config.js` — публичная Supabase конфигурация.
 - `supabase/functions/lookup-medication/index.ts` — Edge Function для определения действующего вещества и evidence flags.
 - `supabase/functions/sync-shot-list/index.ts` — Edge Function для обновления `medication_evidence_flags`.
+- `supabase/functions/sync-shot-list/parser.ts` — parser v2 для raw wikitext страницы “расстрельного списка”.
 - `supabase/migrations/` — SQL схема.
 - `.github/workflows/deploy.yml` — CI/CD деплой статики и функций.
 - `.github/workflows/sync-shot-list.yml` — ручной запуск синхронизации evidence flags.
@@ -88,7 +89,6 @@ npm test
 
 ## Текущие ближайшие задачи
 
-1. `sync-shot-list` parser v2: извлекать 100+ пунктов, а не seed/knownNames.
-2. Добавить fixture/test для парсера расстрельного списка.
-3. Улучшить UI лекарственного профиля и ручную правку действующего вещества.
-4. Расширить drug-drug и drug-lab проверки.
+1. Улучшить UI лекарственного профиля и ручную правку действующего вещества.
+2. Расширить drug-drug и drug-lab проверки.
+3. Расширить PGx правила: DPYD, VKORC1/CYP4F2, CYP3A5, UGT1A1, HLA-A*31:01/HLA-B*15:02.

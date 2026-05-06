@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4";
+import { mergeFlags, normalizeAliases, parseShotList } from "./parser.ts";
 
 type EvidenceFlag = {
   label: string;
@@ -12,6 +13,7 @@ type EvidenceFlag = {
 };
 
 const sourceUrl = "https://encyclopatia.ru/wiki/Расстрельный_список_препаратов";
+const sourceRawUrl = "https://encyclopatia.ru/w/index.php?title=%D0%A0%D0%B0%D1%81%D1%81%D1%82%D1%80%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9_%D1%81%D0%BF%D0%B8%D1%81%D0%BE%D0%BA_%D0%BF%D1%80%D0%B5%D0%BF%D0%B0%D1%80%D0%B0%D1%82%D0%BE%D0%B2&action=raw";
 const sourceName = "Encyclopedia Pathologica, Расстрельный список препаратов";
 
 const corsHeaders = {
@@ -96,8 +98,8 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const html = await fetchText(sourceUrl);
-    const parsed = html ? parseShotList(html) : [];
+    const sourceText = await fetchText(sourceRawUrl);
+    const parsed = sourceText ? parseShotList(sourceText, { sourceUrl, sourceName }) : [];
     const merged = mergeFlags([...groupRules, ...seedRules, ...parsed]);
     const rows = merged.map((flag) => ({
       label: flag.label,
@@ -122,7 +124,8 @@ Deno.serve(async (req) => {
       parsed: parsed.length,
       groupRules: groupRules.length,
       seedRules: seedRules.length,
-      sourceUrl
+      sourceUrl,
+      parserVersion: "v2"
     });
   } catch (error) {
     return jsonResponse({ error: error instanceof Error ? error.message : "Unexpected error" }, 500);
@@ -142,92 +145,6 @@ async function fetchText(url: string) {
   });
   if (!response.ok) throw new Error(`Source returned ${response.status}`);
   return await response.text();
-}
-
-function parseShotList(html: string): EvidenceFlag[] {
-  const text = compactText(stripHtml(html));
-  const flags: EvidenceFlag[] = [];
-  const knownNames = [
-    "Актовегин", "Адаптол", "Агри", "Афлубин", "Арбидол", "Валидол", "Валокордин", "Винпоцетин",
-    "Пирацетам", "Римантадин", "Триметазидин", "Фенотропил", "Хондроитинсульфат",
-    "Церебролизин", "Циклоферон", "Адеметионин"
-  ];
-
-  for (const name of knownNames) {
-    const index = text.toLowerCase().indexOf(name.toLowerCase());
-    if (index < 0) continue;
-    const context = text.slice(index, index + 520);
-    flags.push({
-      label: name,
-      aliases: [name],
-      category: inferCategory(context),
-      note: compactText(context).slice(0, 300),
-      sourceUrl,
-      sourceName,
-      sourceKind: "parsed"
-    });
-  }
-
-  return flags;
-}
-
-function inferCategory(context: string) {
-  const normalized = normalizeText(context);
-  if (normalized.includes("гомеопат")) return "гомеопатия";
-  if (normalized.includes("нет исследований") || normalized.includes("отсутств")) return "нет исследований";
-  if (normalized.includes("не доказ")) return "не доказана эффективность";
-  if (normalized.includes("устар")) return "устаревший подход";
-  if (normalized.includes("cochrane") || normalized.includes("pubmed")) return "нет убедительных исследований";
-  return "недостаточная доказательная база";
-}
-
-function mergeFlags(flags: EvidenceFlag[]) {
-  const map = new Map<string, EvidenceFlag>();
-  for (const flag of flags) {
-    const key = normalizeText(flag.label);
-    const existing = map.get(key);
-    if (!existing) {
-      map.set(key, flag);
-      continue;
-    }
-
-    map.set(key, {
-      ...existing,
-      aliases: normalizeAliases([...existing.aliases, ...flag.aliases]),
-      groups: [...new Set([...(existing.groups || []), ...(flag.groups || [])])],
-      note: existing.note.length >= flag.note.length ? existing.note : flag.note,
-      sourceKind: existing.sourceKind === "parsed" ? existing.sourceKind : flag.sourceKind
-    });
-  }
-  return [...map.values()];
-}
-
-function normalizeAliases(values: string[]) {
-  return [...new Set(values.map((value) => normalizeText(value)).filter(Boolean))];
-}
-
-function normalizeText(value: string) {
-  return value
-    .toLowerCase()
-    .replaceAll("ё", "е")
-    .replace(/[‐‑‒–—−]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function stripHtml(html: string) {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#39;/g, "'");
-}
-
-function compactText(value: string) {
-  return value.replace(/\s+/g, " ").trim();
 }
 
 function jsonResponse(payload: unknown, status = 200) {

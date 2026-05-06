@@ -54,7 +54,7 @@ Treat the shot list as a critical reference source, not a regulatory database.
 Expected successful response:
 
 ```json
-{"synced":20,"parsed":16,"groupRules":4,"seedRules":12}
+{"synced":257,"parsed":269,"groupRules":4,"seedRules":12,"parserVersion":"v2"}
 ```
 
 ## Server fallback
