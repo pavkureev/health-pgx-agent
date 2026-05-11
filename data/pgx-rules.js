@@ -68,6 +68,19 @@ window.PGX_RULES = [
       }
     },
     {
+      id: "statins-abcg2",
+      drug: "Розувастатин",
+      aliases: ["rosuvastatin", "розувастатин", "крестор", "сувардио", "розукард", "statin", "статин"],
+      gene: "ABCG2",
+      source: "CPIC: SLCO1B1/ABCG2/CYP2C9-statins",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "decreased function": "ABCG2 decreased function может повышать экспозицию розувастатина. Обсудить дозу и мониторинг мышечных симптомов, особенно при высоких дозах.",
+        "poor function": "ABCG2 poor function может существенно повышать экспозицию розувастатина. Нужна осторожность с дозой и оценка переносимости."
+      }
+    },
+    {
       id: "nsaids-cyp2c9",
       drug: "НПВС",
       aliases: ["ibuprofen", "ибупрофен", "celecoxib", "целекоксиб", "diclofenac", "диклофенак", "meloxicam", "мелоксикам", "nsaid", "нпвс"],
@@ -129,6 +142,175 @@ window.PGX_RULES = [
       matches: {
         positive: "Повышен риск тяжелых кожных реакций. Обсудить альтернативу аллопуринолу."
       }
+    },
+    {
+      id: "fluoropyrimidines-dpyd",
+      drug: "Фторпиримидины",
+      aliases: ["fluorouracil", "фторурацил", "5-fu", "5fu", "capecitabine", "капецитабин", "xeloda", "кселода", "tegafur", "тегафур", "фторпиримидин"],
+      gene: "DPYD",
+      source: "CPIC/DPWG/FDA: DPYD-fluoropyrimidines",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        "intermediate metabolizer": "Сниженная активность DPD повышает риск тяжелой токсичности фторпиримидинов. Обсудить стартовое снижение дозы, альтернативу или терапевтический мониторинг по онкологическому протоколу.",
+        "poor metabolizer": "Высокий риск жизнеугрожающей токсичности фторпиримидинов. Обычно требуется избегать стандартной терапии и срочно обсуждать альтернативу с онкологом.",
+        "decreased function": "Найден вариант DPYD со сниженной функцией. До фторурацила/капецитабина стоит обсудить DPD-риск и стартовую дозу.",
+        "no function": "Найден вариант DPYD с выраженным снижением функции. Стандартные фторпиримидины могут быть опасны; нужна очная онкологическая оценка."
+      }
+    },
+    {
+      id: "warfarin-cyp2c9",
+      drug: "Варфарин",
+      aliases: ["warfarin", "варфарин"],
+      gene: "CYP2C9",
+      source: "CPIC: CYP2C9/VKORC1/CYP4F2-warfarin",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        "intermediate metabolizer": "Сниженный метаболизм S-варфарина может требовать более осторожного подбора дозы и частого контроля INR.",
+        "poor metabolizer": "Существенно сниженный метаболизм S-варфарина повышает риск кровотечений при стандартных дозах. Дозу обычно подбирают по фармакогенетическому алгоритму и INR."
+      }
+    },
+    {
+      id: "warfarin-vkorc1",
+      drug: "Варфарин",
+      aliases: ["warfarin", "варфарин"],
+      gene: "VKORC1",
+      source: "CPIC: CYP2C9/VKORC1/CYP4F2-warfarin",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        "increased sensitivity": "VKORC1-профиль связан с повышенной чувствительностью к варфарину. Обычно это означает более низкую ожидаемую поддерживающую дозу и необходимость аккуратного INR-контроля.",
+        "intermediate sensitivity": "VKORC1-профиль может снижать ожидаемую дозу варфарина по сравнению с обычной. Полезно использовать PGx-алгоритм дозирования вместе с INR."
+      }
+    },
+    {
+      id: "warfarin-cyp4f2",
+      drug: "Варфарин",
+      aliases: ["warfarin", "варфарин"],
+      gene: "CYP4F2",
+      source: "CPIC: CYP2C9/VKORC1/CYP4F2-warfarin",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "decreased function": "CYP4F2 decreased function может повышать ожидаемую дозу варфарина. Это вспомогательный фактор для PGx-алгоритма и контроля INR."
+      }
+    },
+    {
+      id: "tacrolimus-cyp3a5",
+      drug: "Такролимус",
+      aliases: ["tacrolimus", "такролимус", "програф", "advagraf", "адваграф"],
+      gene: "CYP3A5",
+      source: "CPIC: CYP3A5-tacrolimus",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        expresser: "CYP3A5 expresser обычно быстрее метаболизирует такролимус. При назначении часто требуется более высокая стартовая доза и обязательный терапевтический мониторинг концентраций.",
+        "intermediate expresser": "CYP3A5 intermediate expresser может требовать коррекции стартовой дозы такролимуса и мониторинга trough-концентраций.",
+        nonexpresser: "CYP3A5 nonexpresser обычно соответствует стандартному стартовому подходу, но концентрации такролимуса всё равно подбираются мониторингом."
+      }
+    },
+    {
+      id: "irinotecan-ugt1a1",
+      drug: "Иринотекан",
+      aliases: ["irinotecan", "иринотекан", "кампто", "campto"],
+      gene: "UGT1A1",
+      source: "CPIC/DPWG/FDA: UGT1A1-irinotecan",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        "intermediate metabolizer": "Сниженная активность UGT1A1 может повышать риск нейтропении и диареи на иринотекане. Стоит обсудить стартовую дозу и мониторинг токсичности.",
+        "poor metabolizer": "UGT1A1 poor metabolizer связан с высоким риском токсичности иринотекана, особенно при высоких дозах. Нужна онкологическая коррекция стратегии."
+      }
+    },
+    {
+      id: "atazanavir-ugt1a1",
+      drug: "Атазанавир",
+      aliases: ["atazanavir", "атазанавир", "реатаз", "reyataz"],
+      gene: "UGT1A1",
+      source: "CPIC: UGT1A1-atazanavir",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "poor metabolizer": "UGT1A1 poor metabolizer повышает вероятность выраженной непрямой гипербилирубинемии на атазанавире. Обсудить альтернативу или мониторинг билирубина.",
+        "intermediate metabolizer": "Возможен повышенный риск гипербилирубинемии на атазанавире; полезен мониторинг билирубина и переносимости."
+      }
+    },
+    {
+      id: "carbamazepine-hla-a3101",
+      drug: "Карбамазепин / окскарбазепин",
+      aliases: ["carbamazepine", "карбамазепин", "финлепсин", "тегретол", "oxcarbazepine", "окскарбазепин", "трилептал"],
+      gene: "HLA-A*31:01",
+      source: "CPIC/FDA: HLA-A/HLA-B-carbamazepine",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        positive: "Повышен риск реакций гиперчувствительности на карбамазепин, включая тяжелые кожные реакции. Обсудить альтернативный противоэпилептический препарат."
+      }
+    },
+    {
+      id: "carbamazepine-hlab1502",
+      drug: "Карбамазепин / окскарбазепин",
+      aliases: ["carbamazepine", "карбамазепин", "финлепсин", "тегретол", "oxcarbazepine", "окскарбазепин", "трилептал"],
+      gene: "HLA-B*15:02",
+      source: "CPIC/FDA: HLA-A/HLA-B-carbamazepine",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        positive: "Повышен риск синдрома Стивенса-Джонсона / токсического эпидермального некролиза на карбамазепине и родственных препаратах. Обычно обсуждают альтернативу."
+      }
+    },
+    {
+      id: "antidepressants-cyp2c19",
+      drug: "SSRI/SNRI антидепрессанты",
+      aliases: ["citalopram", "циталопрам", "escitalopram", "эсциталопрам", "sertraline", "сертралин", "antidepressant", "антидепрессант", "ssri", "сиозс", "snri", "сиозсн"],
+      gene: "CYP2C19",
+      source: "CPIC: CYP2D6/CYP2C19/CYP2B6-antidepressants",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "poor metabolizer": "Для отдельных SSRI возможны повышенные концентрации и побочные эффекты. Обсудить меньшую стартовую дозу, альтернативу или мониторинг переносимости.",
+        "rapid metabolizer": "Для отдельных SSRI возможны сниженные концентрации и недостаточный ответ. При неэффективности обсудить альтернативу или коррекцию стратегии.",
+        "ultrarapid metabolizer": "Для отдельных SSRI вероятен риск недостаточного ответа из-за быстрого метаболизма. Обсудить препарат, менее зависящий от CYP2C19."
+      }
+    },
+    {
+      id: "antidepressants-cyp2d6",
+      drug: "Антидепрессанты CYP2D6",
+      aliases: ["paroxetine", "пароксетин", "fluvoxamine", "флувоксамин", "venlafaxine", "венлафаксин", "vortioxetine", "вортиоксетин", "antidepressant", "антидепрессант"],
+      gene: "CYP2D6",
+      source: "CPIC: CYP2D6/CYP2C19/CYP2B6-antidepressants",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "poor metabolizer": "Для ряда антидепрессантов, зависящих от CYP2D6, возможны повышенные концентрации и побочные эффекты. Обсудить дозу, альтернативу или мониторинг.",
+        "ultrarapid metabolizer": "Возможен сниженный ответ на отдельные CYP2D6-зависимые антидепрессанты. Обсудить альтернативу или оценку эффективности."
+      }
+    },
+    {
+      id: "beta-blockers-cyp2d6",
+      drug: "Бета-блокаторы",
+      aliases: ["metoprolol", "метопролол", "betaloc", "беталок", "carvedilol", "карведилол", "propranolol", "пропранолол", "beta blocker", "бета-блокатор"],
+      gene: "CYP2D6",
+      source: "CPIC: CYP2D6-beta-blockers",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "poor metabolizer": "Для метопролола возможны более высокие концентрации и риск брадикардии/гипотонии. Обсудить стартовую дозу, ЧСС/АД и альтернативы.",
+        "ultrarapid metabolizer": "Возможны более низкие концентрации отдельных CYP2D6-зависимых бета-блокаторов. Оценивать клинический ответ, ЧСС и АД."
+      }
+    },
+    {
+      id: "aminoglycosides-mtrnr1",
+      drug: "Аминогликозиды",
+      aliases: ["gentamicin", "гентамицин", "amikacin", "амикацин", "streptomycin", "стрептомицин", "tobramycin", "тобрамицин", "aminoglycoside", "аминогликозид"],
+      gene: "MT-RNR1",
+      source: "CPIC/FDA: MT-RNR1-aminoglycosides",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        increased_risk: "Вариант MT-RNR1 может резко повышать риск необратимой ототоксичности аминогликозидов. Обсудить альтернативный антибиотик, если ситуация не жизненно неотложная."
+      }
     }
   ];
 
@@ -174,6 +356,25 @@ window.PGX_PHENOTYPE_MAPS = {
       "*1/*3": "intermediate metabolizer",
       "*2/*3": "poor metabolizer",
       "*3/*3": "poor metabolizer"
+    },
+    DPYD: {
+      "*1/*1": "normal metabolizer",
+      "*1/*2A": "intermediate metabolizer",
+      "*1/*13": "intermediate metabolizer",
+      "*2A/*2A": "poor metabolizer",
+      "*13/*13": "poor metabolizer"
+    },
+    CYP3A5: {
+      "*1/*1": "expresser",
+      "*1/*3": "intermediate expresser",
+      "*3/*3": "nonexpresser"
+    },
+    UGT1A1: {
+      "*1/*1": "normal metabolizer",
+      "*1/*28": "intermediate metabolizer",
+      "*28/*28": "poor metabolizer",
+      "*1/*37": "intermediate metabolizer",
+      "*37/*37": "poor metabolizer"
     }
   };
 
@@ -197,5 +398,55 @@ window.PGX_SNP_HINTS = [
       rsid: "rs1057910",
       gene: "CYP2C9",
       calls: { AA: "normal metabolizer", AC: "intermediate metabolizer", CA: "intermediate metabolizer", CC: "poor metabolizer" }
+    },
+    {
+      rsid: "rs3918290",
+      gene: "DPYD",
+      calls: { CC: "normal metabolizer", CT: "intermediate metabolizer", TC: "intermediate metabolizer", TT: "poor metabolizer" }
+    },
+    {
+      rsid: "rs55886062",
+      gene: "DPYD",
+      calls: { TT: "normal metabolizer", TG: "intermediate metabolizer", GT: "intermediate metabolizer", GG: "poor metabolizer" }
+    },
+    {
+      rsid: "rs67376798",
+      gene: "DPYD",
+      calls: { TT: "normal metabolizer", TA: "intermediate metabolizer", AT: "intermediate metabolizer", AA: "poor metabolizer" }
+    },
+    {
+      rsid: "rs56038477",
+      gene: "DPYD",
+      calls: { GG: "normal metabolizer", GA: "intermediate metabolizer", AG: "intermediate metabolizer", AA: "poor metabolizer" }
+    },
+    {
+      rsid: "rs9923231",
+      gene: "VKORC1",
+      calls: { GG: "normal sensitivity", GA: "intermediate sensitivity", AG: "intermediate sensitivity", AA: "increased sensitivity" }
+    },
+    {
+      rsid: "rs2108622",
+      gene: "CYP4F2",
+      calls: { CC: "normal function", CT: "decreased function", TC: "decreased function", TT: "decreased function" }
+    },
+    {
+      rsid: "rs776746",
+      gene: "CYP3A5",
+      calls: { AA: "expresser", AG: "intermediate expresser", GA: "intermediate expresser", GG: "nonexpresser" }
+    },
+    {
+      rsid: "rs887829",
+      gene: "UGT1A1",
+      calls: { CC: "normal metabolizer", CT: "intermediate metabolizer", TC: "intermediate metabolizer", TT: "poor metabolizer" }
+    },
+    {
+      rsid: "rs2231142",
+      gene: "ABCG2",
+      calls: { GG: "normal function", GT: "decreased function", TG: "decreased function", TT: "poor function" }
+    },
+    {
+      rsid: "rs1557749205",
+      gene: "MT-RNR1",
+      calls: { AA: "normal risk", AG: "increased_risk", GA: "increased_risk", GG: "increased_risk" }
     }
   ];

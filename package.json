@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "test": "node tests/lab-parser.test.js && node tests/profile-storage.test.js && node tests/shot-list-parser.test.js"
+    "test": "node tests/lab-parser.test.js && node tests/profile-storage.test.js && node tests/shot-list-parser.test.js && node tests/pgx-rules.test.js"
   }
 }
