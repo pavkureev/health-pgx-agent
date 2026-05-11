@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PGx Agent MVP</title>
-    <link rel="stylesheet" href="./styles.css?v=20260507-5" />
+    <link rel="stylesheet" href="./styles.css?v=20260507-6" />
   </head>
   <body>
     <main class="app-shell">
@@ -200,13 +200,20 @@ eGFR 82 мл/мин/1.73м2
             <div>
               <div id="labSummary" class="summary empty">Загрузите анализы, чтобы увидеть показатели и динамику.</div>
               <div id="labInsights" class="results"></div>
-              <div class="chart-toolbar">
-                <label for="labMetric">График показателя</label>
-                <select id="labMetric"></select>
+              <div class="metric-picker">
+                <div class="section-title">
+                  <h3>Распознанные параметры</h3>
+                  <span class="mini-counter" id="labMetricCounter">0</span>
+                </div>
+                <div id="labMetricList" class="metric-list"></div>
+                <select id="labMetric" hidden></select>
               </div>
               <canvas id="labChart" width="680" height="260" aria-label="График исторических изменений"></canvas>
               <div id="metricDescription" class="metric-description" hidden></div>
-              <div id="labResults" class="lab-results"></div>
+              <details class="lab-details">
+                <summary>Подробности распознанных анализов</summary>
+                <div id="labResults" class="lab-results"></div>
+              </details>
             </div>
           </div>
         </section>
@@ -318,13 +325,13 @@ eGFR 82 мл/мин/1.73м2
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260507-5"></script>
-    <script src="./data/pgx-rules.js?v=20260507-5"></script>
-    <script src="./data/lab-analytes.js?v=20260507-5"></script>
-    <script src="./data/medication-knowledge.js?v=20260507-5"></script>
-    <script src="./data/evidence-flags.js?v=20260507-5"></script>
-    <script src="./data.js?v=20260507-5"></script>
-    <script src="./app.js?v=20260507-5"></script>
-    <script src="./js/pgx-extensions.js?v=20260507-5"></script>
+    <script src="./supabase-config.js?v=20260507-6"></script>
+    <script src="./data/pgx-rules.js?v=20260507-6"></script>
+    <script src="./data/lab-analytes.js?v=20260507-6"></script>
+    <script src="./data/medication-knowledge.js?v=20260507-6"></script>
+    <script src="./data/evidence-flags.js?v=20260507-6"></script>
+    <script src="./data.js?v=20260507-6"></script>
+    <script src="./app.js?v=20260507-6"></script>
+    <script src="./js/pgx-extensions.js?v=20260507-6"></script>
   </body>
 </html>

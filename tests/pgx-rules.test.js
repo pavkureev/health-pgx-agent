@@ -177,4 +177,14 @@ assert.ok(
   "Тамоксифен + CYP2D6 medication signal should exist"
 );
 
+context.document.querySelector("#patientData").value = "CYP3A5 *1/*3";
+context.saveCurrentMedications([{ id: "manual-substance", name: "неизвестный бренд", manualSubstanceLabel: "такролимус" }]);
+const manualMedication = context.currentMedications()[0];
+assert.strictEqual(manualMedication.substanceLabel, "такролимус");
+assert.strictEqual(manualMedication.sourceName, "manual");
+assert.ok(
+  context.medicationRiskSignals().some((signal) => signal.title === "Такролимус + CYP3A5"),
+  "manual substance should drive medication PGx signal"
+);
+
 console.log("pgx rules tests passed");

@@ -39,6 +39,8 @@ const labSummary = document.querySelector("#labSummary");
 const labInsights = document.querySelector("#labInsights");
 const labResults = document.querySelector("#labResults");
 const labMetric = document.querySelector("#labMetric");
+const labMetricList = document.querySelector("#labMetricList");
+const labMetricCounter = document.querySelector("#labMetricCounter");
 const labChart = document.querySelector("#labChart");
 const metricDescription = document.querySelector("#metricDescription");
 const labDiagnostics = document.querySelector("#labDiagnostics");
@@ -145,6 +147,11 @@ document.querySelector("#clear").addEventListener("click", () => {
 });
 drugSearch.addEventListener("input", analyze);
 labMetric.addEventListener("change", () => drawLabChart(labMetric.value));
+labMetricList.addEventListener("change", (event) => {
+  if (!event.target.matches("[data-lab-metric]")) return;
+  labMetric.value = event.target.value;
+  drawLabChart(event.target.value);
+});
 initSupabaseAuth();
 
 function normalizeText(value) {
@@ -1354,6 +1361,8 @@ function renderLabHistory() {
     labSummary.className = "summary empty";
     labSummary.textContent = "Загрузите анализы, чтобы увидеть показатели и динамику.";
     labMetric.innerHTML = "";
+    labMetricList.innerHTML = "";
+    labMetricCounter.textContent = "0";
     labInsights.innerHTML = "";
     labResults.innerHTML = "";
     drawLabChart("");
@@ -1367,6 +1376,8 @@ function renderLabHistory() {
     .map((metric) => `<option value="${escapeHtml(metric.key)}">${escapeHtml(metric.label)}</option>`)
     .join("");
   labMetric.value = metricOptions.some((metric) => metric.key === previousMetric) ? previousMetric : metricOptions[0].key;
+  labMetricCounter.textContent = String(metricOptions.length);
+  labMetricList.innerHTML = renderLabMetricList(metricOptions, labMetric.value);
 
   labSummary.className = "summary";
   labSummary.textContent = `В истории ${labRecords.length} ${plural(labRecords.length, "отчет", "отчета", "отчетов")} и ${totalValues} ${plural(totalValues, "показатель", "показателя", "показателей")}. Выберите показатель, чтобы увидеть динамику.`;
@@ -1379,6 +1390,34 @@ function renderLabHistory() {
 function availableLabMetrics() {
   const keys = new Set(labRecords.flatMap((record) => record.values.map((value) => value.key)));
   return labAnalytes.filter((analyte) => keys.has(analyte.key));
+}
+
+function renderLabMetricList(metrics, selectedKey) {
+  const counts = labMetricCounts();
+  const latest = latestLabValues();
+  return metrics.map((metric) => {
+    const latestValue = latest[metric.key];
+    const valueText = latestValue ? formatNumber(latestValue.value) + " " + latestValue.unit : "Нет значения";
+    const dateText = latestValue ? formatDate(latestValue.date) : "";
+    const count = counts[metric.key] || 0;
+    const details = String(count) + " " + plural(count, "значение", "значения", "значений") + (dateText ? " · последнее: " + valueText + " от " + dateText : "");
+    return `
+      <label class="metric-option">
+        <input type="radio" name="labMetricRadio" value="${escapeHtml(metric.key)}" data-lab-metric ${metric.key === selectedKey ? "checked" : ""} />
+        <span>
+          <strong>${escapeHtml(metric.label)}</strong>
+          <small>${escapeHtml(details)}</small>
+        </span>
+      </label>
+    `;
+  }).join("");
+}
+
+function labMetricCounts() {
+  return labRecords.reduce((acc, record) => {
+    for (const value of record.values) acc[value.key] = (acc[value.key] || 0) + 1;
+    return acc;
+  }, {});
 }
 
 function renderLabRecord(record) {
@@ -1747,16 +1786,20 @@ async function addMedication() {
 
 function enrichMedication(medication) {
   const known = identifyMedication(medication.name);
+  const manualSubstanceLabel = cleanMedicationSubstanceLabel(medication.manualSubstanceLabel || "");
   const cleanedSubstanceLabel = cleanMedicationSubstanceLabel(medication.substanceLabel || medication.substance || "");
-  const substanceLabel = known?.label || cleanedSubstanceLabel || "";
-  const group = known?.group || medication.group || "";
+  const substanceLabel = manualSubstanceLabel || known?.label || cleanedSubstanceLabel || "";
+  const manualKnown = manualSubstanceLabel ? identifyMedication(manualSubstanceLabel) : null;
+  const group = manualKnown?.group || known?.group || medication.group || "";
+  const sourceName = manualSubstanceLabel ? "manual" : medication.sourceName || "";
   const shotList = findShotListMedication(medication.name, substanceLabel, group);
   return {
     ...medication,
-    substance: known?.substance || cleanMedicationSubstanceLabel(medication.substance || "") || "",
+    substance: manualSubstanceLabel || known?.substance || cleanMedicationSubstanceLabel(medication.substance || "") || "",
     substanceLabel,
+    manualSubstanceLabel,
     group,
-    sourceName: medication.sourceName || "",
+    sourceName,
     sourceUrl: medication.sourceUrl || "",
     lookupConfidence: medication.lookupConfidence ?? null,
     shotList
@@ -1782,6 +1825,27 @@ function removeMedication(id) {
   renderHealthBlocks();
 }
 
+function updateMedicationSubstance(id) {
+  const input = [...medicationList.querySelectorAll("[data-substance-edit]")].find((item) => item.dataset.substanceEdit === id);
+  const manualSubstanceLabel = cleanMedicationSubstanceLabel(input?.value || "");
+  const known = manualSubstanceLabel ? identifyMedication(manualSubstanceLabel) : null;
+  const updated = currentMedications().map((item) => {
+    if (item.id !== id) return item;
+    return enrichMedication({
+      ...item,
+      manualSubstanceLabel,
+      substanceLabel: manualSubstanceLabel,
+      substance: manualSubstanceLabel,
+      group: known?.group || "",
+      sourceName: manualSubstanceLabel ? "manual" : "",
+      lookupConfidence: manualSubstanceLabel ? 1 : null
+    });
+  });
+  saveCurrentMedications(updated);
+  medicationLookupStatus.textContent = manualSubstanceLabel ? "Действующее вещество сохранено вручную." : "Ручная правка действующего вещества очищена.";
+  renderHealthBlocks();
+}
+
 function renderMedicationProfile(signals) {
   const medications = currentMedications();
   medicationCounter.textContent = `${medications.length} ${plural(medications.length, "препарат", "препарата", "препаратов")}`;
@@ -1789,10 +1853,14 @@ function renderMedicationProfile(signals) {
     ? medications.map((item) => `
       <article class="medication-row">
         <strong>${escapeHtml(item.name)}</strong>
-        <span>${medicationSubstanceHtml(item)}</span>
+        <span class="medication-substance-cell">${medicationSubstanceHtml(item)}</span>
+        <label class="substance-edit"><span>Правка вещества</span><input type="text" value="${escapeHtml(item.manualSubstanceLabel || item.substanceLabel || "")}" placeholder="Например: такролимус" data-substance-edit="${escapeHtml(item.id)}" /></label>
         <span>${escapeHtml(item.dose || "Доза не указана")}</span>
         <span>${escapeHtml(medicationRowNote(item))}</span>
-        <button class="secondary-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
+        <div class="medication-row-actions">
+          <button class="secondary-button" type="button" data-save-substance="${escapeHtml(item.id)}">Сохранить вещество</button>
+          <button class="secondary-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
+        </div>
       </article>
     `).join("")
     : `<p class="file-status">Добавьте текущие препараты, чтобы сопоставить их с генетикой и анализами.</p>`;
@@ -1800,6 +1868,9 @@ function renderMedicationProfile(signals) {
   if (typeof medicationList.querySelectorAll === "function") {
     medicationList.querySelectorAll("[data-remove-medication]").forEach((button) => {
       button.addEventListener("click", () => removeMedication(button.dataset.removeMedication));
+    });
+    medicationList.querySelectorAll("[data-save-substance]").forEach((button) => {
+      button.addEventListener("click", () => updateMedicationSubstance(button.dataset.saveSubstance));
     });
   }
 
@@ -1829,7 +1900,8 @@ function medicationSourceLabel(item) {
   if (!item.sourceName) return "";
   const labels = {
     "local medication dictionary": "Справочник",
-    "poisklekarstv.com": "ПоискЛекарств"
+    "poisklekarstv.com": "ПоискЛекарств",
+    manual: "Вручную"
   };
   return `Источник: ${labels[item.sourceName] || item.sourceName}`;
 }

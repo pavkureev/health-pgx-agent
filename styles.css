@@ -344,7 +344,7 @@ h2 {
 
 .medication-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(140px, 0.9fr) minmax(180px, 1.2fr) auto;
+  grid-template-columns: minmax(130px, 0.9fr) minmax(150px, 1fr) minmax(180px, 1.15fr) minmax(120px, 0.75fr) minmax(150px, 1fr) auto;
   gap: 10px;
   align-items: center;
   padding: 10px;
@@ -381,6 +381,33 @@ h2 {
 
 .medication-row strong {
   overflow-wrap: anywhere;
+}
+
+.substance-edit {
+  margin: 0;
+}
+
+.substance-edit span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.substance-edit input {
+  height: 38px;
+  background: #fff;
+}
+
+.medication-row-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.medication-row-actions .secondary-button {
+  white-space: nowrap;
 }
 
 .profile-actions {
@@ -562,6 +589,65 @@ input[type="file"] {
   grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
   gap: 18px;
   align-items: start;
+}
+
+.metric-picker {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.metric-list {
+  display: grid;
+  gap: 8px;
+}
+
+.metric-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.metric-option:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(40, 122, 105, 0.12);
+}
+
+.metric-option input {
+  width: 18px;
+  height: 18px;
+}
+
+.metric-option strong,
+.metric-option small {
+  display: block;
+}
+
+.metric-option small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.lab-details {
+  margin-top: 12px;
+}
+
+.lab-details summary {
+  cursor: pointer;
+  color: var(--accent-strong);
+  font-weight: 800;
 }
 
 .lab-text-label {
