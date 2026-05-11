@@ -86,7 +86,14 @@ const ruleIds = new Set(rules.map((rule) => rule.id));
   "carbamazepine-hlab1502",
   "antidepressants-cyp2c19",
   "beta-blockers-cyp2d6",
-  "aminoglycosides-mtrnr1"
+  "aminoglycosides-mtrnr1",
+  "voriconazole-cyp2c19",
+  "phenytoin-cyp2c9",
+  "phenytoin-hlab1502",
+  "ondansetron-cyp2d6",
+  "tamoxifen-cyp2d6",
+  "tricyclics-cyp2d6",
+  "tricyclics-cyp2c19"
 ].forEach((id) => assert.ok(ruleIds.has(id), `${id} should exist`));
 
 assert.ok(phenotypeMaps.DPYD, "DPYD phenotype map should exist");
@@ -97,6 +104,9 @@ assert.ok(snpHints.some((hint) => hint.gene === "MT-RNR1"), "MT-RNR1 SNP hint sh
 
 const parsed = context.parseProfile(`
 DPYD *1/*2A
+CYP2C19 *2/*2
+CYP2C9 *1/*3
+CYP2D6 *1xN/*1
 CYP3A5 *1/*3
 UGT1A1 *28/*28
 HLA-A*31:01 positive
@@ -119,6 +129,9 @@ assert.strictEqual(parsed.profile["MT-RNR1"], "increased_risk");
 
 context.document.querySelector("#patientData").value = `
 DPYD *1/*2A
+CYP2C19 *2/*2
+CYP2C9 *1/*3
+CYP2D6 *1xN/*1
 CYP3A5 *1/*3
 UGT1A1 *28/*28
 HLA-A*31:01 positive
@@ -132,7 +145,12 @@ context.saveCurrentMedications([
   { id: "med-tacrolimus", name: "такролимус" },
   { id: "med-irinotecan", name: "иринотекан" },
   { id: "med-carbamazepine", name: "карбамазепин" },
-  { id: "med-rosuvastatin", name: "розувастатин" }
+  { id: "med-rosuvastatin", name: "розувастатин" },
+  { id: "med-voriconazole", name: "вориконазол" },
+  { id: "med-phenytoin", name: "фенитоин" },
+  { id: "med-ondansetron", name: "ондансетрон" },
+  { id: "med-tamoxifen", name: "тамоксифен" },
+  { id: "med-amitriptyline", name: "амитриптилин" }
 ]);
 
 const medicationTitles = context.medicationRiskSignals().map((signal) => signal.title);
@@ -143,7 +161,20 @@ const medicationTitles = context.medicationRiskSignals().map((signal) => signal.
   "Иринотекан + UGT1A1",
   "Карбамазепин / окскарбазепин + HLA-A*31:01",
   "Карбамазепин / окскарбазепин + HLA-B*15:02",
-  "Розувастатин + ABCG2"
+  "Розувастатин + ABCG2",
+  "Вориконазол + CYP2C19",
+  "Фенитоин / фосфенитоин + CYP2C9",
+  "Фенитоин / фосфенитоин + HLA-B*15:02",
+  "Ондансетрон / трописетрон + CYP2D6",
+  "Трициклические антидепрессанты + CYP2D6",
+  "Трициклические антидепрессанты + CYP2C19"
 ].forEach((title) => assert.ok(medicationTitles.includes(title), `${title} medication signal should exist`));
+
+context.document.querySelector("#patientData").value = "CYP2D6 *4/*4";
+context.saveCurrentMedications([{ id: "med-tamoxifen-only", name: "тамоксифен" }]);
+assert.ok(
+  context.medicationRiskSignals().some((signal) => signal.title === "Тамоксифен + CYP2D6"),
+  "Тамоксифен + CYP2D6 medication signal should exist"
+);
 
 console.log("pgx rules tests passed");

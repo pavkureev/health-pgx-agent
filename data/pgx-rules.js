@@ -311,6 +311,98 @@ window.PGX_RULES = [
       matches: {
         increased_risk: "Вариант MT-RNR1 может резко повышать риск необратимой ототоксичности аминогликозидов. Обсудить альтернативный антибиотик, если ситуация не жизненно неотложная."
       }
+    },
+    {
+      id: "voriconazole-cyp2c19",
+      drug: "Вориконазол",
+      aliases: ["voriconazole", "вориконазол", "vfend", "вифенд"],
+      gene: "CYP2C19",
+      source: "CPIC/FDA: CYP2C19-voriconazole",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        "poor metabolizer": "CYP2C19 poor metabolizer может повышать концентрации вориконазола и риск токсичности. Обсудить альтернативный противогрибковый препарат или терапевтический мониторинг концентраций.",
+        "intermediate metabolizer": "CYP2C19 intermediate metabolizer может повышать экспозицию вориконазола. Полезны мониторинг концентраций и переносимости.",
+        "rapid metabolizer": "CYP2C19 rapid metabolizer может снижать концентрации вориконазола и риск неэффективности. Обсудить альтернативу или терапевтический мониторинг.",
+        "ultrarapid metabolizer": "CYP2C19 ultrarapid metabolizer связан с риском субтерапевтических концентраций вориконазола. Обычно обсуждают альтернативный препарат."
+      }
+    },
+    {
+      id: "phenytoin-cyp2c9",
+      drug: "Фенитоин / фосфенитоин",
+      aliases: ["phenytoin", "фенитоин", "дифенин", "fosphenytoin", "фосфенитоин"],
+      gene: "CYP2C9",
+      source: "CPIC/FDA: CYP2C9/HLA-B-phenytoin",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        "intermediate metabolizer": "Сниженный метаболизм фенитоина может повышать концентрации и риск токсичности. Обсудить снижение стартовой дозы и терапевтический мониторинг.",
+        "poor metabolizer": "CYP2C9 poor metabolizer связан с высоким риском токсичности фенитоина при стандартных дозах. Нужен осторожный подбор дозы или альтернатива."
+      }
+    },
+    {
+      id: "phenytoin-hlab1502",
+      drug: "Фенитоин / фосфенитоин",
+      aliases: ["phenytoin", "фенитоин", "дифенин", "fosphenytoin", "фосфенитоин"],
+      gene: "HLA-B*15:02",
+      source: "CPIC/FDA: CYP2C9/HLA-B-phenytoin",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        positive: "HLA-B*15:02 positive связан с повышенным риском тяжелых кожных реакций на фенитоин/фосфенитоин. Обсудить альтернативу до назначения, если клиническая ситуация позволяет."
+      }
+    },
+    {
+      id: "ondansetron-cyp2d6",
+      drug: "Ондансетрон / трописетрон",
+      aliases: ["ondansetron", "ондансетрон", "zofran", "зофран", "tropisetron", "трописетрон", "navoban", "навобан", "5-ht3"],
+      gene: "CYP2D6",
+      source: "CPIC: CYP2D6-ondansetron/tropisetron; FDA PGx associations",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "ultrarapid metabolizer": "CYP2D6 ultrarapid metabolizer может снижать концентрации и противорвотный эффект ондансетрона/трописетрона. Обсудить альтернативный противорвотный препарат."
+      }
+    },
+    {
+      id: "tamoxifen-cyp2d6",
+      drug: "Тамоксифен",
+      aliases: ["tamoxifen", "тамоксифен"],
+      gene: "CYP2D6",
+      source: "CPIC/FDA: CYP2D6-tamoxifen",
+      evidence: "A",
+      severity: "high",
+      matches: {
+        "poor metabolizer": "CYP2D6 poor metabolizer может снижать образование эндоксифена, активного метаболита тамоксифена. Обсудить альтернативную эндокринную терапию или специализированный мониторинг.",
+        "intermediate metabolizer": "CYP2D6 intermediate metabolizer может снижать экспозицию эндоксифена. Стоит обсудить риск недостаточного эффекта, сопутствующие ингибиторы CYP2D6 и варианты терапии."
+      }
+    },
+    {
+      id: "tricyclics-cyp2d6",
+      drug: "Трициклические антидепрессанты",
+      aliases: ["amitriptyline", "амитриптилин", "nortriptyline", "нортриптилин", "imipramine", "имипрамин", "clomipramine", "кломипрамин", "doxepin", "доксепин", "tca", "тца", "трицикличес"],
+      gene: "CYP2D6",
+      source: "CPIC/FDA: CYP2D6/CYP2C19-tricyclic antidepressants",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "poor metabolizer": "CYP2D6 poor metabolizer может повышать концентрации трициклических антидепрессантов и риск побочных эффектов. Обсудить меньшую стартовую дозу, альтернативу или мониторинг концентраций.",
+        "ultrarapid metabolizer": "CYP2D6 ultrarapid metabolizer может снижать концентрации и эффективность ряда трициклических антидепрессантов. Обсудить альтернативу или мониторинг ответа."
+      }
+    },
+    {
+      id: "tricyclics-cyp2c19",
+      drug: "Трициклические антидепрессанты",
+      aliases: ["amitriptyline", "амитриптилин", "imipramine", "имипрамин", "clomipramine", "кломипрамин", "doxepin", "доксепин", "trimipramine", "тримипрамин", "tca", "тца", "трицикличес"],
+      gene: "CYP2C19",
+      source: "CPIC/FDA: CYP2D6/CYP2C19-tricyclic antidepressants",
+      evidence: "A",
+      severity: "moderate",
+      matches: {
+        "poor metabolizer": "CYP2C19 poor metabolizer может повышать экспозицию третичных аминов ТЦА и риск побочных эффектов. Обсудить дозу, альтернативу или мониторинг концентраций.",
+        "rapid metabolizer": "CYP2C19 rapid metabolizer может снижать концентрации отдельных ТЦА. При недостаточном ответе обсудить коррекцию стратегии.",
+        "ultrarapid metabolizer": "CYP2C19 ultrarapid metabolizer может повышать риск недостаточного ответа на отдельные ТЦА. Обсудить альтернативу или мониторинг ответа."
+      }
     }
   ];
 
