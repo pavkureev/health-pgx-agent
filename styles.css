@@ -104,6 +104,98 @@ h2 {
   padding: 18px;
 }
 
+.app-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.app-section-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 86px;
+  padding: 16px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-section-summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-section-summary:hover {
+  background: #fbfcfc;
+}
+
+.section-kicker {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--accent-strong);
+  color: #fff;
+  font-weight: 900;
+}
+
+.section-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.section-copy strong {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.section-copy span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.section-toggle {
+  min-width: 98px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #eef1f0;
+  color: var(--accent-strong);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.app-section[open] .section-toggle {
+  background: var(--accent-strong);
+  color: #fff;
+}
+
+.app-section[open] .section-toggle::before {
+  content: "Скрыть";
+}
+
+.app-section[open] .section-toggle {
+  font-size: 0;
+}
+
+.app-section[open] .section-toggle::before {
+  font-size: 13px;
+}
+
+.app-section-body {
+  display: grid;
+  gap: 18px;
+  padding: 0 18px 18px;
+}
+
+.app-section-body > .panel,
+.app-section-body > .grid > .panel {
+  box-shadow: none;
+}
+
 .profile-grid,
 .auth-grid {
   display: grid;
@@ -743,6 +835,15 @@ button {
   .app-shell {
     width: min(100% - 20px, 1240px);
     padding-top: 20px;
+  }
+
+  .app-section-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .section-toggle {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .button-row,
