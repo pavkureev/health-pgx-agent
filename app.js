@@ -61,6 +61,12 @@ const anotherEmailButton = document.querySelector("#anotherEmail");
 const welcomeBox = document.querySelector("#welcomeBox");
 const onboardingBox = document.querySelector("#onboardingBox");
 const displayName = document.querySelector("#displayName");
+const insightDashboardSubtitle = document.querySelector("#insightDashboardSubtitle");
+const insightDashboardCounter = document.querySelector("#insightDashboardCounter");
+const insightMetrics = document.querySelector("#insightMetrics");
+const prioritySignals = document.querySelector("#prioritySignals");
+const priorityCounter = document.querySelector("#priorityCounter");
+const nextActions = document.querySelector("#nextActions");
 const decisionPanel = document.querySelector(".decision-panel");
 const decisionCounter = document.querySelector("#decisionCounter");
 const qualityCounter = document.querySelector("#qualityCounter");
@@ -1553,6 +1559,7 @@ function renderHealthBlocks() {
   const pgxSignals = pgxCoverageSignals();
   const integrationSignals = integrationStatusSignals();
   const medicationSignals = medicationRiskSignals();
+  const pgxMatches = currentPgxMatches();
   const total = [
     ...qualitySignals.filter((item) => item.severity !== "low"),
     ...clinicalSignals.filter((item) => item.severity !== "low"),
@@ -1567,7 +1574,176 @@ function renderHealthBlocks() {
     renderSignalList(pgxCoverage, pgxCounter, pgxSignals);
     renderSignalList(integrationChecks, integrationCounter, integrationSignals);
   }
+  renderInsightDashboard({ qualitySignals, clinicalSignals, pgxSignals, integrationSignals, medicationSignals, pgxMatches });
   renderMedicationProfile(medicationSignals);
+}
+
+function currentPgxMatches() {
+  const { profile, evidence } = parseProfile(patientData.value);
+  const query = normalizeText(drugSearch.value.trim());
+  return rules
+    .filter((rule) => {
+      if (!query) return true;
+      const haystack = normalizeText([rule.drug, rule.gene, ...rule.aliases].join(" "));
+      return haystack.includes(query);
+    })
+    .map((rule) => {
+      const phenotype = profile[rule.gene];
+      const recommendation = phenotype ? rule.matches[phenotype] : null;
+      return recommendation
+        ? {
+            ...rule,
+            phenotype,
+            recommendation,
+            foundBy: evidence[rule.gene] || rule.gene
+          }
+        : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => severityRank(b.severity) - severityRank(a.severity));
+}
+
+function renderInsightDashboard(context) {
+  const { profile } = parseProfile(patientData.value);
+  const geneCount = Object.keys(profile).length;
+  const labMetricCount = new Set(labRecords.flatMap((record) => record.values.map((value) => value.key))).size;
+  const medications = currentMedications();
+  const activeLabSignals = context.clinicalSignals.filter((signal) => signal.severity !== "low");
+  const activeMedicationSignals = context.medicationSignals.filter((signal) => signal.severity !== "low");
+  const activePgxMatches = context.pgxMatches.filter((signal) => signal.severity !== "low");
+  const activeSignals = buildPrioritySignals(context).slice(0, 6);
+  const totalActive = activeSignals.length;
+
+  insightDashboardSubtitle.textContent = geneCount || labRecords.length || medications.length
+    ? "Сначала показаны наиболее полезные сигналы. Подробные данные остаются в трех блоках ниже."
+    : "Загрузите генетику, анализы и лекарства, чтобы увидеть приоритетную сводку.";
+  insightDashboardCounter.textContent = `${totalActive} ${plural(totalActive, "сигнал", "сигнала", "сигналов")}`;
+  priorityCounter.textContent = totalActive;
+  insightMetrics.innerHTML = [
+    insightMetricHtml("Генетика", geneCount, plural(geneCount, "маркер", "маркера", "маркеров"), activePgxMatches.length, "gene"),
+    insightMetricHtml("Анализы", labMetricCount, plural(labMetricCount, "показатель", "показателя", "показателей"), activeLabSignals.length, "lab"),
+    insightMetricHtml("Лекарства", medications.length, plural(medications.length, "препарат", "препарата", "препаратов"), activeMedicationSignals.length, "med")
+  ].join("");
+  prioritySignals.innerHTML = activeSignals.length
+    ? activeSignals.map(renderPrioritySignal).join("")
+    : `<article class="priority-card low"><strong>Пока нет активных сигналов</strong><p>Начните с загрузки генетики, анализов или списка препаратов. Сырые данные будут ниже, а здесь появится короткая сводка.</p></article>`;
+  nextActions.innerHTML = buildNextActions({ geneCount, labMetricCount, medications, activeLabSignals, activeMedicationSignals, activePgxMatches })
+    .map((item) => `<article class="action-item"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.body)}</p></article>`)
+    .join("");
+}
+
+function insightMetricHtml(title, value, unit, signalCount, theme) {
+  return `
+    <article class="insight-metric ${theme}">
+      <span>${escapeHtml(title)}</span>
+      <strong>${value}</strong>
+      <small>${escapeHtml(unit)} · ${signalCount} ${plural(signalCount, "активный сигнал", "активных сигнала", "активных сигналов")}</small>
+    </article>
+  `;
+}
+
+function buildPrioritySignals(context) {
+  const pgxCards = context.pgxMatches.map((match) => ({
+    severity: match.severity,
+    area: "Генетика",
+    title: `${match.drug} + ${match.gene}`,
+    body: match.recommendation,
+    meta: `Найдено: ${match.foundBy}`
+  }));
+  const labCards = context.clinicalSignals
+    .filter((signal) => signal.severity !== "low")
+    .map((signal) => ({
+      severity: signal.severity,
+      area: "Анализы",
+      title: signal.title,
+      body: signal.body,
+      meta: [signal.metric, signal.value, signal.date ? formatDate(signal.date) : ""].filter(Boolean).join(" · ")
+    }));
+  const medicationCards = context.medicationSignals.map((signal) => ({
+    severity: signal.severity,
+    area: "Лекарства",
+    title: signal.title,
+    body: signal.body,
+    meta: [signal.medication, signal.source].filter(Boolean).join(" · ")
+  }));
+  const qualityCards = context.qualitySignals
+    .filter((signal) => signal.severity !== "low")
+    .map((signal) => ({
+      severity: signal.severity,
+      area: "Данные",
+      title: signal.title,
+      body: signal.body,
+      meta: "Качество распознавания"
+    }));
+
+  return [...medicationCards, ...pgxCards, ...labCards, ...qualityCards]
+    .sort((a, b) => severityRank(b.severity) - severityRank(a.severity));
+}
+
+function renderPrioritySignal(signal) {
+  return `
+    <article class="priority-card ${escapeHtml(signal.severity || "low")}">
+      <div class="priority-card-head">
+        <span>${escapeHtml(signal.area)}</span>
+        <small>${escapeHtml(priorityLabel(signal.severity))}</small>
+      </div>
+      <strong>${escapeHtml(signal.title)}</strong>
+      <p>${escapeHtml(signal.body)}</p>
+      ${signal.meta ? `<footer>${escapeHtml(signal.meta)}</footer>` : ""}
+    </article>
+  `;
+}
+
+function buildNextActions({ geneCount, labMetricCount, medications, activeLabSignals, activeMedicationSignals, activePgxMatches }) {
+  const actions = [];
+  if (!geneCount) {
+    actions.push({
+      title: "Добавить генетику",
+      body: "Загрузите VCF или вставьте генотипы, чтобы появились gene-drug рекомендации."
+    });
+  }
+  if (!labMetricCount) {
+    actions.push({
+      title: "Добавить анализы",
+      body: "Загрузите PDF или текст анализов, чтобы увидеть тренды и лабораторные сигналы."
+    });
+  }
+  if (!medications.length) {
+    actions.push({
+      title: "Добавить препараты",
+      body: "Введите текущие лекарства, чтобы проверить связи с генетикой, анализами и справочным списком."
+    });
+  }
+  if (activeMedicationSignals.length) {
+    actions.push({
+      title: "Обсудить лекарственные сигналы",
+      body: "Проверьте с врачом карточки с высоким и средним приоритетом до любых изменений терапии."
+    });
+  } else if (medications.length && geneCount) {
+    actions.push({
+      title: "Уточнить вещества",
+      body: "Если препарат не распознан, вручную укажите действующее вещество международным названием."
+    });
+  }
+  if (activeLabSignals.length) {
+    actions.push({
+      title: "Посмотреть тренды",
+      body: "Выберите показатель в блоке анализов и сравните последнее значение с динамикой."
+    });
+  }
+  if (activePgxMatches.length) {
+    actions.push({
+      title: "Сохранить вопросы врачу",
+      body: "Используйте генетические сигналы как справочные вопросы, а не как самостоятельное назначение."
+    });
+  }
+  if (!actions.length) {
+    actions.push({
+      title: "Данных достаточно для обзора",
+      body: "Откройте нужный блок ниже, чтобы посмотреть источник каждого вывода и подробности."
+    });
+  }
+  return actions.slice(0, 4);
 }
 
 function renderSignalList(container, counter, signals) {

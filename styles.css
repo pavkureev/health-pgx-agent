@@ -104,6 +104,131 @@ h2 {
   padding: 18px;
 }
 
+.panel-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.insight-dashboard {
+  display: grid;
+  gap: 16px;
+}
+
+.insight-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.insight-metric {
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.insight-metric span,
+.insight-metric small {
+  display: block;
+  color: var(--muted);
+}
+
+.insight-metric strong {
+  display: block;
+  margin: 8px 0 4px;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.insight-metric.gene {
+  border-top: 4px solid var(--accent);
+}
+
+.insight-metric.lab {
+  border-top: 4px solid #c17922;
+}
+
+.insight-metric.med {
+  border-top: 4px solid #4667a9;
+}
+
+.priority-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.75fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.priority-signals,
+.action-list {
+  display: grid;
+  gap: 10px;
+}
+
+.priority-card,
+.action-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.priority-card {
+  border-left: 5px solid var(--accent);
+}
+
+.priority-card.high {
+  border-left-color: var(--danger);
+}
+
+.priority-card.moderate {
+  border-left-color: #c17922;
+}
+
+.priority-card.low {
+  border-left-color: var(--line);
+}
+
+.priority-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.priority-card-head span,
+.priority-card-head small,
+.priority-card footer {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.priority-card strong,
+.action-item strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.priority-card p,
+.action-item p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.priority-card footer {
+  margin-top: 10px;
+}
+
+.next-actions {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
 .app-section {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -901,6 +1026,8 @@ button {
   .profile-grid,
   .auth-grid,
   .decision-grid,
+  .insight-metrics,
+  .priority-layout,
   .medication-grid,
   .medication-row,
   .capabilities {
