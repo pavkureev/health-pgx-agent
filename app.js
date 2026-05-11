@@ -203,14 +203,6 @@ function renderAuthState() {
     magicLinkBox.hidden = true;
     anotherEmailButton.hidden = true;
     signedInBox.hidden = false;
-    signedInBox.innerHTML = `
-      <div>
-        <strong>Вы вошли в аккаунт с email ${escapeHtml(currentUser.email || "")}</strong>
-        <p>Профили и распознанные данные сохраняются в Supabase.</p>
-      </div>
-      <button id="signOutInline" class="secondary-button" type="button">Выйти</button>
-    `;
-    signedInBox.querySelector("#signOutInline").addEventListener("click", signOut);
     signOutButton.hidden = true;
     authStatus.textContent = "Аккаунт подключен.";
     renderWelcome();
@@ -236,8 +228,10 @@ function renderAuthState() {
 }
 
 function renderWelcome() {
+  welcomeBox.hidden = true;
+  welcomeBox.innerHTML = "";
+
   if (!currentUser) {
-    welcomeBox.hidden = true;
     onboardingBox.hidden = true;
     return;
   }
@@ -247,18 +241,29 @@ function renderWelcome() {
   const needsName = !name;
 
   onboardingBox.hidden = !needsName;
-  welcomeBox.hidden = needsName;
 
   if (needsName) {
     displayName.value = "";
+    signedInBox.innerHTML = `
+      <div>
+        <strong>Вы вошли в аккаунт с email ${escapeHtml(currentUser.email || "")}</strong>
+        <p>Профили и распознанные данные сохраняются в Supabase.</p>
+      </div>
+      <button id="signOutInline" class="secondary-button" type="button">Выйти</button>
+    `;
+    signedInBox.querySelector("#signOutInline").addEventListener("click", signOut);
     authStatus.textContent = "Представьтесь, чтобы мы могли подписывать ваш профиль и приветствовать вас при входе.";
     return;
   }
 
-  welcomeBox.innerHTML = `
-    <strong>Рады видеть вас снова, ${escapeHtml(name)}.</strong>
-    <p>Ваши профили и распознанные данные сохраняются в Supabase.</p>
+  signedInBox.innerHTML = `
+    <div>
+      <strong>Рады видеть вас снова, ${escapeHtml(name)}</strong>
+      <p>Вы вошли как ${escapeHtml(currentUser.email || "")}. Профили и распознанные данные сохраняются в Supabase.</p>
+    </div>
+    <button id="signOutInline" class="secondary-button" type="button">Выйти</button>
   `;
+  signedInBox.querySelector("#signOutInline").addEventListener("click", signOut);
 }
 
 function getDisplayName(profile) {
