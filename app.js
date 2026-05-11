@@ -1983,13 +1983,15 @@ function medicationRiskSignals() {
   const medications = currentMedications();
   if (!medications.length) return [];
 
-  const { profile } = parseProfile(patientData.value);
+  const { profile, evidence } = parseProfile(patientData.value);
   const latest = latestLabValues();
   const signals = [];
   for (const medication of medications) {
     const name = normalizeText(medication.name);
     const has = (...needles) => needles.some((needle) => name.includes(normalizeText(needle)));
     const isGroup = (...groups) => groups.includes(medication.group);
+
+    signals.push(...medicationPgxRuleSignals(medication, profile, evidence));
 
     if (medication.shotList) {
       signals.push({
@@ -2081,6 +2083,50 @@ function medicationRiskSignals() {
   }
 
   return [...signals, ...medicationInteractionSignals(medications)];
+}
+
+function medicationPgxRuleSignals(medication, profile, evidence) {
+  const coveredByLegacyChecks = new Set([
+    "statins-slco1b1",
+    "clopidogrel-cyp2c19",
+    "nsaids-cyp2c9",
+    "opioids-cyp2d6",
+    "ppis-cyp2c19"
+  ]);
+  const haystack = medicationRuleHaystack(medication);
+
+  return rules
+    .filter((rule) => !coveredByLegacyChecks.has(rule.id))
+    .map((rule) => {
+      const phenotype = profile[rule.gene];
+      const recommendation = phenotype ? rule.matches[phenotype] : null;
+      if (!recommendation || !medicationMatchesRule(haystack, rule)) return null;
+
+      return {
+        severity: rule.severity,
+        medication: medication.name,
+        title: rule.drug + " + " + rule.gene,
+        body: recommendation + " Найдено: " + (evidence[rule.gene] || phenotype) + ".",
+        source: rule.source
+      };
+    })
+    .filter(Boolean);
+}
+
+function medicationRuleHaystack(medication) {
+  return normalizeText([
+    medication.name,
+    medication.substanceLabel,
+    medication.substance,
+    medication.group
+  ].filter(Boolean).join(" "));
+}
+
+function medicationMatchesRule(haystack, rule) {
+  return [rule.drug, ...(rule.aliases || [])]
+    .map((value) => normalizeText(value))
+    .filter(Boolean)
+    .some((alias) => haystack.includes(alias) || alias.includes(haystack));
 }
 
 function medicationInteractionSignals(medications) {

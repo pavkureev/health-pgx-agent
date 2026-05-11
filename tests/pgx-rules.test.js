@@ -117,4 +117,33 @@ assert.strictEqual(parsed.profile.CYP4F2, "decreased function");
 assert.strictEqual(parsed.profile.ABCG2, "poor function");
 assert.strictEqual(parsed.profile["MT-RNR1"], "increased_risk");
 
+context.document.querySelector("#patientData").value = `
+DPYD *1/*2A
+CYP3A5 *1/*3
+UGT1A1 *28/*28
+HLA-A*31:01 positive
+HLA-B*15:02 positive
+rs9923231 AA
+rs2108622 CT
+rs2231142 TT
+`;
+context.saveCurrentMedications([
+  { id: "med-warfarin", name: "варфарин" },
+  { id: "med-tacrolimus", name: "такролимус" },
+  { id: "med-irinotecan", name: "иринотекан" },
+  { id: "med-carbamazepine", name: "карбамазепин" },
+  { id: "med-rosuvastatin", name: "розувастатин" }
+]);
+
+const medicationTitles = context.medicationRiskSignals().map((signal) => signal.title);
+[
+  "Варфарин + VKORC1",
+  "Варфарин + CYP4F2",
+  "Такролимус + CYP3A5",
+  "Иринотекан + UGT1A1",
+  "Карбамазепин / окскарбазепин + HLA-A*31:01",
+  "Карбамазепин / окскарбазепин + HLA-B*15:02",
+  "Розувастатин + ABCG2"
+].forEach((title) => assert.ok(medicationTitles.includes(title), `${title} medication signal should exist`));
+
 console.log("pgx rules tests passed");
