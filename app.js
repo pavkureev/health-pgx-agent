@@ -204,7 +204,7 @@ function renderAuthState() {
     anotherEmailButton.hidden = true;
     signedInBox.hidden = false;
     signOutButton.hidden = true;
-    authStatus.textContent = "Аккаунт подключен.";
+    authStatus.textContent = "Аккаунт подключен. Профили и распознанные данные сохраняются в Supabase.";
     renderWelcome();
     return;
   }
@@ -247,7 +247,7 @@ function renderWelcome() {
     signedInBox.innerHTML = `
       <div>
         <strong>Вы вошли в аккаунт с email ${escapeHtml(currentUser.email || "")}</strong>
-        <p>Профили и распознанные данные сохраняются в Supabase.</p>
+        <p>Укажите имя, чтобы видеть персональное приветствие.</p>
       </div>
       <button id="signOutInline" class="secondary-button" type="button">Выйти</button>
     `;
@@ -259,7 +259,7 @@ function renderWelcome() {
   signedInBox.innerHTML = `
     <div>
       <strong>Рады видеть вас снова, ${escapeHtml(name)}</strong>
-      <p>Вы вошли как ${escapeHtml(currentUser.email || "")}. Профили и распознанные данные сохраняются в Supabase.</p>
+      <p>Вы вошли как ${escapeHtml(currentUser.email || "")}.</p>
     </div>
     <button id="signOutInline" class="secondary-button" type="button">Выйти</button>
   `;
