@@ -41,6 +41,7 @@ const labResults = document.querySelector("#labResults");
 const labMetric = document.querySelector("#labMetric");
 const labMetricList = document.querySelector("#labMetricList");
 const labMetricCounter = document.querySelector("#labMetricCounter");
+const toggleLabMetrics = document.querySelector("#toggleLabMetrics");
 const labChart = document.querySelector("#labChart");
 const metricDescription = document.querySelector("#metricDescription");
 const labDiagnostics = document.querySelector("#labDiagnostics");
@@ -162,6 +163,7 @@ labMetricList.addEventListener("change", (event) => {
   labMetric.value = event.target.value;
   drawLabChart(event.target.value);
 });
+toggleLabMetrics.addEventListener("click", toggleLabMetricList);
 initSupabaseAuth();
 
 function normalizeText(value) {
@@ -1373,7 +1375,10 @@ function renderLabHistory() {
     labSummary.textContent = "Загрузите анализы, чтобы увидеть показатели и динамику.";
     labMetric.innerHTML = "";
     labMetricList.innerHTML = "";
+    setLabMetricListExpanded(false);
     labMetricCounter.textContent = "0";
+    toggleLabMetrics.hidden = true;
+    toggleLabMetrics.textContent = "Показать все параметры";
     labInsights.innerHTML = "";
     labResults.innerHTML = "";
     drawLabChart("");
@@ -1389,6 +1394,9 @@ function renderLabHistory() {
   labMetric.value = metricOptions.some((metric) => metric.key === previousMetric) ? previousMetric : metricOptions[0].key;
   labMetricCounter.textContent = String(metricOptions.length);
   labMetricList.innerHTML = renderLabMetricList(metricOptions, labMetric.value);
+  setLabMetricListExpanded(false);
+  toggleLabMetrics.hidden = metricOptions.length <= 4;
+  toggleLabMetrics.textContent = "Показать все параметры";
 
   updateLabsSectionMeta();
   labSummary.className = "summary";
@@ -1430,6 +1438,20 @@ function labMetricCounts() {
     for (const value of record.values) acc[value.key] = (acc[value.key] || 0) + 1;
     return acc;
   }, {});
+}
+
+function toggleLabMetricList() {
+  const expanded = !labMetricList.className.includes("expanded");
+  setLabMetricListExpanded(expanded);
+  toggleLabMetrics.textContent = expanded ? "Свернуть список" : "Показать все параметры";
+}
+
+function setLabMetricListExpanded(expanded) {
+  if (labMetricList.classList) {
+    labMetricList.classList.toggle("expanded", expanded);
+    return;
+  }
+  labMetricList.className = expanded ? "metric-list expanded" : "metric-list";
 }
 
 function renderLabRecord(record) {
@@ -1932,15 +1954,10 @@ function renderMedicationProfile(signals) {
     ? medications.map((item) => `
       <article class="medication-row">
         <strong>${escapeHtml(item.name)}</strong>
-        <span class="medication-substance-cell">${medicationSubstanceHtml(item)}</span>
+        <span class="medication-substance-cell">${medicationSubstanceHtml(item)}${renderSubstanceEditControl(item)}</span>
         <span>${escapeHtml(item.dose || "Доза не указана")}</span>
         <span>${escapeHtml(medicationRowNote(item))}</span>
         <div class="medication-row-actions">
-          <details class="substance-edit">
-            <summary>${item.substanceLabel ? "Изменить вещество" : "Указать вещество"}</summary>
-            <input type="text" value="${escapeHtml(item.manualSubstanceLabel || item.substanceLabel || "")}" placeholder="Например: такролимус" data-substance-edit="${escapeHtml(item.id)}" />
-            <button class="secondary-button" type="button" data-save-substance="${escapeHtml(item.id)}">Сохранить</button>
-          </details>
           <button class="secondary-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
         </div>
       </article>
@@ -1964,6 +1981,16 @@ function renderMedicationProfile(signals) {
     : "";
   if (!medications.length) medicationLookupStatus.textContent = "";
   medicationChecks.innerHTML = signals.length ? signals.map(renderMedicationSignal).join("") : "";
+}
+
+function renderSubstanceEditControl(item) {
+  return `
+    <details class="substance-edit">
+      <summary>${item.substanceLabel ? "Изменить вещество" : "Указать вещество"}</summary>
+      <input type="text" value="${escapeHtml(item.manualSubstanceLabel || item.substanceLabel || "")}" placeholder="Например: такролимус" data-substance-edit="${escapeHtml(item.id)}" />
+      <button class="secondary-button" type="button" data-save-substance="${escapeHtml(item.id)}">Сохранить</button>
+    </details>
+  `;
 }
 
 function medicationSubstanceHtml(item) {

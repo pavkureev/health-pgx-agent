@@ -55,6 +55,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-height: 44px;
 }
 
 .eyebrow {
@@ -197,19 +198,46 @@ h2 {
 }
 
 .editor-drawer {
+  margin-top: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfc;
 }
 
 .editor-drawer > summary {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
   gap: 12px;
   padding: 12px 14px;
   cursor: pointer;
   color: var(--accent-strong);
   font-weight: 800;
+  list-style: none;
+}
+
+.editor-drawer > summary::-webkit-details-marker,
+.substance-edit summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-drawer > summary::after,
+.substance-edit summary::after {
+  content: "⌄";
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #e9eeee;
+  color: var(--accent-strong);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.editor-drawer[open] > summary::after,
+.substance-edit[open] summary::after {
+  content: "⌃";
 }
 
 .drawer-body {
@@ -426,14 +454,18 @@ h2 {
 }
 
 .substance-edit {
-  min-width: 170px;
+  margin-top: 8px;
 }
 
 .substance-edit summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
   color: var(--accent-strong);
   font-size: 13px;
   font-weight: 800;
+  list-style: none;
 }
 
 .substance-edit input {
@@ -649,6 +681,15 @@ input[type="file"] {
 .metric-list {
   display: grid;
   gap: 8px;
+  max-height: 292px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.metric-list.expanded {
+  max-height: none;
+  overflow: visible;
 }
 
 .metric-option {
@@ -678,6 +719,16 @@ input[type="file"] {
 .metric-option strong,
 .metric-option small {
   display: block;
+}
+
+.compact-link-button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 10px;
+  padding: 0 12px;
+  background: #e9eeee;
+  color: var(--accent-strong);
+  font-size: 13px;
 }
 
 .metric-option small {
