@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PGx Agent MVP</title>
-    <link rel="stylesheet" href="./styles.css?v=20260507-7" />
+    <link rel="stylesheet" href="./styles.css?v=20260520-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -77,102 +77,74 @@
           <p id="profileStatus" class="file-status">Данные сохраняются локально в выбранном профиле.</p>
         </section>
 
-        <section class="panel insight-dashboard" aria-labelledby="insightDashboardTitle">
-          <div class="panel-header">
-            <div>
-              <h2 id="insightDashboardTitle">Главные сигналы</h2>
-              <p id="insightDashboardSubtitle" class="panel-subtitle">Загрузите генетику, анализы и лекарства, чтобы увидеть приоритетную сводку.</p>
-            </div>
-            <span class="counter" id="insightDashboardCounter">0 сигналов</span>
-          </div>
-          <div class="insight-metrics" id="insightMetrics"></div>
-          <div class="priority-layout">
-            <div>
-              <div class="section-title">
-                <h3>На что обратить внимание</h3>
-                <span class="mini-counter" id="priorityCounter">0</span>
-              </div>
-              <div id="prioritySignals" class="priority-signals"></div>
-            </div>
-            <div class="next-actions">
-              <div class="section-title">
-                <h3>Что проверить дальше</h3>
-              </div>
-              <div id="nextActions" class="action-list"></div>
-            </div>
-          </div>
-        </section>
-
         <details class="app-section genetics-section">
           <summary class="app-section-summary">
             <span class="section-kicker">1</span>
             <span class="section-copy">
               <strong>Рекомендации по генетике</strong>
-              <span>Загрузка VCF или ручной ввод генотипов, затем справочные gene-drug сигналы.</span>
+              <span>Главные gene-drug сигналы впереди; загрузка и исходные данные раскрываются отдельно.</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
           </summary>
           <div class="app-section-body">
-            <div class="grid">
-          <section class="panel input-panel">
-            <div class="panel-header">
-              <h2>Генетические данные на основе анализа Genotek</h2>
-              <span class="counter" id="geneCounter">0 генов</span>
-            </div>
-
-            <div id="geneticInputForm">
-              <div class="file-loader">
-                <label for="vcfFile">Введите данные теста Genotek</label>
-                <div class="file-row">
-                  <input id="vcfFile" type="file" accept=".vcf,.txt,text/plain" />
-                  <button id="loadVcf" class="secondary-button" type="button">Загрузить VCF</button>
-                </div>
-                <p id="fileStatus" class="file-status">Файл читается локально в браузере и никуда не отправляется.</p>
+            <section class="panel results-panel">
+              <div class="panel-header">
+                <h2>Рекомендации</h2>
+                <span class="counter" id="matchCounter">0 совпадений</span>
               </div>
+              <div id="summary" class="summary empty">
+                Загрузите пример или вставьте данные, чтобы увидеть найденные gene-drug сигналы.
+              </div>
+              <div id="geneticFilterPanel" class="compact-control">
+                <label for="drugSearch">Фильтр по препарату или группе</label>
+                <input id="drugSearch" type="search" placeholder="Например: клопидогрел, статин, омепразол" />
+              </div>
+              <div id="results" class="results"></div>
+            </section>
 
-              <label class="toggle-row">
-                <input id="textModeToggle" type="checkbox" />
-                <span>Вставить отчёт текстом</span>
-              </label>
+            <details id="geneticInputDrawer" class="editor-drawer">
+              <summary>
+                <span>Добавить или изменить генетику</span>
+                <span id="geneCounter" class="mini-counter">0 генов</span>
+              </summary>
+              <section class="drawer-body">
+                <div id="geneticInputForm">
+                  <div class="file-loader">
+                    <label for="vcfFile">Введите данные теста Genotek</label>
+                    <div class="file-row">
+                      <input id="vcfFile" type="file" accept=".vcf,.txt,text/plain" />
+                      <button id="loadVcf" class="secondary-button" type="button">Загрузить VCF</button>
+                    </div>
+                    <p id="fileStatus" class="file-status">Файл читается локально в браузере и никуда не отправляется.</p>
+                  </div>
 
-              <div id="geneticTextInput" hidden>
-                <label for="patientData">Вставьте фрагмент отчета, raw genotype или фенотипы</label>
-                <textarea id="patientData" spellcheck="false" placeholder="Например:
+                  <label class="toggle-row">
+                    <input id="textModeToggle" type="checkbox" />
+                    <span>Вставить отчёт текстом</span>
+                  </label>
+
+                  <div id="geneticTextInput" hidden>
+                    <label for="patientData">Вставьте фрагмент отчета, raw genotype или фенотипы</label>
+                    <textarea id="patientData" spellcheck="false" placeholder="Например:
 CYP2C19 *2/*2
 CYP2D6 poor metabolizer
 SLCO1B1 rs4149056 TC
 HLA-B*57:01 negative"></textarea>
-              </div>
-            </div>
+                  </div>
+                </div>
 
-            <div id="geneticDataView" hidden>
-              <label for="patientDataView">Распознанные или введенные генетические данные</label>
-              <textarea id="patientDataView" spellcheck="false" readonly></textarea>
-            </div>
+                <details id="geneticDataView" class="source-data" hidden>
+                  <summary>Показать распознанные или введенные данные</summary>
+                  <textarea id="patientDataView" spellcheck="false" readonly></textarea>
+                </details>
 
-            <div class="controls">
-              <label for="drugSearch">Препарат или группа</label>
-              <input id="drugSearch" type="search" placeholder="Например: клопидогрел, статин, омепразол" />
-            </div>
-
-            <div class="button-row">
-              <button id="analyze" class="primary-button" type="button">Проанализировать</button>
-              <button id="uploadOtherGenetics" class="secondary-button" type="button">Загрузить другие данные</button>
-              <button id="clear" class="secondary-button" type="button">Очистить</button>
-            </div>
-          </section>
-
-          <section class="panel results-panel">
-            <div class="panel-header">
-              <h2>Рекомендации</h2>
-              <span class="counter" id="matchCounter">0 совпадений</span>
-            </div>
-            <div id="summary" class="summary empty">
-              Загрузите пример или вставьте данные, чтобы увидеть найденные gene-drug сигналы.
-            </div>
-            <div id="results" class="results"></div>
-          </section>
-            </div>
+                <div class="button-row">
+                  <button id="analyze" class="primary-button" type="button">Проанализировать</button>
+                  <button id="uploadOtherGenetics" class="secondary-button" type="button">Загрузить другие данные</button>
+                  <button id="clear" class="secondary-button" type="button">Очистить</button>
+                </div>
+              </section>
+            </details>
           </div>
         </details>
 
@@ -181,35 +153,61 @@ HLA-B*57:01 negative"></textarea>
             <span class="section-kicker">2</span>
             <span class="section-copy">
               <strong>Результаты анализов</strong>
-              <span>Загрузка PDF или текста, графики динамики, клинические сигналы и связь с генетикой.</span>
+              <span>Графики, тренды и клинические сигналы занимают главный экран; загрузка раскрывается по кнопке.</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
           </summary>
           <div class="app-section-body">
-        <section class="panel lab-panel">
-          <div class="panel-header">
-            <h2>Биохимия и другие анализы</h2>
-            <span class="counter" id="labCounter">0 записей</span>
-          </div>
-          <div class="lab-grid">
-            <div>
-              <div class="file-loader">
-                <label for="labFiles">Загрузите PDF или текстовые отчеты</label>
-                <div class="file-row">
-                  <input id="labFiles" type="file" accept=".pdf,.txt,text/plain,application/pdf" multiple />
-                  <button id="loadLabs" class="secondary-button" type="button">Разобрать</button>
-                </div>
-                <p id="labStatus" class="file-status">
-                  Текстовые PDF читаются локально. Для сканов понадобится OCR или ручная вставка текста.
-                </p>
-                <details id="labDiagnostics" class="diagnostics" hidden>
-                  <summary>Диагностика неразобранных файлов</summary>
-                  <div id="labDiagnosticsBody"></div>
-                </details>
+            <section class="panel lab-panel">
+              <div class="panel-header">
+                <h2>Биохимия и другие анализы</h2>
+                <span class="counter" id="labCounter">0 записей</span>
               </div>
 
-              <label for="labText" class="lab-text-label">Текст анализа, если PDF не распознался</label>
-              <textarea id="labText" class="compact-textarea" spellcheck="false" placeholder="Например:
+              <div class="lab-focus">
+                <div>
+                  <div id="labSummary" class="summary empty">Загрузите анализы, чтобы увидеть показатели и динамику.</div>
+                  <div id="labInsights" class="results"></div>
+                  <div class="metric-picker">
+                    <div class="section-title">
+                      <h3>Распознанные параметры</h3>
+                      <span class="mini-counter" id="labMetricCounter">0</span>
+                    </div>
+                    <div id="labMetricList" class="metric-list"></div>
+                    <select id="labMetric" hidden></select>
+                  </div>
+                </div>
+
+                <div>
+                  <canvas id="labChart" width="680" height="260" aria-label="График исторических изменений"></canvas>
+                  <div id="metricDescription" class="metric-description" hidden></div>
+                  <details class="lab-details">
+                    <summary>Подробности распознанных анализов</summary>
+                    <div id="labResults" class="lab-results"></div>
+                  </details>
+                </div>
+              </div>
+
+              <details id="labInputDrawer" class="editor-drawer">
+                <summary>Добавить анализы</summary>
+                <div class="drawer-body">
+                  <div class="file-loader">
+                    <label for="labFiles">Загрузите PDF или текстовые отчеты</label>
+                    <div class="file-row">
+                      <input id="labFiles" type="file" accept=".pdf,.txt,text/plain,application/pdf" multiple />
+                      <button id="loadLabs" class="secondary-button" type="button">Разобрать</button>
+                    </div>
+                    <p id="labStatus" class="file-status">
+                      Текстовые PDF читаются локально. Для сканов понадобится OCR или ручная вставка текста.
+                    </p>
+                    <details id="labDiagnostics" class="diagnostics" hidden>
+                      <summary>Диагностика неразобранных файлов</summary>
+                      <div id="labDiagnosticsBody"></div>
+                    </details>
+                  </div>
+
+                  <label for="labText" class="lab-text-label">Текст анализа, если PDF не распознался</label>
+                  <textarea id="labText" class="compact-textarea" spellcheck="false" placeholder="Например:
 Дата анализа: 12.03.2026
 АЛТ 42 Ед/л
 АСТ 31 Ед/л
@@ -217,72 +215,53 @@ HLA-B*57:01 negative"></textarea>
 eGFR 82 мл/мин/1.73м2
 КФК 180 Ед/л
 Калий 4.8 ммоль/л"></textarea>
-              <div class="button-row">
-                <button id="parseLabText" class="primary-button" type="button">Добавить текст</button>
-                <button id="clearLabs" class="secondary-button" type="button">Очистить историю</button>
-              </div>
-            </div>
-
-            <div>
-              <div id="labSummary" class="summary empty">Загрузите анализы, чтобы увидеть показатели и динамику.</div>
-              <div id="labInsights" class="results"></div>
-              <div class="metric-picker">
-                <div class="section-title">
-                  <h3>Распознанные параметры</h3>
-                  <span class="mini-counter" id="labMetricCounter">0</span>
+                  <div class="button-row">
+                    <button id="parseLabText" class="primary-button" type="button">Добавить текст</button>
+                    <button id="clearLabs" class="secondary-button" type="button">Очистить историю</button>
+                  </div>
                 </div>
-                <div id="labMetricList" class="metric-list"></div>
-                <select id="labMetric" hidden></select>
-              </div>
-              <canvas id="labChart" width="680" height="260" aria-label="График исторических изменений"></canvas>
-              <div id="metricDescription" class="metric-description" hidden></div>
-              <details class="lab-details">
-                <summary>Подробности распознанных анализов</summary>
-                <div id="labResults" class="lab-results"></div>
               </details>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel decision-panel">
-          <div class="panel-header">
-            <h2>Проверки и интеграции</h2>
-            <span class="counter" id="decisionCounter">0 сигналов</span>
-          </div>
-          <div class="decision-grid">
-            <section class="decision-section">
-              <div class="section-title">
-                <h3>Качество данных</h3>
-                <span id="qualityCounter" class="mini-counter">0</span>
-              </div>
-              <div id="qualityChecks" class="signal-list"></div>
             </section>
 
-            <section class="decision-section">
-              <div class="section-title">
-                <h3>Клинические проверки</h3>
-                <span id="clinicalCounter" class="mini-counter">0</span>
+            <section class="panel decision-panel">
+              <div class="panel-header">
+                <h2>Проверки и интеграции</h2>
+                <span class="counter" id="decisionCounter">0 сигналов</span>
               </div>
-              <div id="clinicalChecks" class="signal-list"></div>
-            </section>
+              <div class="decision-grid">
+                <section class="decision-section">
+                  <div class="section-title">
+                    <h3>Качество данных</h3>
+                    <span id="qualityCounter" class="mini-counter">0</span>
+                  </div>
+                  <div id="qualityChecks" class="signal-list"></div>
+                </section>
 
-            <section class="decision-section">
-              <div class="section-title">
-                <h3>Фармакогенетика</h3>
-                <span id="pgxCounter" class="mini-counter">0</span>
-              </div>
-              <div id="pgxCoverage" class="signal-list"></div>
-            </section>
+                <section class="decision-section">
+                  <div class="section-title">
+                    <h3>Клинические проверки</h3>
+                    <span id="clinicalCounter" class="mini-counter">0</span>
+                  </div>
+                  <div id="clinicalChecks" class="signal-list"></div>
+                </section>
 
-            <section class="decision-section">
-              <div class="section-title">
-                <h3>Интеграции и безопасность</h3>
-                <span id="integrationCounter" class="mini-counter">0</span>
+                <section class="decision-section">
+                  <div class="section-title">
+                    <h3>Фармакогенетика</h3>
+                    <span id="pgxCounter" class="mini-counter">0</span>
+                  </div>
+                  <div id="pgxCoverage" class="signal-list"></div>
+                </section>
+
+                <section class="decision-section">
+                  <div class="section-title">
+                    <h3>Интеграции и безопасность</h3>
+                    <span id="integrationCounter" class="mini-counter">0</span>
+                  </div>
+                  <div id="integrationChecks" class="signal-list"></div>
+                </section>
               </div>
-              <div id="integrationChecks" class="signal-list"></div>
             </section>
-          </div>
-        </section>
           </div>
         </details>
 
@@ -291,39 +270,45 @@ eGFR 82 мл/мин/1.73м2
             <span class="section-kicker">3</span>
             <span class="section-copy">
               <strong>Прописанные лекарства</strong>
-              <span>Ввод препаратов, сопоставление с генетикой, анализами и критическим справочным списком.</span>
+              <span>Сначала предупреждения по текущему профилю, добавление препаратов раскрывается отдельно.</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
           </summary>
           <div class="app-section-body">
-        <section class="panel medication-panel">
-          <div class="panel-header">
-            <h2>Лекарственный профиль</h2>
-            <span class="counter" id="medicationCounter">0 препаратов</span>
-          </div>
-          <div class="medication-grid">
-            <div>
-              <label for="medicationName">Препарат</label>
-              <input id="medicationName" type="text" placeholder="Например: розувастатин" />
-            </div>
-            <div>
-              <label for="medicationDose">Доза и режим</label>
-              <input id="medicationDose" type="text" placeholder="Например: 10 мг вечером" />
-            </div>
-            <div>
-              <label for="medicationNote">Комментарий</label>
-              <input id="medicationNote" type="text" placeholder="Зачем назначен или что беспокоит" />
-            </div>
-            <button id="addMedication" class="primary-button" type="button">Добавить</button>
-          </div>
-          <div class="button-row">
-            <button id="lookupMedications" class="secondary-button" type="button">Уточнить действующие вещества</button>
-          </div>
-          <div id="medicationList" class="medication-list"></div>
-          <div id="medicationSummary" class="metric-description" hidden></div>
-          <p id="medicationLookupStatus" class="file-status"></p>
-          <div id="medicationChecks" class="results"></div>
-        </section>
+            <section class="panel medication-panel">
+              <div class="panel-header">
+                <h2>Лекарственный профиль</h2>
+                <span class="counter" id="medicationCounter">0 препаратов</span>
+              </div>
+              <div id="medicationList" class="medication-list"></div>
+              <div id="medicationSummary" class="metric-description" hidden></div>
+              <p id="medicationLookupStatus" class="file-status"></p>
+              <div id="medicationChecks" class="results"></div>
+
+              <details id="medicationInputDrawer" class="editor-drawer">
+                <summary>Добавить препарат</summary>
+                <div class="drawer-body">
+                  <div class="medication-grid">
+                    <div>
+                      <label for="medicationName">Препарат</label>
+                      <input id="medicationName" type="text" placeholder="Например: розувастатин" />
+                    </div>
+                    <div>
+                      <label for="medicationDose">Доза и режим</label>
+                      <input id="medicationDose" type="text" placeholder="Например: 10 мг вечером" />
+                    </div>
+                    <div>
+                      <label for="medicationNote">Комментарий</label>
+                      <input id="medicationNote" type="text" placeholder="Зачем назначен или что беспокоит" />
+                    </div>
+                    <button id="addMedication" class="primary-button" type="button">Добавить</button>
+                  </div>
+                  <div class="button-row">
+                    <button id="lookupMedications" class="secondary-button" type="button">Уточнить действующие вещества</button>
+                  </div>
+                </div>
+              </details>
+            </section>
           </div>
         </details>
 
@@ -351,13 +336,13 @@ eGFR 82 мл/мин/1.73м2
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260507-7"></script>
-    <script src="./data/pgx-rules.js?v=20260507-7"></script>
-    <script src="./data/lab-analytes.js?v=20260507-7"></script>
-    <script src="./data/medication-knowledge.js?v=20260507-7"></script>
-    <script src="./data/evidence-flags.js?v=20260507-7"></script>
-    <script src="./data.js?v=20260507-7"></script>
-    <script src="./app.js?v=20260507-7"></script>
-    <script src="./js/pgx-extensions.js?v=20260507-7"></script>
+    <script src="./supabase-config.js?v=20260520-1"></script>
+    <script src="./data/pgx-rules.js?v=20260520-1"></script>
+    <script src="./data/lab-analytes.js?v=20260520-1"></script>
+    <script src="./data/medication-knowledge.js?v=20260520-1"></script>
+    <script src="./data/evidence-flags.js?v=20260520-1"></script>
+    <script src="./data.js?v=20260520-1"></script>
+    <script src="./app.js?v=20260520-1"></script>
+    <script src="./js/pgx-extensions.js?v=20260520-1"></script>
   </body>
 </html>
