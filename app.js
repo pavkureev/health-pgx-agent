@@ -64,13 +64,16 @@ const onboardingBox = document.querySelector("#onboardingBox");
 const displayName = document.querySelector("#displayName");
 const geneticsSection = document.querySelector(".genetics-section");
 const labsSection = document.querySelector(".labs-section");
+const doctorSection = document.querySelector(".doctor-section");
 const medicationsSection = document.querySelector(".medications-section");
 const geneticsSectionMeta = document.querySelector("#geneticsSectionMeta");
 const labsSectionMeta = document.querySelector("#labsSectionMeta");
+const doctorSectionMeta = document.querySelector("#doctorSectionMeta");
 const medicationsSectionMeta = document.querySelector("#medicationsSectionMeta");
 const geneticFilterPanel = document.querySelector("#geneticFilterPanel");
 const geneticInputDrawer = document.querySelector("#geneticInputDrawer");
 const labInputDrawer = document.querySelector("#labInputDrawer");
+const doctorInputDrawer = document.querySelector("#doctorInputDrawer");
 const medicationInputDrawer = document.querySelector("#medicationInputDrawer");
 const decisionPanel = document.querySelector(".decision-panel");
 const decisionCounter = document.querySelector("#decisionCounter");
@@ -90,6 +93,14 @@ const medicationList = document.querySelector("#medicationList");
 const medicationSummary = document.querySelector("#medicationSummary");
 const medicationLookupStatus = document.querySelector("#medicationLookupStatus");
 const medicationChecks = document.querySelector("#medicationChecks");
+const doctorFile = document.querySelector("#doctorFile");
+const doctorText = document.querySelector("#doctorText");
+const doctorStatus = document.querySelector("#doctorStatus");
+const doctorCounter = document.querySelector("#doctorCounter");
+const doctorSummary = document.querySelector("#doctorSummary");
+const doctorParsed = document.querySelector("#doctorParsed");
+const doctorSignals = document.querySelector("#doctorSignals");
+const addDoctorMedicationsButton = document.querySelector("#addDoctorMedications");
 let currentUser = null;
 let cloudReady = false;
 let savingCloudProfile = false;
@@ -144,6 +155,10 @@ document.querySelector("#loadVcf").addEventListener("click", loadVcfFile);
 document.querySelector("#loadLabs").addEventListener("click", loadLabFiles);
 document.querySelector("#parseLabText").addEventListener("click", addLabText);
 document.querySelector("#clearLabs").addEventListener("click", clearLabHistory);
+document.querySelector("#loadDoctorConclusion").addEventListener("click", loadDoctorConclusionFile);
+document.querySelector("#parseDoctorText").addEventListener("click", parseDoctorTextInput);
+document.querySelector("#addDoctorMedications").addEventListener("click", addDoctorMedicationsToProfile);
+document.querySelector("#clearDoctorConclusion").addEventListener("click", clearDoctorConclusion);
 document.querySelector("#clear").addEventListener("click", () => {
   patientData.value = "";
   patientDataView.value = "";
@@ -440,6 +455,7 @@ async function createCloudProfileFromLocal(name, localProfile) {
       metadata: {
         patientData: localProfile?.patientData || "",
         medications: localProfile?.metadata?.medications || [],
+        doctorConclusion: localProfile?.metadata?.doctorConclusion || null,
         displayName: /^профиль\s*\d+$/i.test(name.trim()) ? "" : name
       }
     })
@@ -564,10 +580,13 @@ function applyActiveProfile() {
   vcfFile.value = "";
   labFiles.value = "";
   labText.value = "";
+  doctorFile.value = "";
+  doctorText.value = currentDoctorConclusion().text || "";
   drugSearch.value = "";
   renderProfiles();
   analyze();
   renderLabHistory();
+  renderDoctorConclusion();
   renderLabDiagnostics([]);
   renderGeneticInputState();
   renderHealthBlocks();
@@ -958,6 +977,162 @@ async function addLabText() {
   renderLabHistory();
   labStatus.className = "file-status";
   labStatus.textContent = `Добавлено ${record.values.length} ${plural(record.values.length, "показатель", "показателя", "показателей")}.`;
+}
+
+async function loadDoctorConclusionFile() {
+  const file = doctorFile.files?.[0];
+  if (!file) {
+    doctorStatus.className = "file-status error";
+    doctorStatus.textContent = "Сначала выберите PDF или текстовый файл.";
+    return;
+  }
+
+  try {
+    const text = await extractTextFromFile(file);
+    doctorText.value = text;
+    saveDoctorConclusion(text, parseDoctorConclusion(text));
+    doctorStatus.className = "file-status";
+    doctorStatus.textContent = `Заключение разобрано: ${file.name}.`;
+    renderDoctorConclusion();
+  } catch (error) {
+    doctorStatus.className = "file-status error";
+    doctorStatus.textContent = `Не удалось прочитать файл: ${error.message || "unknown error"}.`;
+  }
+}
+
+function parseDoctorTextInput() {
+  if (!doctorText.value.trim()) {
+    doctorStatus.className = "file-status error";
+    doctorStatus.textContent = "Вставьте текст заключения.";
+    return;
+  }
+
+  saveDoctorConclusion(doctorText.value, parseDoctorConclusion(doctorText.value));
+  doctorStatus.className = "file-status";
+  doctorStatus.textContent = "Заключение разобрано.";
+  renderDoctorConclusion();
+}
+
+function clearDoctorConclusion() {
+  doctorFile.value = "";
+  doctorText.value = "";
+  saveDoctorConclusion("", { diagnoses: [], medications: [] });
+  doctorStatus.className = "file-status";
+  doctorStatus.textContent = "Заключение очищено.";
+  renderDoctorConclusion();
+}
+
+function currentDoctorConclusion() {
+  return getActiveProfile()?.metadata?.doctorConclusion || { text: "", parsed: { diagnoses: [], medications: [] } };
+}
+
+function saveDoctorConclusion(text, parsed) {
+  const profile = getActiveProfile();
+  profile.metadata = {
+    ...(profile.metadata || {}),
+    doctorConclusion: {
+      text,
+      parsed,
+      updatedAt: new Date().toISOString()
+    }
+  };
+  saveCurrentProfileData();
+}
+
+function parseDoctorConclusion(text) {
+  return {
+    diagnoses: extractDoctorDiagnoses(text),
+    medications: extractDoctorMedications(text)
+  };
+}
+
+function extractDoctorDiagnoses(text) {
+  const normalized = normalizeText(text || "");
+  const diagnosisRules = [
+    { key: "hypertension", label: "Артериальная гипертензия", patterns: ["артериальная гипертензия", "гипертоническая болезнь", "гипертензия", "i10"] },
+    { key: "dyslipidemia", label: "Дислипидемия / высокий сердечно-сосудистый риск", patterns: ["дислипидемия", "гиперхолестеринемия", "атеросклероз", "ишемическая болезнь", "ибс", "e78", "i25"] },
+    { key: "diabetes", label: "Нарушение углеводного обмена / диабет", patterns: ["сахарный диабет", "преддиабет", "нарушение толерантности к глюкозе", "e11", "e10"] },
+    { key: "ckd", label: "Снижение функции почек / ХБП", patterns: ["хбп", "хроническая болезнь почек", "снижение скф", "почечная недостаточность", "n18"] },
+    { key: "liver", label: "Печеночный контекст", patterns: ["стеатоз", "жировой гепатоз", "гепатит", "повышение трансаминаз", "алт", "аст"] },
+    { key: "depression", label: "Депрессия / тревожное расстройство", patterns: ["депрессия", "тревожное расстройство", "паническое расстройство", "f32", "f33", "f41"] },
+    { key: "gerd", label: "ГЭРБ / гастрит / язвенная болезнь", patterns: ["гэрб", "гастроэзофагеальная", "гастрит", "язвенная болезнь", "k21", "k25", "k29"] },
+    { key: "oncology", label: "Онкологический диагноз / химиотерапия", patterns: ["злокачественное", "рак", "карцинома", "химиотерапия", "c18", "c50", "c61"] }
+  ];
+
+  return diagnosisRules
+    .filter((rule) => rule.patterns.some((pattern) => normalized.includes(normalizeText(pattern))))
+    .map((rule) => ({
+      key: rule.key,
+      label: rule.label,
+      sourceLine: findSourceLine(text, rule.patterns) || "Найдено по тексту заключения"
+    }));
+}
+
+function extractDoctorMedications(text) {
+  const lines = cleanupExtractedText(text || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  const normalizedText = normalizeText(text || "");
+  const found = [];
+  const seen = new Set();
+
+  for (const medication of medicationKnowledge) {
+    const alias = medication.aliases
+      .filter((item) => normalizeText(item).length >= 4)
+      .find((item) => normalizedText.includes(normalizeText(item)));
+    if (!alias || seen.has(medication.substance)) continue;
+    seen.add(medication.substance);
+    const sourceLine = lines.find((line) => normalizeText(line).includes(normalizeText(alias))) || medication.label;
+    found.push({
+      id: `doctor-med-${medication.substance}`,
+      name: medication.label,
+      substance: medication.substance,
+      substanceLabel: medication.label,
+      group: medication.group,
+      dose: extractMedicationDose(sourceLine, alias),
+      note: "Из заключения врача",
+      sourceLine
+    });
+  }
+
+  return found;
+}
+
+function extractMedicationDose(line, alias) {
+  const cleaned = line.replace(/\s+/g, " ").trim();
+  const doseMatch = cleaned.match(/(\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап)[^.;,\n]*)/i);
+  if (doseMatch) return doseMatch[1].trim();
+  return cleaned.length <= 120 ? cleaned : alias;
+}
+
+function findSourceLine(text, patterns) {
+  const lines = cleanupExtractedText(text || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  return lines.find((line) => patterns.some((pattern) => normalizeText(line).includes(normalizeText(pattern)))) || "";
+}
+
+function addDoctorMedicationsToProfile() {
+  const parsed = currentDoctorConclusion().parsed || { medications: [] };
+  const additions = (parsed.medications || []).map((item) => enrichMedication({
+    id: `med-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: item.name,
+    dose: item.dose,
+    note: item.note,
+    substance: item.substance,
+    substanceLabel: item.substanceLabel,
+    group: item.group,
+    sourceName: "doctor conclusion"
+  }));
+  if (!additions.length) return;
+
+  const existing = currentMedications();
+  const existingKeys = new Set(existing.map((item) => normalizeText(item.substanceLabel || item.name)));
+  const merged = [
+    ...existing,
+    ...additions.filter((item) => !existingKeys.has(normalizeText(item.substanceLabel || item.name)))
+  ];
+  saveCurrentMedications(merged);
+  doctorStatus.className = "file-status";
+  doctorStatus.textContent = "Назначения добавлены в лекарственный профиль.";
+  renderDoctorConclusion();
+  renderHealthBlocks();
 }
 
 function parseLabReport(text, sourceName, fallbackTimestamp) {
@@ -1407,6 +1582,98 @@ function renderLabHistory() {
   renderHealthBlocks();
 }
 
+function renderDoctorConclusion() {
+  const conclusion = currentDoctorConclusion();
+  const parsed = conclusion.parsed || { diagnoses: [], medications: [] };
+  const diagnoses = parsed.diagnoses || [];
+  const medications = parsed.medications || [];
+  const signals = doctorConclusionSignals(parsed);
+  const total = diagnoses.length + medications.length;
+
+  doctorCounter.textContent = `${total} ${plural(total, "пункт", "пункта", "пунктов")}`;
+  addDoctorMedicationsButton.hidden = !medications.length;
+  updateDoctorSectionMeta(parsed, signals);
+
+  if (!conclusion.text?.trim()) {
+    doctorSummary.className = "summary empty";
+    doctorSummary.textContent = "Загрузите заключение после приема, чтобы сопоставить диагнозы и назначения с генетикой, анализами и лекарственным профилем.";
+    doctorParsed.innerHTML = "";
+    doctorSignals.innerHTML = "";
+    return;
+  }
+
+  doctorSummary.className = "summary";
+  doctorSummary.textContent = `Найдено: ${diagnoses.length} ${plural(diagnoses.length, "диагноз", "диагноза", "диагнозов")} и ${medications.length} ${plural(medications.length, "назначение", "назначения", "назначений")}. Проверьте распознавание перед изменением профиля.`;
+  doctorParsed.innerHTML = renderDoctorParsed(parsed);
+  doctorSignals.innerHTML = signals.length ? renderPriorityGroups(signals, renderDoctorSignal) : "";
+}
+
+function renderDoctorParsed(parsed) {
+  const diagnoses = parsed.diagnoses || [];
+  const medications = parsed.medications || [];
+  return `
+    <div class="doctor-grid">
+      <section class="decision-section">
+        <div class="section-title">
+          <h3>Диагнозы</h3>
+          <span class="mini-counter">${diagnoses.length}</span>
+        </div>
+        ${diagnoses.length ? diagnoses.map((item) => `
+          <article class="signal-item low">
+            <strong>${escapeHtml(item.label)}</strong>
+            <p>${escapeHtml(item.sourceLine)}</p>
+          </article>
+        `).join("") : `<p class="file-status">Диагнозы не распознаны. Можно уточнить текст вручную.</p>`}
+      </section>
+      <section class="decision-section">
+        <div class="section-title">
+          <h3>Назначения</h3>
+          <span class="mini-counter">${medications.length}</span>
+        </div>
+        ${medications.length ? medications.map((item) => `
+          <article class="signal-item low">
+            <strong>${escapeHtml(item.name)}</strong>
+            <p>${escapeHtml([item.dose, item.sourceLine].filter(Boolean).join(" · "))}</p>
+          </article>
+        `).join("") : `<p class="file-status">Назначения не распознаны. Можно добавить препараты вручную в лекарственном профиле.</p>`}
+      </section>
+    </div>
+  `;
+}
+
+function renderDoctorSignal(signal) {
+  return `
+    <article class="result-card ${escapeHtml(signal.severity || "low")}">
+      <div class="result-title">
+        <strong>${escapeHtml(signal.title)}</strong>
+        <span class="badge">${escapeHtml(signal.context || "заключение")}</span>
+      </div>
+      <p class="recommendation">${escapeHtml(signal.body)}</p>
+      <p class="source">${escapeHtml(signal.source || "Локальная проверка заключения")}</p>
+    </article>
+  `;
+}
+
+function updateDoctorSectionMeta(parsed, signals) {
+  if (!doctorSectionMeta) return;
+  const conclusion = currentDoctorConclusion();
+  if (!conclusion.text?.trim()) {
+    doctorSectionMeta.textContent = "Нет заключения · загрузка открыта ниже";
+    return;
+  }
+
+  const diagnoses = parsed.diagnoses || [];
+  const medications = parsed.medications || [];
+  const highCount = signals.filter((signal) => signal.severity === "high").length;
+  const parts = [
+    String(diagnoses.length) + " " + plural(diagnoses.length, "диагноз", "диагноза", "диагнозов"),
+    String(medications.length) + " " + plural(medications.length, "назначение", "назначения", "назначений"),
+    String(signals.length) + " " + plural(signals.length, "сигнал", "сигнала", "сигналов")
+  ];
+  if (highCount) parts.push("высокий приоритет: " + highCount);
+  doctorSectionMeta.textContent = parts.join(" · ");
+}
+
 function availableLabMetrics() {
   const keys = new Set(labRecords.flatMap((record) => record.values.map((value) => value.key)));
   return labAnalytes.filter((analyte) => keys.has(analyte.key));
@@ -1606,20 +1873,24 @@ function renderHealthBlocks() {
     renderSignalList(integrationChecks, integrationCounter, integrationSignals);
   }
   renderSectionDrawers();
+  renderDoctorConclusion();
   renderMedicationProfile(medicationSignals);
 }
 
 function renderSectionDrawers() {
   const hasGeneticData = Boolean(patientData.value.trim());
   const hasLabData = Boolean(labRecords.length);
+  const hasDoctorData = Boolean(currentDoctorConclusion().text?.trim());
   const hasMedicationData = Boolean(currentMedications().length);
 
   if (geneticsSection) geneticsSection.open = true;
   if (labsSection) labsSection.open = true;
+  if (doctorSection) doctorSection.open = true;
   if (medicationsSection) medicationsSection.open = true;
   if (geneticInputDrawer) geneticInputDrawer.open = !hasGeneticData || geneticInputOpen;
   if (geneticFilterPanel) geneticFilterPanel.hidden = !hasGeneticData;
   if (labInputDrawer) labInputDrawer.open = !hasLabData;
+  if (doctorInputDrawer) doctorInputDrawer.open = !hasDoctorData;
   if (medicationInputDrawer) medicationInputDrawer.open = !hasMedicationData;
 }
 
@@ -1799,6 +2070,162 @@ function expandedClinicalSignals() {
       title: "Критичных отклонений не найдено",
       body: "По текущим поддерживаемым показателям нет активных пороговых сигналов. Это не заменяет медицинскую интерпретацию."
     });
+  }
+
+  return signals;
+}
+
+function doctorConclusionSignals(parsed = currentDoctorConclusion().parsed || {}) {
+  const diagnoses = parsed.diagnoses || [];
+  const medications = (parsed.medications || []).map((item) => enrichMedication(item));
+  const signals = [];
+
+  signals.push(...doctorMedicationSignals(medications));
+  signals.push(...doctorDiagnosisLabSignals(diagnoses));
+  signals.push(...doctorDiagnosisGeneticSignals(diagnoses));
+
+  if (diagnoses.length && !signals.length) {
+    signals.push({
+      severity: "low",
+      title: "Активных пересечений не найдено",
+      context: "заключение",
+      body: "По распознанным диагнозам и назначениям не найдено поддерживаемых пересечений с текущими анализами, PGx-правилами и лекарственным профилем.",
+      source: "Локальная проверка заключения"
+    });
+  }
+
+  return signals.sort((a, b) => severityRank(b.severity) - severityRank(a.severity));
+}
+
+function doctorMedicationSignals(medications) {
+  if (!medications.length) return [];
+  return medicationRiskSignals(medications).map((signal) => ({
+    ...signal,
+    context: signal.medication || "назначение",
+    source: `Заключение врача · ${signal.source}`
+  }));
+}
+
+function doctorDiagnosisLabSignals(diagnoses) {
+  const latest = latestLabValues();
+  const hasDiagnosis = (key) => diagnoses.some((item) => item.key === key);
+  const signals = [];
+
+  if (hasDiagnosis("dyslipidemia") && latest.ldl) {
+    signals.push({
+      severity: latest.ldl.value > 1.8 ? "moderate" : "low",
+      title: "Диагноз и ЛПНП",
+      context: "анализы",
+      body: latest.ldl.value > 1.8
+        ? `В заключении есть сердечно-сосудистый/липидный контекст, а последний ЛПНП ${formatNumber(latest.ldl.value)} ${latest.ldl.unit} выше персональной цели 1.8 ммоль/л.`
+        : `В заключении есть липидный контекст, последний ЛПНП ${formatNumber(latest.ldl.value)} ${latest.ldl.unit}.`,
+      source: `Анализ от ${formatDate(latest.ldl.date)}`
+    });
+  }
+
+  if (hasDiagnosis("hypertension")) {
+    if (latest.potassium && (latest.potassium.value > 5.2 || latest.potassium.value < 3.5)) {
+      signals.push({
+        severity: "moderate",
+        title: "Гипертензия и калий",
+        context: "анализы",
+        body: `При гипертензии и терапии БРА/иАПФ/диуретиками полезно учитывать калий. Последнее значение: ${formatNumber(latest.potassium.value)} ${latest.potassium.unit}.`,
+        source: `Анализ от ${formatDate(latest.potassium.date)}`
+      });
+    }
+    if (latest.egfr && latest.egfr.value < 60) {
+      signals.push({
+        severity: "high",
+        title: "Гипертензия и eGFR",
+        context: "анализы",
+        body: `Сниженная eGFR ${formatNumber(latest.egfr.value)} ${latest.egfr.unit} важна для выбора антигипертензивной терапии, НПВС и ряда других препаратов.`,
+        source: `Анализ от ${formatDate(latest.egfr.date)}`
+      });
+    }
+  }
+
+  if (hasDiagnosis("diabetes") && latest.hba1c) {
+    signals.push({
+      severity: latest.hba1c.value >= 6.5 ? "moderate" : "low",
+      title: "Диагноз и HbA1c",
+      context: "анализы",
+      body: `В заключении есть углеводный контекст. Последний HbA1c: ${formatNumber(latest.hba1c.value)} ${latest.hba1c.unit}.`,
+      source: `Анализ от ${formatDate(latest.hba1c.date)}`
+    });
+  }
+
+  if (hasDiagnosis("ckd") && latest.egfr) {
+    signals.push({
+      severity: latest.egfr.value < 60 ? "high" : "low",
+      title: "Диагноз и функция почек",
+      context: "анализы",
+      body: `Для почечного диагноза важно сверить eGFR в динамике. Последнее значение: ${formatNumber(latest.egfr.value)} ${latest.egfr.unit}.`,
+      source: `Анализ от ${formatDate(latest.egfr.date)}`
+    });
+  }
+
+  if (hasDiagnosis("liver") && ((latest.alt && latest.alt.value >= 80) || (latest.ast && latest.ast.value >= 80))) {
+    signals.push({
+      severity: "moderate",
+      title: "Печеночный диагноз и трансаминазы",
+      context: "анализы",
+      body: "В заключении есть печеночный контекст, а последние АЛТ/АСТ повышены. Это важно для препаратов с печеночным метаболизмом и потенциальной гепатотоксичностью.",
+      source: "История анализов"
+    });
+  }
+
+  return signals;
+}
+
+function doctorDiagnosisGeneticSignals(diagnoses) {
+  const { profile } = parseProfile(patientData.value);
+  const genes = Object.keys(profile);
+  if (!diagnoses.length || !genes.length) return [];
+
+  const hasDiagnosis = (key) => diagnoses.some((item) => item.key === key);
+  const signals = [];
+  const addContext = (title, relevantGenes, body) => {
+    const found = relevantGenes.filter((gene) => genes.includes(gene));
+    if (!found.length) return;
+    signals.push({
+      severity: "low",
+      title,
+      context: "генетика",
+      body: `${body} Найденные PGx-маркеры: ${found.join(", ")}. Это не подтверждает и не опровергает диагноз, а помогает обсуждать терапию.`,
+      source: "PGx-контекст заключения"
+    });
+  };
+
+  if (hasDiagnosis("dyslipidemia")) {
+    addContext(
+      "Липидный диагноз и PGx статинов",
+      ["SLCO1B1", "ABCG2", "CYP2C9"],
+      "При липидном/сердечно-сосудистом диагнозе фармакогенетика может быть полезна для выбора и переносимости статинов."
+    );
+  }
+
+  if (hasDiagnosis("dyslipidemia") || hasDiagnosis("hypertension")) {
+    addContext(
+      "Сердечно-сосудистый контекст и антиагреганты/антикоагулянты",
+      ["CYP2C19", "CYP2C9", "VKORC1", "CYP4F2"],
+      "Для отдельных антиагрегантов и варфарина PGx может влиять на эффективность, дозирование или риск кровотечений."
+    );
+  }
+
+  if (hasDiagnosis("depression")) {
+    addContext(
+      "Психиатрический диагноз и PGx антидепрессантов",
+      ["CYP2D6", "CYP2C19"],
+      "Для части антидепрессантов CYP2D6/CYP2C19 влияет на концентрации, переносимость и риск недостаточного ответа."
+    );
+  }
+
+  if (hasDiagnosis("oncology")) {
+    addContext(
+      "Онкологический контекст и PGx",
+      ["DPYD", "UGT1A1", "CYP2D6"],
+      "Для отдельных онкопрепаратов PGx может быть критичен для риска токсичности или эффективности."
+    );
   }
 
   return signals;
@@ -2171,8 +2598,8 @@ function renderMedicationSignal(signal) {
   `;
 }
 
-function medicationRiskSignals() {
-  const medications = currentMedications();
+function medicationRiskSignals(sourceMedications) {
+  const medications = sourceMedications || currentMedications();
   if (!medications.length) return [];
 
   const { profile, evidence } = parseProfile(patientData.value);
