@@ -990,10 +990,18 @@ async function loadDoctorConclusionFile() {
   try {
     const text = await extractTextFromFile(file);
     doctorText.value = text;
-    saveDoctorConclusion(text, parseDoctorConclusion(text));
+    const parsed = parseDoctorConclusion(text);
+    saveDoctorConclusion(text, parsed);
+    const sync = syncDoctorMedicationsToProfile(parsed);
     doctorStatus.className = "file-status";
-    doctorStatus.textContent = `Заключение разобрано: ${file.name}.`;
+    doctorStatus.textContent = [
+      `Заключение разобрано: ${file.name}.`,
+      sync.added ? `Назначения добавлены в лекарственный профиль: ${sync.added}.` : "",
+      sync.skipped ? `Уже были в профиле: ${sync.skipped}.` : "",
+      sync.added ? "Проверьте и подтвердите распознавание в блоке лекарств." : ""
+    ].filter(Boolean).join(" ");
     renderDoctorConclusion();
+    renderHealthBlocks();
   } catch (error) {
     doctorStatus.className = "file-status error";
     doctorStatus.textContent = `Не удалось прочитать файл: ${error.message || "unknown error"}.`;
@@ -1007,10 +1015,18 @@ function parseDoctorTextInput() {
     return;
   }
 
-  saveDoctorConclusion(doctorText.value, parseDoctorConclusion(doctorText.value));
+  const parsed = parseDoctorConclusion(doctorText.value);
+  saveDoctorConclusion(doctorText.value, parsed);
+  const sync = syncDoctorMedicationsToProfile(parsed);
   doctorStatus.className = "file-status";
-  doctorStatus.textContent = "Заключение разобрано.";
+  doctorStatus.textContent = [
+    "Заключение разобрано.",
+    sync.added ? `Назначения добавлены в лекарственный профиль: ${sync.added}.` : "",
+    sync.skipped ? `Уже были в профиле: ${sync.skipped}.` : "",
+    sync.added ? "Проверьте и подтвердите распознавание в блоке лекарств." : ""
+  ].filter(Boolean).join(" ");
   renderDoctorConclusion();
+  renderHealthBlocks();
 }
 
 function clearDoctorConclusion() {
@@ -1069,25 +1085,22 @@ function extractDoctorDiagnoses(text) {
 }
 
 function extractDoctorMedications(text) {
-  const lines = cleanupExtractedText(text || "").split("\n").map((line) => line.trim()).filter(Boolean);
-  const normalizedText = normalizeText(text || "");
+  const lines = doctorMedicationCandidateLines(text);
   const found = [];
   const seen = new Set();
 
   for (const medication of medicationKnowledge) {
-    const alias = medication.aliases
-      .filter((item) => normalizeText(item).length >= 4)
-      .find((item) => normalizedText.includes(normalizeText(item)));
-    if (!alias || seen.has(medication.substance)) continue;
+    const match = findMedicationLineMatch(lines, medication);
+    if (!match || seen.has(medication.substance)) continue;
     seen.add(medication.substance);
-    const sourceLine = lines.find((line) => normalizeText(line).includes(normalizeText(alias))) || medication.label;
+    const sourceLine = cleanDoctorMedicationLine(match.line);
     found.push({
       id: `doctor-med-${medication.substance}`,
       name: medication.label,
       substance: medication.substance,
       substanceLabel: medication.label,
       group: medication.group,
-      dose: extractMedicationDose(sourceLine, alias),
+      dose: extractMedicationDose(sourceLine, match.alias),
       note: "Из заключения врача",
       sourceLine
     });
@@ -1096,11 +1109,65 @@ function extractDoctorMedications(text) {
   return found;
 }
 
+function doctorMedicationCandidateLines(text) {
+  const lines = cleanupExtractedText(text || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const candidates = [];
+  let inPrescriptionBlock = false;
+
+  for (const line of lines) {
+    const normalized = normalizeText(line);
+    if (/(назнач|рекоменд|лечение|терапия|препарат|медикамент|схема)/i.test(line)) {
+      inPrescriptionBlock = true;
+      continue;
+    }
+    if (inPrescriptionBlock && /(диагноз|жалоб|анамнез|объективн|осмотр|обследован|контроль|повторн|заключение|анализ|узи|экг|консультац)/i.test(line)) {
+      inPrescriptionBlock = false;
+    }
+    if (line.length > 180 || /(аллерг|не переносит|ранее принимал|отменен|отменить|анамнез)/i.test(line)) {
+      continue;
+    }
+    if (inPrescriptionBlock || /^\s*(?:\d+[\).:-]|[-•*])\s*/.test(line) || /(мг|мкг|таб|кап|раз в день|утром|вечером|после еды|до еды)/i.test(line)) {
+      candidates.push(line);
+      continue;
+    }
+    if (medicationKnowledge.some((medication) => medication.aliases.some((alias) => normalizeText(alias).length >= 5 && normalized.includes(normalizeText(alias))))) {
+      candidates.push(line);
+    }
+  }
+
+  return [...new Set(candidates)];
+}
+
+function findMedicationLineMatch(lines, medication) {
+  for (const line of lines) {
+    const normalizedLine = normalizeText(line);
+    const alias = medication.aliases
+      .filter((item) => normalizeText(item).length >= 4)
+      .sort((a, b) => normalizeText(b).length - normalizeText(a).length)
+      .find((item) => normalizedLine.includes(normalizeText(item)));
+    if (alias) return { line, alias };
+  }
+  return null;
+}
+
+function cleanDoctorMedicationLine(line) {
+  return line
+    .replace(/^\s*(?:\d+[\).:-]|[-•*])\s*/, "")
+    .replace(/^(?:препарат|назначено|рекомендовано|лечение|терапия)\s*[:\-]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function extractMedicationDose(line, alias) {
-  const cleaned = line.replace(/\s+/g, " ").trim();
-  const doseMatch = cleaned.match(/(\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап)[^.;,\n]*)/i);
+  const cleaned = cleanDoctorMedicationLine(line);
+  const afterAlias = cleaned.replace(new RegExp(`^.*?${escapeRegExp(alias)}`, "i"), "").trim();
+  const doseSource = afterAlias || cleaned;
+  const doseMatch = doseSource.match(/(\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап)(?:\s+[^.;,\n]{0,80})?)/i);
   if (doseMatch) return doseMatch[1].trim();
-  return cleaned.length <= 120 ? cleaned : alias;
+  return "";
 }
 
 function findSourceLine(text, patterns) {
@@ -1110,6 +1177,16 @@ function findSourceLine(text, patterns) {
 
 function addDoctorMedicationsToProfile() {
   const parsed = currentDoctorConclusion().parsed || { medications: [] };
+  const sync = syncDoctorMedicationsToProfile(parsed);
+  doctorStatus.className = "file-status";
+  doctorStatus.textContent = sync.added
+    ? `Назначения добавлены в лекарственный профиль: ${sync.added}. Проверьте и подтвердите распознавание.`
+    : "Все распознанные назначения уже есть в лекарственном профиле.";
+  renderDoctorConclusion();
+  renderHealthBlocks();
+}
+
+function syncDoctorMedicationsToProfile(parsed, options = {}) {
   const additions = (parsed.medications || []).map((item) => enrichMedication({
     id: `med-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name: item.name,
@@ -1118,21 +1195,27 @@ function addDoctorMedicationsToProfile() {
     substance: item.substance,
     substanceLabel: item.substanceLabel,
     group: item.group,
-    sourceName: "doctor conclusion"
+    sourceName: "doctor conclusion",
+    sourceLine: item.sourceLine,
+    needsConfirmation: true
   }));
-  if (!additions.length) return;
+  if (!additions.length) return { added: 0, skipped: 0 };
 
   const existing = currentMedications();
-  const existingKeys = new Set(existing.map((item) => normalizeText(item.substanceLabel || item.name)));
-  const merged = [
-    ...existing,
-    ...additions.filter((item) => !existingKeys.has(normalizeText(item.substanceLabel || item.name)))
-  ];
+  const existingKeys = new Set(existing.map(medicationUniqueKey));
+  const fresh = additions.filter((item) => {
+    const key = medicationUniqueKey(item);
+    if (existingKeys.has(key) && !options.force) return false;
+    existingKeys.add(key);
+    return true;
+  });
+  const merged = [...existing, ...fresh];
   saveCurrentMedications(merged);
-  doctorStatus.className = "file-status";
-  doctorStatus.textContent = "Назначения добавлены в лекарственный профиль.";
-  renderDoctorConclusion();
-  renderHealthBlocks();
+  return { added: fresh.length, skipped: additions.length - fresh.length };
+}
+
+function medicationUniqueKey(item) {
+  return normalizeText(item.substance || item.substanceLabel || item.name || "");
 }
 
 function parseLabReport(text, sourceName, fallbackTimestamp) {
@@ -1633,7 +1716,7 @@ function renderDoctorParsed(parsed) {
         ${medications.length ? medications.map((item) => `
           <article class="signal-item low">
             <strong>${escapeHtml(item.name)}</strong>
-            <p>${escapeHtml([item.dose, item.sourceLine].filter(Boolean).join(" · "))}</p>
+            <p>${escapeHtml([item.dose || "доза не распознана", "будет добавлено в лекарственный профиль для подтверждения"].join(" · "))}</p>
           </article>
         `).join("") : `<p class="file-status">Назначения не распознаны. Можно добавить препараты вручную в лекарственном профиле.</p>`}
       </section>
@@ -1936,12 +2019,14 @@ function updateMedicationsSectionMeta(medications, signals) {
   }
 
   const identified = medications.filter((item) => item.substanceLabel).length;
+  const unconfirmed = medications.filter((item) => item.needsConfirmation).length;
   const highCount = signals.filter((signal) => signal.severity === "high").length;
   const parts = [
     String(medications.length) + " " + plural(medications.length, "препарат", "препарата", "препаратов"),
     "вещество определено: " + identified + "/" + medications.length,
     String(signals.length) + " " + plural(signals.length, "предупреждение", "предупреждения", "предупреждений")
   ];
+  if (unconfirmed) parts.push("нужно подтвердить: " + unconfirmed);
   if (highCount) parts.push("высокий приоритет: " + highCount);
   medicationsSectionMeta.textContent = parts.join(" · ");
 }
@@ -2384,7 +2469,7 @@ function renderMedicationProfile(signals) {
   medicationList.innerHTML = medications.length
     ? medications.map((item) => `
       <article class="medication-row">
-        <strong>${escapeHtml(item.name)}</strong>
+        <strong>${escapeHtml(item.name)}${medicationConfirmationHtml(item)}</strong>
         <span class="medication-substance-cell">${medicationSubstanceHtml(item)}${renderSubstanceEditControl(item)}</span>
         <span>${escapeHtml(item.dose || "Доза не указана")}</span>
         <span>${escapeHtml(medicationRowNote(item))}</span>
@@ -2402,6 +2487,9 @@ function renderMedicationProfile(signals) {
     medicationList.querySelectorAll("[data-save-substance]").forEach((button) => {
       button.addEventListener("click", () => updateMedicationSubstance(button.dataset.saveSubstance));
     });
+    medicationList.querySelectorAll("[data-confirm-medication]").forEach((button) => {
+      button.addEventListener("click", () => confirmMedicationRecognition(button.dataset.confirmMedication));
+    });
   }
 
   const identified = medications.filter((item) => item.substanceLabel).length;
@@ -2414,6 +2502,14 @@ function renderMedicationProfile(signals) {
   medicationChecks.innerHTML = signals.length ? renderPriorityGroups(signals, renderMedicationSignal) : "";
 }
 
+function medicationConfirmationHtml(item) {
+  if (!item.needsConfirmation) return "";
+  return `
+    <small class="recognition-note">Из заключения врача · проверьте</small>
+    <button class="inline-confirm-button" type="button" data-confirm-medication="${escapeHtml(item.id)}">Подтвердить</button>
+  `;
+}
+
 function renderSubstanceEditControl(item) {
   return `
     <details class="substance-edit">
@@ -2422,6 +2518,13 @@ function renderSubstanceEditControl(item) {
       <button class="secondary-button" type="button" data-save-substance="${escapeHtml(item.id)}">Сохранить</button>
     </details>
   `;
+}
+
+function confirmMedicationRecognition(id) {
+  const medications = currentMedications().map((item) => item.id === id ? { ...item, needsConfirmation: false } : item);
+  saveCurrentMedications(medications);
+  medicationLookupStatus.textContent = "Распознавание препарата подтверждено.";
+  renderHealthBlocks();
 }
 
 function medicationSubstanceHtml(item) {
@@ -2441,6 +2544,7 @@ function medicationSourceLabel(item) {
   if (!item.sourceName) return "";
   const labels = {
     "local medication dictionary": "Справочник",
+    "doctor conclusion": "Заключение врача",
     "poisklekarstv.com": "ПоискЛекарств",
     manual: "Вручную"
   };

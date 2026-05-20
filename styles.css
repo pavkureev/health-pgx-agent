@@ -468,6 +468,25 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.recognition-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.inline-confirm-button {
+  display: inline-flex;
+  min-height: 28px;
+  margin-top: 6px;
+  padding: 0 10px;
+  background: var(--surface-alt);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .substance-edit {
   margin-top: 6px;
 }

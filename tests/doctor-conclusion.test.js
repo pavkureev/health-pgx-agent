@@ -88,6 +88,22 @@ assert.ok(parsed.diagnoses.some((item) => item.key === "dyslipidemia"), "dyslipi
 assert.ok(parsed.medications.some((item) => item.name === "Розувастатин"), "rosuvastatin should be detected");
 assert.ok(parsed.medications.some((item) => item.name === "Клопидогрел"), "clopidogrel should be detected");
 assert.ok(parsed.medications.some((item) => item.name === "Омепразол"), "omeprazole should be detected");
+assert.ok(parsed.medications.every((item) => item.sourceLine.length < 120), "medication source line should stay compact");
+
+const noisyConclusion = `
+Анамнез: ранее принимал омепразол и ибупрофен, сейчас отменены.
+Диагноз: дислипидемия.
+Рекомендовано:
+1. Розувастатин 10 мг вечером после еды.
+2. Клопидогрел 75 мг утром.
+Контроль анализов через 8 недель.
+`;
+const noisyParsed = context.parseDoctorConclusion(noisyConclusion);
+assert.strictEqual(
+  noisyParsed.medications.map((item) => item.name).sort().join(","),
+  ["Клопидогрел", "Розувастатин"].sort().join(","),
+  "only active recommendation lines should become medications"
+);
 
 context.document.querySelector("#patientData").value = `
 CYP2C19 *2/*2
@@ -100,5 +116,15 @@ const signals = context.doctorConclusionSignals(parsed);
 assert.ok(signals.some((item) => item.title === "Диагноз и ЛПНП"), "LDL diagnosis signal should exist");
 assert.ok(signals.some((item) => item.title === "Клопидогрел + CYP2C19"), "doctor medication PGx signal should exist");
 assert.ok(signals.some((item) => item.title === "Липидный диагноз и PGx статинов"), "diagnosis PGx context should exist");
+
+context.document.querySelector("#doctorText").value = conclusion;
+context.document.querySelector("#parseDoctorText").onclick();
+const syncedMedications = context.currentMedications();
+assert.ok(syncedMedications.some((item) => item.name === "Розувастатин"), "doctor medications should sync to medication profile");
+assert.ok(syncedMedications.every((item) => item.needsConfirmation), "synced doctor medications should require confirmation");
+
+context.document.querySelector("#parseDoctorText").onclick();
+const dedupedMedications = context.currentMedications();
+assert.strictEqual(dedupedMedications.length, syncedMedications.length, "re-parsing should not duplicate synced medications");
 
 console.log("doctor conclusion tests passed");
