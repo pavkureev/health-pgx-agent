@@ -906,6 +906,56 @@ button {
   gap: 10px;
 }
 
+.priority-group {
+  display: grid;
+  gap: 8px;
+}
+
+.priority-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.priority-high .priority-heading {
+  border-left-color: var(--danger);
+}
+
+.priority-moderate .priority-heading {
+  border-left-color: #c17922;
+}
+
+.priority-low .priority-heading {
+  border-left-color: #6f9d8f;
+}
+
+.priority-heading strong,
+.priority-heading span {
+  display: block;
+}
+
+.priority-heading strong {
+  font-weight: 650;
+}
+
+.priority-heading span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.priority-items {
+  display: grid;
+  gap: 8px;
+}
+
 .result-card {
   border: 1px solid var(--line);
   border-left: 3px solid var(--accent);
@@ -979,6 +1029,11 @@ button {
   margin-top: 10px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.source-metadata {
+  color: var(--ink);
+  font-size: 12px;
 }
 
 .capabilities {

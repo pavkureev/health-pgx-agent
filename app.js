@@ -1482,7 +1482,11 @@ function renderLabInsights() {
   const signals = labClinicalSignals();
   if (!signals.length) return "";
 
-  return signals.map((signal) => `
+  return renderPriorityGroups(signals, renderLabInsightCard);
+}
+
+function renderLabInsightCard(signal) {
+  return `
     <article class="result-card ${signal.severity}">
       <div class="result-title">
         <strong>${escapeHtml(signal.title)}</strong>
@@ -1491,7 +1495,7 @@ function renderLabInsights() {
       <p class="recommendation">${escapeHtml(signal.body)}</p>
       <p class="source">Основано на последнем значении: ${escapeHtml(signal.value)} от ${escapeHtml(formatDate(signal.date))}</p>
     </article>
-  `).join("");
+  `;
 }
 
 function labClinicalSignals() {
@@ -1980,7 +1984,7 @@ function renderMedicationProfile(signals) {
     ? `<strong>Действующее вещество:</strong> определено для ${identified} из ${medications.length} ${plural(medications.length, "препарата", "препаратов", "препаратов")}. Если поле не определилось, откройте проверку на ПоискЛекарств или введите международное название вместо торгового.`
     : "";
   if (!medications.length) medicationLookupStatus.textContent = "";
-  medicationChecks.innerHTML = signals.length ? signals.map(renderMedicationSignal).join("") : "";
+  medicationChecks.innerHTML = signals.length ? renderPriorityGroups(signals, renderMedicationSignal) : "";
 }
 
 function renderSubstanceEditControl(item) {
@@ -2158,9 +2162,10 @@ function renderMedicationSignal(signal) {
     <article class="result-card ${escapeHtml(signal.severity)}">
       <div class="result-title">
         <strong>${escapeHtml(signal.title)}</strong>
-        <span class="badge">${escapeHtml(signal.medication)}</span>
+        <span class="badge">${escapeHtml(signal.evidenceLevel || signal.medication)}</span>
       </div>
       <p class="recommendation">${escapeHtml(signal.body)}</p>
+      ${signal.evidenceLevel ? `<p class="source source-metadata">${escapeHtml([`Препарат: ${signal.medication}`, evidenceSummary(signal)].join(" · "))}</p>` : ""}
       <p class="source">${escapeHtml(signal.source)}</p>
     </article>
   `;
@@ -2294,7 +2299,11 @@ function medicationPgxRuleSignals(medication, profile, evidence) {
         medication: medication.name,
         title: rule.drug + " + " + rule.gene,
         body: recommendation + " Найдено: " + (evidence[rule.gene] || phenotype) + ".",
-        source: rule.source
+        source: rule.source,
+        evidenceLevel: rule.evidenceLevel,
+        guidelineSource: rule.guidelineSource,
+        regulatorySource: rule.regulatorySource,
+        actionability: rule.actionability
       };
     })
     .filter(Boolean);
@@ -2652,8 +2661,49 @@ function render(matches, profile) {
   summaryEl.className = "summary";
   summaryEl.textContent = `Найдено ${matches.length} ${plural(matches.length, "сигнал", "сигнала", "сигналов")}. ${highCount ? `Высокий приоритет: ${highCount}. ` : ""}Проверьте это с врачом до любых изменений терапии.`;
 
-  resultsEl.innerHTML = matches.map(renderCard).join("");
+  resultsEl.innerHTML = renderPriorityGroups(matches, renderCard);
   renderHealthBlocks();
+}
+
+function renderPriorityGroups(items, renderItem) {
+  const groups = [
+    {
+      severity: "high",
+      title: "Важно обсудить с врачом",
+      note: "Сигналы, где возможны значимые ограничения, риски или необходимость альтернативы."
+    },
+    {
+      severity: "moderate",
+      title: "Учесть при наблюдении",
+      note: "Контекст для выбора терапии, мониторинга анализов или проверки дозировок."
+    },
+    {
+      severity: "low",
+      title: "Справочно",
+      note: "Низкоприоритетные подсказки и информационные совпадения."
+    }
+  ];
+
+  return groups
+    .map((group) => {
+      const groupItems = items.filter((item) => (item.severity || "low") === group.severity);
+      if (!groupItems.length) return "";
+      return `
+        <section class="priority-group priority-${group.severity}">
+          <div class="priority-heading">
+            <div>
+              <strong>${group.title}</strong>
+              <span>${group.note}</span>
+            </div>
+            <span class="mini-counter">${groupItems.length}</span>
+          </div>
+          <div class="priority-items">
+            ${groupItems.map(renderItem).join("")}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
 }
 
 function renderCard(match) {
@@ -2661,7 +2711,7 @@ function renderCard(match) {
     <article class="result-card ${match.severity}">
       <div class="result-title">
         <strong>${escapeHtml(match.drug)}</strong>
-        <span class="badge">CPIC ${escapeHtml(match.evidence)}</span>
+        <span class="badge">${escapeHtml(match.evidenceLevel || `CPIC ${match.evidence}`)}</span>
       </div>
       <p class="recommendation">${escapeHtml(match.recommendation)}</p>
       <div class="fact-grid">
@@ -2681,6 +2731,14 @@ function renderCard(match) {
           <span>Приоритет</span>
           <strong>${priorityLabel(match.severity)}</strong>
         </div>
+        <div class="fact">
+          <span>Источник</span>
+          <strong>${escapeHtml(sourceLabel(match))}</strong>
+        </div>
+        <div class="fact">
+          <span>Применимость</span>
+          <strong>${escapeHtml(actionabilityLabel(match.actionability))}</strong>
+        </div>
       </div>
       <p class="source">Источник правила: ${escapeHtml(match.source)}</p>
     </article>
@@ -2693,6 +2751,26 @@ function priorityLabel(value) {
     moderate: "средний",
     low: "низкий"
   }[value] || "не указан";
+}
+
+function sourceLabel(item) {
+  return [item.guidelineSource, item.regulatorySource].filter(Boolean).join(" + ") || "не указан";
+}
+
+function evidenceSummary(item) {
+  return [
+    item.evidenceLevel,
+    sourceLabel(item),
+    actionabilityLabel(item.actionability)
+  ].filter(Boolean).join(" · ");
+}
+
+function actionabilityLabel(value) {
+  return {
+    actionable: "возможное действие",
+    clinical_context: "контекст терапии",
+    reference: "справочно"
+  }[value] || "не указано";
 }
 
 function plural(count, one, few, many) {

@@ -406,6 +406,39 @@ window.PGX_RULES = [
     }
   ];
 
+function enrichPgxRuleMetadata(rule) {
+  return {
+    evidenceLevel: rule.evidence ? `CPIC ${rule.evidence}` : "Не указано",
+    guidelineSource: inferGuidelineSource(rule.source),
+    regulatorySource: inferRegulatorySource(rule.source),
+    actionability: inferActionability(rule),
+    ...rule
+  };
+}
+
+function inferGuidelineSource(source) {
+  source = String(source || "");
+  const sources = [];
+  if (source.includes("CPIC")) sources.push("CPIC");
+  if (source.includes("DPWG")) sources.push("DPWG");
+  return sources.join(" + ") || "Справочная база";
+}
+
+function inferRegulatorySource(source) {
+  source = String(source || "");
+  const sources = [];
+  if (source.includes("FDA")) sources.push("FDA");
+  return sources.join(" + ");
+}
+
+function inferActionability(rule) {
+  if (rule.evidence === "A" && rule.severity === "high") return "actionable";
+  if (rule.evidence === "A") return "clinical_context";
+  return "reference";
+}
+
+window.PGX_RULES = window.PGX_RULES.map(enrichPgxRuleMetadata);
+
 window.PGX_PHENOTYPE_MAPS = {
     CYP2C19: {
       "*1/*1": "normal metabolizer",

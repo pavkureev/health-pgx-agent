@@ -75,6 +75,14 @@ vm.runInContext(fs.readFileSync("js/pgx-extensions.js", "utf8"), context);
 
 const { rules, phenotypeMaps, snpHints } = context.window.PGX_DATA;
 const ruleIds = new Set(rules.map((rule) => rule.id));
+const clopidogrelRule = rules.find((rule) => rule.id === "clopidogrel-cyp2c19");
+const fluoropyrimidineRule = rules.find((rule) => rule.id === "fluoropyrimidines-dpyd");
+
+assert.strictEqual(clopidogrelRule.evidenceLevel, "CPIC A");
+assert.strictEqual(clopidogrelRule.guidelineSource, "CPIC");
+assert.strictEqual(clopidogrelRule.regulatorySource, "FDA");
+assert.strictEqual(clopidogrelRule.actionability, "actionable");
+assert.strictEqual(fluoropyrimidineRule.guidelineSource, "CPIC + DPWG");
 
 [
   "fluoropyrimidines-dpyd",
