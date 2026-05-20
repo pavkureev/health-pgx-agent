@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PGx Agent MVP</title>
-    <link rel="stylesheet" href="./styles.css?v=20260520-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260520-2" />
   </head>
   <body>
     <main class="app-shell">
@@ -82,7 +82,7 @@
             <span class="section-kicker">1</span>
             <span class="section-copy">
               <strong>Рекомендации по генетике</strong>
-              <span>Главные gene-drug сигналы впереди; загрузка и исходные данные раскрываются отдельно.</span>
+              <span id="geneticsSectionMeta" class="section-meta">Нет генетических данных · загрузка открыта ниже</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
           </summary>
@@ -153,7 +153,7 @@ HLA-B*57:01 negative"></textarea>
             <span class="section-kicker">2</span>
             <span class="section-copy">
               <strong>Результаты анализов</strong>
-              <span>Графики, тренды и клинические сигналы занимают главный экран; загрузка раскрывается по кнопке.</span>
+              <span id="labsSectionMeta" class="section-meta">Нет анализов · загрузка открыта ниже</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
           </summary>
@@ -270,7 +270,7 @@ eGFR 82 мл/мин/1.73м2
             <span class="section-kicker">3</span>
             <span class="section-copy">
               <strong>Прописанные лекарства</strong>
-              <span>Сначала предупреждения по текущему профилю, добавление препаратов раскрывается отдельно.</span>
+              <span id="medicationsSectionMeta" class="section-meta">Нет препаратов · добавление открыто ниже</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
           </summary>
@@ -336,13 +336,13 @@ eGFR 82 мл/мин/1.73м2
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260520-1"></script>
-    <script src="./data/pgx-rules.js?v=20260520-1"></script>
-    <script src="./data/lab-analytes.js?v=20260520-1"></script>
-    <script src="./data/medication-knowledge.js?v=20260520-1"></script>
-    <script src="./data/evidence-flags.js?v=20260520-1"></script>
-    <script src="./data.js?v=20260520-1"></script>
-    <script src="./app.js?v=20260520-1"></script>
-    <script src="./js/pgx-extensions.js?v=20260520-1"></script>
+    <script src="./supabase-config.js?v=20260520-2"></script>
+    <script src="./data/pgx-rules.js?v=20260520-2"></script>
+    <script src="./data/lab-analytes.js?v=20260520-2"></script>
+    <script src="./data/medication-knowledge.js?v=20260520-2"></script>
+    <script src="./data/evidence-flags.js?v=20260520-2"></script>
+    <script src="./data.js?v=20260520-2"></script>
+    <script src="./app.js?v=20260520-2"></script>
+    <script src="./js/pgx-extensions.js?v=20260520-2"></script>
   </body>
 </html>

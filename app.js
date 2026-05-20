@@ -64,6 +64,9 @@ const displayName = document.querySelector("#displayName");
 const geneticsSection = document.querySelector(".genetics-section");
 const labsSection = document.querySelector(".labs-section");
 const medicationsSection = document.querySelector(".medications-section");
+const geneticsSectionMeta = document.querySelector("#geneticsSectionMeta");
+const labsSectionMeta = document.querySelector("#labsSectionMeta");
+const medicationsSectionMeta = document.querySelector("#medicationsSectionMeta");
 const geneticFilterPanel = document.querySelector("#geneticFilterPanel");
 const geneticInputDrawer = document.querySelector("#geneticInputDrawer");
 const labInputDrawer = document.querySelector("#labInputDrawer");
@@ -1365,6 +1368,7 @@ function renderLabHistory() {
   labCounter.textContent = `${labRecords.length} ${plural(labRecords.length, "запись", "записи", "записей")}`;
 
   if (!labRecords.length) {
+    updateLabsSectionMeta();
     labSummary.className = "summary empty";
     labSummary.textContent = "Загрузите анализы, чтобы увидеть показатели и динамику.";
     labMetric.innerHTML = "";
@@ -1386,6 +1390,7 @@ function renderLabHistory() {
   labMetricCounter.textContent = String(metricOptions.length);
   labMetricList.innerHTML = renderLabMetricList(metricOptions, labMetric.value);
 
+  updateLabsSectionMeta();
   labSummary.className = "summary";
   labSummary.textContent = `В истории ${labRecords.length} ${plural(labRecords.length, "отчет", "отчета", "отчетов")} и ${totalValues} ${plural(totalValues, "показатель", "показателя", "показателей")}. Выберите показатель, чтобы увидеть динамику.`;
   labInsights.innerHTML = renderLabInsights();
@@ -1590,6 +1595,58 @@ function renderSectionDrawers() {
   if (geneticFilterPanel) geneticFilterPanel.hidden = !hasGeneticData;
   if (labInputDrawer) labInputDrawer.open = !hasLabData;
   if (medicationInputDrawer) medicationInputDrawer.open = !hasMedicationData;
+}
+
+function updateGeneticsSectionMeta(matches, genes) {
+  if (!geneticsSectionMeta) return;
+  if (!patientData.value.trim()) {
+    geneticsSectionMeta.textContent = "Нет генетических данных · загрузка открыта ниже";
+    return;
+  }
+
+  const highCount = matches.filter((match) => match.severity === "high").length;
+  const parts = [
+    String(genes.length) + " " + plural(genes.length, "маркер", "маркера", "маркеров"),
+    String(matches.length) + " " + plural(matches.length, "сигнал", "сигнала", "сигналов")
+  ];
+  if (highCount) parts.push("высокий приоритет: " + highCount);
+  geneticsSectionMeta.textContent = parts.join(" · ");
+}
+
+function updateLabsSectionMeta() {
+  if (!labsSectionMeta) return;
+  if (!labRecords.length) {
+    labsSectionMeta.textContent = "Нет анализов · загрузка открыта ниже";
+    return;
+  }
+
+  const metricCount = new Set(labRecords.flatMap((record) => record.values.map((value) => value.key))).size;
+  const activeSignals = labClinicalSignals().filter((signal) => signal.severity !== "low").length;
+  const latestDate = [...labRecords].map((record) => record.date).sort().at(-1);
+  labsSectionMeta.textContent = [
+    String(labRecords.length) + " " + plural(labRecords.length, "отчет", "отчета", "отчетов"),
+    String(metricCount) + " " + plural(metricCount, "показатель", "показателя", "показателей"),
+    latestDate ? "последний: " + formatDate(latestDate) : "",
+    activeSignals ? "сигналы: " + activeSignals : "без активных пороговых сигналов"
+  ].filter(Boolean).join(" · ");
+}
+
+function updateMedicationsSectionMeta(medications, signals) {
+  if (!medicationsSectionMeta) return;
+  if (!medications.length) {
+    medicationsSectionMeta.textContent = "Нет препаратов · добавление открыто ниже";
+    return;
+  }
+
+  const identified = medications.filter((item) => item.substanceLabel).length;
+  const highCount = signals.filter((signal) => signal.severity === "high").length;
+  const parts = [
+    String(medications.length) + " " + plural(medications.length, "препарат", "препарата", "препаратов"),
+    "вещество определено: " + identified + "/" + medications.length,
+    String(signals.length) + " " + plural(signals.length, "предупреждение", "предупреждения", "предупреждений")
+  ];
+  if (highCount) parts.push("высокий приоритет: " + highCount);
+  medicationsSectionMeta.textContent = parts.join(" · ");
 }
 
 function renderSignalList(container, counter, signals) {
@@ -1900,6 +1957,7 @@ function renderMedicationProfile(signals) {
   }
 
   const identified = medications.filter((item) => item.substanceLabel).length;
+  updateMedicationsSectionMeta(medications, signals);
   medicationSummary.hidden = !medications.length;
   medicationSummary.innerHTML = medications.length
     ? `<strong>Действующее вещество:</strong> определено для ${identified} из ${medications.length} ${plural(medications.length, "препарата", "препаратов", "препаратов")}. Если поле не определилось, откройте проверку на ПоискЛекарств или введите международное название вместо торгового.`
@@ -2543,6 +2601,7 @@ function render(matches, profile) {
   const genes = Object.keys(profile);
   geneCounter.textContent = `${genes.length} ${plural(genes.length, "ген", "гена", "генов")}`;
   matchCounter.textContent = `${matches.length} ${plural(matches.length, "совпадение", "совпадения", "совпадений")}`;
+  updateGeneticsSectionMeta(matches, genes);
 
   if (!patientData.value.trim()) {
     summaryEl.className = "summary empty";
