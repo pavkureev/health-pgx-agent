@@ -105,6 +105,42 @@ assert.strictEqual(
   "only active recommendation lines should become medications"
 );
 
+const therapistProtocol = `
+Диагноз:
+Гастроэзофагеальный рефлекс с эзофагитом
+Эрозивный рефлюкс-эзофагит ст А по LA классификации. Эндоскопические признаки
+аксиальной хиатальной грыжи. Эндоскопические признаки поверхностного очагового гастрита.
+Эндоскопические признаки бульбита. Экспресс-тест на HP Положительный (+).
+
+Рекомендовано лечение:
+Рабепразол 20мг - по 1 таб 2 раза в день за 30 мин до еды 30 дней
+Амоксиклав 1000мг - 2 раза в день
+Кларитромицин 500 мг - 2 раза в день
+Де-нол 120 мг - по 2 кап 2 раза в день во время еды 14 дней
+`;
+const protocolParsed = context.parseDoctorConclusion(therapistProtocol);
+const protocolDiagnosisKeys = protocolParsed.diagnoses.map((item) => item.key);
+["gerd", "erosive_esophagitis", "hiatal_hernia", "gastritis_bulbitis", "hp_positive"].forEach((key) => {
+  assert.ok(protocolDiagnosisKeys.includes(key), `${key} diagnosis should be detected`);
+});
+assert.strictEqual(protocolParsed.medications.length, 4, "therapist protocol should produce four active medications");
+assert.strictEqual(
+  protocolParsed.medications.map((item) => item.name).join("|"),
+  ["Рабепразол", "Амоксиклав", "Кларитромицин", "Де-нол"].join("|")
+);
+assert.strictEqual(
+  protocolParsed.medications.map((item) => item.dose).join("|"),
+  [
+    "20мг - по 1 таб 2 раза в день за 30 мин до еды 30 дней",
+    "1000мг - 2 раза в день",
+    "500мг - 2 раза в день",
+    "120мг - по 2 кап 2 раза в день во время еды 14 дней"
+  ].join("|")
+);
+const protocolSignals = context.doctorConclusionSignals(protocolParsed);
+assert.ok(protocolSignals.some((item) => item.title === "HP+ и схема эрадикации"), "HP eradication cross-check should exist");
+assert.ok(protocolSignals.some((item) => item.title === "Рефлюкс-эзофагит и ИПП"), "GERD/PPI cross-check should exist");
+
 context.document.querySelector("#patientData").value = `
 CYP2C19 *2/*2
 SLCO1B1 rs4149056 TC

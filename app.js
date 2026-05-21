@@ -1071,7 +1071,11 @@ function extractDoctorDiagnoses(text) {
     { key: "ckd", label: "Снижение функции почек / ХБП", patterns: ["хбп", "хроническая болезнь почек", "снижение скф", "почечная недостаточность", "n18"] },
     { key: "liver", label: "Печеночный контекст", patterns: ["стеатоз", "жировой гепатоз", "гепатит", "повышение трансаминаз", "алт", "аст"] },
     { key: "depression", label: "Депрессия / тревожное расстройство", patterns: ["депрессия", "тревожное расстройство", "паническое расстройство", "f32", "f33", "f41"] },
-    { key: "gerd", label: "ГЭРБ / гастрит / язвенная болезнь", patterns: ["гэрб", "гастроэзофагеальная", "гастрит", "язвенная болезнь", "k21", "k25", "k29"] },
+    { key: "gerd", label: "Гастроэзофагеальный рефлюкс / ГЭРБ", patterns: ["гэрб", "гастроэзофагеальная", "гастроэзофагеальный", "гастроэзофагеального", "рефлюкс", "рефлекс", "k21"] },
+    { key: "erosive_esophagitis", label: "Эрозивный рефлюкс-эзофагит", patterns: ["эрозивный рефлюкс-эзофагит", "рефлюкс-эзофагит", "эзофагит", "la классификации", "ст а по la"] },
+    { key: "hiatal_hernia", label: "Аксиальная хиатальная грыжа", patterns: ["хиатальная грыжа", "хиатальной грыжи", "аксиальная хиатальная", "аксиальной хиатальной"] },
+    { key: "gastritis_bulbitis", label: "Поверхностный очаговый гастрит / бульбит", patterns: ["поверхностный очаговый гастрит", "очаговый гастрит", "гастрит", "бульбит", "k29"] },
+    { key: "hp_positive", label: "Helicobacter pylori положительный", patterns: ["экспресс-тест на hp положительный", "hp положительный", "helicobacter pylori", "h. pylori", "hp +", "положительный (+)"] },
     { key: "oncology", label: "Онкологический диагноз / химиотерапия", patterns: ["злокачественное", "рак", "карцинома", "химиотерапия", "c18", "c50", "c61"] }
   ];
 
@@ -1088,15 +1092,17 @@ function extractDoctorMedications(text) {
   const lines = doctorMedicationCandidateLines(text);
   const found = [];
   const seen = new Set();
+  const segments = doctorMedicationSegments(lines);
 
-  for (const medication of medicationKnowledge) {
-    const match = findMedicationLineMatch(lines, medication);
-    if (!match || seen.has(medication.substance)) continue;
+  for (const segment of segments) {
+    const match = findMedicationForSegment(segment);
+    if (!match || seen.has(match.medication.substance)) continue;
+    const { medication, alias } = match;
     seen.add(medication.substance);
-    const sourceLine = cleanDoctorMedicationLine(match.line);
+    const sourceLine = cleanDoctorMedicationLine(segment);
     found.push({
       id: `doctor-med-${medication.substance}`,
-      name: medication.label,
+      name: medicationNameFromSegment(sourceLine, match.alias, medication.label),
       substance: medication.substance,
       substanceLabel: medication.label,
       group: medication.group,
@@ -1133,7 +1139,7 @@ function doctorMedicationCandidateLines(text) {
       candidates.push(line);
       continue;
     }
-    if (medicationKnowledge.some((medication) => medication.aliases.some((alias) => normalizeText(alias).length >= 5 && normalized.includes(normalizeText(alias))))) {
+    if (medicationKnowledge.some((medication) => findAliasMatch(normalized, medication.aliases.filter((alias) => normalizeText(alias).length >= 5)))) {
       candidates.push(line);
     }
   }
@@ -1141,16 +1147,64 @@ function doctorMedicationCandidateLines(text) {
   return [...new Set(candidates)];
 }
 
-function findMedicationLineMatch(lines, medication) {
+function doctorMedicationSegments(lines) {
+  const medicationAliases = medicationKnowledge
+    .flatMap((medication) => medication.aliases)
+    .filter((alias) => normalizeText(alias).length >= 4)
+    .sort((a, b) => normalizeText(b).length - normalizeText(a).length);
+  const segments = [];
+
   for (const line of lines) {
-    const normalizedLine = normalizeText(line);
-    const alias = medication.aliases
-      .filter((item) => normalizeText(item).length >= 4)
-      .sort((a, b) => normalizeText(b).length - normalizeText(a).length)
-      .find((item) => normalizedLine.includes(normalizeText(item)));
-    if (alias) return { line, alias };
+    const cleaned = cleanDoctorMedicationLine(line);
+    const normalizedLine = normalizeText(cleaned);
+    const hits = medicationAliases
+      .map((alias) => ({ alias, index: findAliasIndex(normalizedLine, normalizeText(alias)) }))
+      .filter((hit) => hit.index >= 0)
+      .sort((a, b) => a.index - b.index);
+
+    if (hits.length <= 1) {
+      segments.push(cleaned);
+      continue;
+    }
+
+    for (let index = 0; index < hits.length; index += 1) {
+      const start = hits[index].index;
+      const end = hits[index + 1]?.index ?? normalizedLine.length;
+      const segment = cleaned.slice(start, end).replace(/[;,]\s*$/g, "").trim();
+      if (segment) segments.push(segment);
+    }
   }
-  return null;
+
+  return [...new Set(segments)];
+}
+
+function findMedicationForSegment(segment) {
+  const normalizedLine = normalizeText(segment);
+  const matches = medicationKnowledge.map((medication) => {
+    const alias = findAliasMatch(normalizedLine, medication.aliases
+      .filter((item) => normalizeText(item).length >= 4)
+      .sort((a, b) => normalizeText(b).length - normalizeText(a).length));
+    return alias ? { medication, alias, length: normalizeText(alias).length } : null;
+  }).filter(Boolean);
+
+  return matches.sort((a, b) => b.length - a.length)[0] || null;
+}
+
+function findAliasMatch(normalizedLine, aliases) {
+  return aliases.find((alias) => findAliasIndex(normalizedLine, normalizeText(alias)) >= 0) || "";
+}
+
+function findAliasIndex(normalizedLine, normalizedAlias) {
+  const index = normalizedLine.indexOf(normalizedAlias);
+  if (index < 0) return -1;
+  const before = normalizedLine[index - 1] || "";
+  const after = normalizedLine[index + normalizedAlias.length] || "";
+  const boundary = /[a-zа-я0-9]/i;
+  if (boundary.test(before) || boundary.test(after)) {
+    const nextIndex = normalizedLine.indexOf(normalizedAlias, index + 1);
+    return nextIndex >= 0 ? findAliasIndex(normalizedLine.slice(nextIndex), normalizedAlias) + nextIndex : -1;
+  }
+  return index;
 }
 
 function cleanDoctorMedicationLine(line) {
@@ -1161,13 +1215,26 @@ function cleanDoctorMedicationLine(line) {
     .trim();
 }
 
+function medicationNameFromSegment(segment, alias, fallback) {
+  const match = segment.match(new RegExp(escapeRegExp(alias), "i"));
+  return match?.[0]?.trim() || fallback;
+}
+
 function extractMedicationDose(line, alias) {
   const cleaned = cleanDoctorMedicationLine(line);
   const afterAlias = cleaned.replace(new RegExp(`^.*?${escapeRegExp(alias)}`, "i"), "").trim();
   const doseSource = afterAlias || cleaned;
-  const doseMatch = doseSource.match(/(\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап)(?:\s+[^.;,\n]{0,80})?)/i);
-  if (doseMatch) return doseMatch[1].trim();
+  const doseMatch = doseSource.match(/(\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап)(?:\s*[-–—:]?\s*[^.;,\n]{0,90})?)/i);
+  if (doseMatch) return normalizeDoctorRegimen(doseMatch[1]);
   return "";
+}
+
+function normalizeDoctorRegimen(value) {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/\s*[-–—:]\s*/g, " - ")
+    .replace(/(\d)\s+(мг|мкг|г|ед|ме|мл)/gi, "$1$2")
+    .trim();
 }
 
 function findSourceLine(text, patterns) {
@@ -2166,6 +2233,7 @@ function doctorConclusionSignals(parsed = currentDoctorConclusion().parsed || {}
   const signals = [];
 
   signals.push(...doctorMedicationSignals(medications));
+  signals.push(...doctorDiagnosisMedicationSignals(diagnoses, medications));
   signals.push(...doctorDiagnosisLabSignals(diagnoses));
   signals.push(...doctorDiagnosisGeneticSignals(diagnoses));
 
@@ -2189,6 +2257,40 @@ function doctorMedicationSignals(medications) {
     context: signal.medication || "назначение",
     source: `Заключение врача · ${signal.source}`
   }));
+}
+
+function doctorDiagnosisMedicationSignals(diagnoses, medications) {
+  const hasDiagnosis = (key) => diagnoses.some((item) => item.key === key);
+  const hasMedication = (...groups) => medications.some((item) => groups.includes(item.group));
+  const signals = [];
+
+  if (hasDiagnosis("hp_positive")) {
+    const hasEradicationCore = hasMedication("ppi")
+      && hasMedication("penicillin_combo")
+      && hasMedication("macrolide")
+      && hasMedication("bismuth");
+    signals.push({
+      severity: hasEradicationCore ? "low" : "moderate",
+      title: "HP+ и схема эрадикации",
+      context: "диагноз + назначения",
+      body: hasEradicationCore
+        ? "В заключении есть HP+, а среди назначений распознаны ИПП, амоксициллин/клавуланат, кларитромицин и висмут. Проверьте дозы, длительность и переносимость с врачом."
+        : "В заключении есть HP+, но распознанная схема выглядит неполной для локальной проверки. Проверьте, все ли препараты и режимы распознаны корректно.",
+      source: "Локальная сверка диагноза и назначений"
+    });
+  }
+
+  if ((hasDiagnosis("gerd") || hasDiagnosis("erosive_esophagitis")) && hasMedication("ppi")) {
+    signals.push({
+      severity: "low",
+      title: "Рефлюкс-эзофагит и ИПП",
+      context: "диагноз + назначения",
+      body: "При рефлюкс-эзофагите среди назначений распознан ингибитор протонной помпы. Проверьте режим приема до еды и длительность курса.",
+      source: "Локальная сверка диагноза и назначений"
+    });
+  }
+
+  return signals;
 }
 
 function doctorDiagnosisLabSignals(diagnoses) {
