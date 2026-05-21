@@ -229,7 +229,7 @@ context.saveCurrentMedications([
     substance: "omeprazole",
     substanceLabel: "Омепразол",
     sourceName: "doctor conclusion",
-    needsConfirmation: true
+    needsConfirmation: false
   },
   {
     id: "old-doctor-ganaton",
@@ -237,7 +237,7 @@ context.saveCurrentMedications([
     substance: "itopride",
     substanceLabel: "Итоприд",
     sourceName: "doctor conclusion",
-    needsConfirmation: true
+    needsConfirmation: false
   }
 ]);
 context.document.querySelector("#doctorText").value = gastroenterologistProtocol;
@@ -245,11 +245,11 @@ context.document.querySelector("#parseDoctorText").onclick();
 const reconciledDoctorMedications = context.currentMedications();
 assert.ok(
   !reconciledDoctorMedications.some((item) => item.name === "Омез"),
-  "stale unconfirmed anamnesis medication should be removed after re-parsing"
+  "stale doctor medication from anamnesis should be removed after re-parsing"
 );
 assert.ok(
   reconciledDoctorMedications.find((item) => item.name === "Ганатон").dose.includes("50мг 1 таб х 3 р/д"),
-  "stale unconfirmed doctor medication should be updated with the latest regimen"
+  "stale doctor medication should be updated with the latest regimen"
 );
 context.saveCurrentMedications([]);
 

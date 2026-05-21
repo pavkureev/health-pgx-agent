@@ -3,7 +3,7 @@ const LAB_STORAGE_KEY = "pgx-agent-lab-records";
 const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
 const PARSER_VERSION = "2026-04-30.1";
-const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.10";
+const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.11";
 const KNOWN_BIRTH_DATES = new Set(["1981-06-06"]);
 const supabaseClient = window.supabase && window.PGX_SUPABASE
   ? window.supabase.createClient(window.PGX_SUPABASE.url, window.PGX_SUPABASE.anonKey)
@@ -1533,7 +1533,7 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
   let updated = 0;
   const syncedExisting = existing.map((item) => {
     const replacement = additionsByKey.get(medicationUniqueKey(item));
-    if (!replacement || !isUnconfirmedDoctorMedication(item)) return item;
+    if (!replacement || !isDoctorConclusionMedication(item)) return item;
     updated += 1;
     return enrichMedication({
       ...item,
@@ -1571,7 +1571,7 @@ function reconcileDraftDoctorMedications(parsed) {
   const reconciled = [];
 
   for (const item of current) {
-    if (!isUnconfirmedDoctorMedication(item)) {
+    if (!isDoctorConclusionMedication(item)) {
       reconciled.push(item);
       continue;
     }
@@ -1601,8 +1601,8 @@ function reconcileDraftDoctorMedications(parsed) {
   if (changed) saveCurrentMedications(reconciled);
 }
 
-function isUnconfirmedDoctorMedication(item) {
-  return item?.sourceName === "doctor conclusion" && item.needsConfirmation;
+function isDoctorConclusionMedication(item) {
+  return item?.sourceName === "doctor conclusion";
 }
 
 function parseLabReport(text, sourceName, fallbackTimestamp) {
