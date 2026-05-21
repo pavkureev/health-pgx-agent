@@ -222,6 +222,48 @@ assert.ok(
   "multiline Nexium regimen should stay attached to Nexium"
 );
 
+const extractedGastroPdfText = `
+История настоящего заболевания: По поводу лечения связки принимал Ксефокам 11 дней, позже на
+фоне болезненности в эпигастрии травматологом рекомендовано начать прием Омеза, на момент осмотра
+принимает 6 дней. На фоне приема Омеза болезненность в эпигастрии не уменьшается.
+Лекарства на постоянной основе: Омез, Артро, Коллаген.
+Со слов, рекомендованные препараты (Нексиум, Ганатон) принимать не начинал.
+Заключение по диагнозу:
+Основное заболевание:  (предварительный)  Гастродуоденит с наличием множественных эрозий и
+язвенного дефекта (23.12.23: 0.5х0.2 см) препилорического отдела желудка, ассоциированный с Нр? с
+НПВС? обострение. (K29.7)
+Общие рекомендации: Ганатон 50 мг 1 таб х 3 р/д за 30 мин до завтрака, обеда. ужина 1 месяц (начать
+прием).
+Повторная явка с результатами гистологии.
+Медикаментозная терапия:  АЛЬФАЗОКС, Р-Р ДЛЯ ПРИЕМА ВНУТРЬ 10 МЛ, ПАКЕТИК-САШЕ N
+20, по 1 пак. 3  раз/дн., длительность 30 дн., внутрь (per os), 1 пакетик х 3 р/д через 15-20 мин после
+завтрака, обеда, ужина в течение 1 месяца. Не пить и не есть 30-40 мин после приема препарата.
+Фамотидин (ФАМОТИДИН-АКОС ТАБ., ПОКР. ПЛЕНОЧНОЙ ОБОЛ., 40 МГ), по 1 таб. 1  раз/дн.,
+длительность 30 дн., внутрь (per os), 40 мг 1 таб х 1 р/д на ночь перед сном 1 месяц
+Эзомепразол (НЕКСИУМ® ТАБ., ПОКР. ОБОЛОЧКОЙ, 40 МГ), по 1 таб. 2  раз/дн., длительность 14 дн.,
+внутрь (per os), 40 мг 1 таб х 2 р/д за 30 мин до завтрака и ужина 14 дней, далее 40 мг 1 таб х 1 р/д за 30
+мин до завтрака 14 дней, далее коррекция терапии у гастроэнтеролога по результатам ЭГДС.
+Назначена повторная явка на 29.12.2023.
+`;
+const extractedGastroParsed = context.parseDoctorConclusion(extractedGastroPdfText);
+assert.strictEqual(
+  extractedGastroParsed.medications.map((item) => item.name).join("|"),
+  ["Ганатон", "АЛЬФАЗОКС", "Фамотидин", "Эзомепразол"].join("|"),
+  "real extracted gastro PDF text should use only active recommendation blocks"
+);
+assert.ok(
+  !extractedGastroParsed.medications.some((item) => item.name === "Омез"),
+  "Omez in disease history and permanent medications should not become an active prescription"
+);
+assert.ok(
+  extractedGastroParsed.medications.find((item) => item.name === "Ганатон").dose.includes("50мг 1 таб х 3 р/д"),
+  "real extracted Ganaton regimen should stay attached"
+);
+assert.ok(
+  extractedGastroParsed.medications.find((item) => item.name === "Эзомепразол").dose.includes("40мг 1 таб х 2 р/д"),
+  "real extracted esomeprazole regimen should stay attached"
+);
+
 context.saveCurrentMedications([
   {
     id: "old-doctor-omeprazole",

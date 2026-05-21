@@ -3,7 +3,7 @@ const LAB_STORAGE_KEY = "pgx-agent-lab-records";
 const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
 const PARSER_VERSION = "2026-04-30.1";
-const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.11";
+const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.12";
 const KNOWN_BIRTH_DATES = new Set(["1981-06-06"]);
 const supabaseClient = window.supabase && window.PGX_SUPABASE
   ? window.supabase.createClient(window.PGX_SUPABASE.url, window.PGX_SUPABASE.anonKey)
@@ -1257,21 +1257,21 @@ function doctorMedicationCandidateLines(text) {
     .map((line) => line.trim())
     .filter(Boolean);
   const candidates = [];
-  const hasPrescriptionBlock = lines.some((line) => /(назнач|рекоменд|лечение|терапия|препарат|медикамент|схема)/i.test(line));
+  const hasPrescriptionBlock = lines.some((line) => isPrescriptionBlockHeader(line));
   let inPrescriptionBlock = false;
 
   for (const line of lines) {
     const normalized = normalizeText(line);
-    if (/(назнач|рекоменд|лечение|терапия|препарат|медикамент|схема)/i.test(line)) {
+    if (isPrescriptionBlockHeader(line)) {
       inPrescriptionBlock = true;
-      const rest = line.replace(/^.*?(?:назнач|рекоменд|лечение|терапия|препарат|медикамент|схема)\S*\s*[:\-]?\s*/i, "").trim();
+      const rest = line.replace(/^\s*(?:(?:общие\s+)?рекомендации|рекомендовано|назначено|назначения|медикаментозная\s+терапия|лечение|терапия|схема\s+лечения)\s*[:\-]?\s*/i, "").trim();
       if (rest) candidates.push(...splitDoctorMedicationParagraph(rest));
       continue;
     }
-    if (inPrescriptionBlock && /(диагноз|жалоб|анамнез|объективн|осмотр|обследован|контроль|повторн|заключение|анализ|узи|экг|консультац)/i.test(line)) {
+    if (inPrescriptionBlock && /(диагноз|жалоб|анамнез|объективн|осмотр|обследован|контроль|повторн|повторная\s+явка|заключение|анализ|узи|экг|консультац|врач\b|подпис|выдача\s+элн)/i.test(line)) {
       inPrescriptionBlock = false;
     }
-    if (/(аллерг|не переносит|ранее принимал|отменен|отменить|анамнез)/i.test(line)) {
+    if (/(аллерг|не переносит|ранее принимал|принимал|принимает|принимать\s+не\s+начинал|не\s+начинал|отменен|отменить|анамнез|постоянной\s+основе|со слов)/i.test(line)) {
       continue;
     }
     if (hasPrescriptionBlock && !inPrescriptionBlock) {
@@ -1292,6 +1292,10 @@ function doctorMedicationCandidateLines(text) {
   }
 
   return [...new Set(candidates)];
+}
+
+function isPrescriptionBlockHeader(line) {
+  return /^\s*(?:(?:общие\s+)?рекомендации|рекомендовано|назначено|назначения|медикаментозная\s+терапия|лечение|терапия|схема\s+лечения)\s*[:\-]/i.test(line);
 }
 
 function mergeDoctorMedicationContinuations(lines) {
