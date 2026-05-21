@@ -164,6 +164,7 @@ document.querySelector("#parseDoctorText").addEventListener("click", parseDoctor
 document.querySelector("#addDoctorMedications").addEventListener("click", addDoctorMedicationsToProfile);
 document.querySelector("#editDoctorConclusion").addEventListener("click", showDoctorCorrectionForm);
 document.querySelector("#applyDoctorCorrections").addEventListener("click", applyDoctorCorrections);
+document.querySelector("#deleteDoctorConclusion").addEventListener("click", deleteDoctorConclusion);
 document.querySelector("#clearDoctorConclusion").addEventListener("click", clearDoctorConclusion);
 document.querySelector("#clear").addEventListener("click", () => {
   patientData.value = "";
@@ -1026,8 +1027,22 @@ function clearDoctorConclusion() {
   doctorText.value = "";
   saveDoctorConclusion("", { diagnoses: [], medications: [] }, { reviewStatus: "" });
   doctorStatus.className = "file-status";
-  doctorStatus.textContent = "Заключение очищено.";
+  doctorStatus.textContent = "Форма заключения очищена.";
   renderDoctorConclusion();
+}
+
+function deleteDoctorConclusion() {
+  doctorFile.value = "";
+  doctorText.value = "";
+  const profile = getActiveProfile();
+  const metadata = { ...(profile.metadata || {}) };
+  delete metadata.doctorConclusion;
+  profile.metadata = metadata;
+  saveCurrentProfileData();
+  doctorStatus.className = "file-status";
+  doctorStatus.textContent = "Заключение врача удалено. Подтвержденные лекарства в лекарственном профиле сохранены.";
+  renderDoctorConclusion();
+  renderHealthBlocks();
 }
 
 function currentDoctorConclusion() {

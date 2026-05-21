@@ -176,4 +176,8 @@ const corrected = context.currentDoctorConclusion().parsed;
 assert.ok(corrected.diagnoses.some((item) => item.key === "gerd"), "manual diagnosis corrections should be parsed");
 assert.strictEqual(corrected.medications.map((item) => item.name).join("|"), "Рабепразол|Де-нол");
 
+context.document.querySelector("#deleteDoctorConclusion").onclick();
+assert.strictEqual(context.currentDoctorConclusion().text, "", "doctor conclusion should be deleted");
+assert.strictEqual(context.currentDoctorConclusion().parsed.medications.length, 0, "deleted conclusion should have no draft medications");
+
 console.log("doctor conclusion tests passed");
