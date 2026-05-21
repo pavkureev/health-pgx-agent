@@ -78,6 +78,24 @@ window.PGX_MEDICATION_KNOWLEDGE = [
       group: "gastroprotective"
     },
     {
+      substance: "itopride",
+      label: "Итоприд",
+      aliases: ["итоприд", "itopride", "ганатон", "ganaton"],
+      group: "prokinetic"
+    },
+    {
+      substance: "famotidine",
+      label: "Фамотидин",
+      aliases: ["фамотидин", "famotidine", "квамател", "ульфамид"],
+      group: "h2_blocker"
+    },
+    {
+      substance: "hyaluronic-acid-chondroitin",
+      label: "Гиалуроновая кислота + Хондроитин сульфат",
+      aliases: ["альфазокс", "alfazox", "гиалуроновая кислота хондроитин", "гиалуроновая кислота + хондроитин"],
+      group: "mucosal_protective"
+    },
+    {
       substance: "ibuprofen",
       label: "Ибупрофен",
       aliases: ["ибупрофен", "ibuprofen", "нурофен", "эврофаст", "миг", "ибуклин"],

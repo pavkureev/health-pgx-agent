@@ -1085,6 +1085,7 @@ function extractDoctorDiagnoses(text) {
     { key: "erosive_esophagitis", label: "Эрозивный рефлюкс-эзофагит", patterns: ["эрозивный рефлюкс-эзофагит", "рефлюкс-эзофагит", "эзофагит", "la классификации", "ст а по la"] },
     { key: "hiatal_hernia", label: "Аксиальная хиатальная грыжа", patterns: ["хиатальная грыжа", "хиатальной грыжи", "аксиальная хиатальная", "аксиальной хиатальной"] },
     { key: "gastritis_bulbitis", label: "Поверхностный очаговый гастрит / бульбит", patterns: ["поверхностный очаговый гастрит", "очаговый гастрит", "гастрит", "бульбит", "k29"] },
+    { key: "gastroduodenitis_erosive_ulcer", label: "Гастродуоденит с эрозиями и язвенным дефектом", patterns: ["гастродуоденит", "множественных эрозий", "язвенного дефекта", "препилорического отдела желудка"] },
     { key: "hp_positive", label: "Helicobacter pylori положительный", patterns: ["экспресс-тест на hp положительный", "hp положительный", "helicobacter pylori", "h. pylori", "hp +", "положительный (+)"] },
     { key: "oncology", label: "Онкологический диагноз / химиотерапия", patterns: ["злокачественное", "рак", "карцинома", "химиотерапия", "c18", "c50", "c61"] }
   ];
@@ -1132,6 +1133,11 @@ function diagnosisAttention(key) {
       label: "Требует наблюдения",
       note: "Важно сопоставить с HP-статусом, симптомами и назначенной терапией."
     },
+    gastroduodenitis_erosive_ulcer: {
+      level: "high",
+      label: "Требует лечения",
+      note: "Эрозии и язвенный дефект требуют согласованной терапии и контроля заживления."
+    },
     hypertension: {
       level: "moderate",
       label: "Требует наблюдения",
@@ -1169,14 +1175,34 @@ function doctorDiagnosisCandidateText(text) {
   const lines = cleanupExtractedText(text || "")
     .split("\n")
     .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !/(специализац|врач|пациент|прием|консультац|анамнез|жалоб|осмотр|рекоменд|назнач|лечение|терапия|препарат)/i.test(line));
+    .filter(Boolean);
+  const collected = [];
+  let inDiagnosisBlock = false;
 
-  return lines.join("\n");
+  for (const line of lines) {
+    if (/(диагноз|заключение|клинический диагноз|основной диагноз)/i.test(line)) {
+      inDiagnosisBlock = true;
+      const rest = line.replace(/^.*?(?:диагноз|заключение|клинический диагноз|основной диагноз)\s*[:\-]?\s*/i, "").trim();
+      if (rest) collected.push(rest);
+      continue;
+    }
+    if (inDiagnosisBlock && /(рекоменд|назнач|лечение|терапия|препарат|анамнез|семейн|наследствен|жалоб|осмотр|объективн|план|обследован|контроль)/i.test(line)) {
+      inDiagnosisBlock = false;
+    }
+    if (!inDiagnosisBlock) continue;
+    if (/(специализац|врач|пациент|прием|консультац|анамнез|семейн|наследствен|дед|бабуш|мать|отец|жалоб|осмотр|рекоменд|назнач|лечение|терапия|препарат)/i.test(line)) continue;
+    collected.push(line);
+  }
+
+  if (collected.length) return collected.join("\n");
+
+  const fallback = lines.filter((line) => !/(специализац|врач|пациент|прием|консультац|анамнез|семейн|наследствен|дед|бабуш|мать|отец|жалоб|осмотр|рекоменд|назнач|лечение|терапия|препарат)/i.test(line));
+
+  return fallback.join("\n");
 }
 
 function extractDoctorMedications(text) {
-  const lines = doctorMedicationCandidateLines(text);
+  const lines = mergeDoctorMedicationContinuations(doctorMedicationCandidateLines(text));
   const found = [];
   const seen = new Set();
   const segments = doctorMedicationSegments(lines);
@@ -1241,16 +1267,48 @@ function doctorMedicationCandidateLines(text) {
   return [...new Set(candidates)];
 }
 
+function mergeDoctorMedicationContinuations(lines) {
+  const merged = [];
+  let current = "";
+
+  for (const line of lines) {
+    if (lineHasMedicationAlias(line)) {
+      if (current) merged.push(current.trim());
+      current = line;
+      continue;
+    }
+    if (current && /(\d|раз\/дн|р\/д|внутрь|per os|завтрака|обеда|ужина|длительность|пак|таб|кап)/i.test(line)) {
+      current = `${current} ${line}`;
+      continue;
+    }
+    if (current) {
+      merged.push(current.trim());
+      current = "";
+    }
+  }
+
+  if (current) merged.push(current.trim());
+  return merged.length ? merged : lines;
+}
+
+function lineHasMedicationAlias(line) {
+  const normalized = normalizeText(line || "");
+  return medicationKnowledge.some((medication) => findAliasMatch(
+    normalized,
+    medication.aliases.filter((alias) => normalizeText(alias).length >= 4)
+  ));
+}
+
 function splitDoctorMedicationParagraph(text) {
   const normalizedParagraph = normalizeText(text || "");
   const aliases = medicationKnowledge
-    .flatMap((medication) => medication.aliases)
-    .filter((alias) => normalizeText(alias).length >= 4)
-    .sort((a, b) => normalizeText(b).length - normalizeText(a).length);
-  const hits = aliases
-    .map((alias) => ({ alias, index: findAliasIndex(normalizedParagraph, normalizeText(alias)) }))
+    .flatMap((medication) => medication.aliases.map((alias) => ({ medication, alias })))
+    .filter(({ alias }) => normalizeText(alias).length >= 4)
+    .sort((a, b) => normalizeText(b.alias).length - normalizeText(a.alias).length);
+  const hits = uniqueMedicationHits(aliases
+    .map(({ medication, alias }) => ({ medication, alias, index: findAliasIndex(normalizedParagraph, normalizeText(alias)) }))
     .filter((hit) => hit.index >= 0)
-    .sort((a, b) => a.index - b.index);
+    .sort((a, b) => a.index - b.index));
 
   if (!hits.length) return [];
   if (hits.length === 1) return [text.trim()];
@@ -1264,18 +1322,18 @@ function splitDoctorMedicationParagraph(text) {
 
 function doctorMedicationSegments(lines) {
   const medicationAliases = medicationKnowledge
-    .flatMap((medication) => medication.aliases)
-    .filter((alias) => normalizeText(alias).length >= 4)
-    .sort((a, b) => normalizeText(b).length - normalizeText(a).length);
+    .flatMap((medication) => medication.aliases.map((alias) => ({ medication, alias })))
+    .filter(({ alias }) => normalizeText(alias).length >= 4)
+    .sort((a, b) => normalizeText(b.alias).length - normalizeText(a.alias).length);
   const segments = [];
 
   for (const line of lines) {
     const cleaned = cleanDoctorMedicationLine(line);
     const normalizedLine = normalizeText(cleaned);
-    const hits = medicationAliases
-      .map((alias) => ({ alias, index: findAliasIndex(normalizedLine, normalizeText(alias)) }))
+    const hits = uniqueMedicationHits(medicationAliases
+      .map(({ medication, alias }) => ({ medication, alias, index: findAliasIndex(normalizedLine, normalizeText(alias)) }))
       .filter((hit) => hit.index >= 0)
-      .sort((a, b) => a.index - b.index);
+      .sort((a, b) => a.index - b.index));
 
     if (hits.length <= 1) {
       segments.push(cleaned);
@@ -1291,6 +1349,19 @@ function doctorMedicationSegments(lines) {
   }
 
   return [...new Set(segments)];
+}
+
+function uniqueMedicationHits(hits) {
+  const byMedication = new Map();
+
+  for (const hit of hits) {
+    const previous = byMedication.get(hit.medication.substance);
+    if (!previous || hit.index < previous.index || (hit.index === previous.index && normalizeText(hit.alias).length > normalizeText(previous.alias).length)) {
+      byMedication.set(hit.medication.substance, hit);
+    }
+  }
+
+  return [...byMedication.values()].sort((a, b) => a.index - b.index);
 }
 
 function findMedicationForSegment(segment) {
@@ -1338,7 +1409,14 @@ function medicationNameFromSegment(segment, alias, fallback) {
 function extractMedicationDose(line, alias) {
   const cleaned = cleanDoctorMedicationLine(line);
   const afterAlias = cleaned.replace(new RegExp(`^.*?${escapeRegExp(alias)}`, "i"), "").trim();
-  const doseSource = afterAlias || cleaned;
+  const doseSource = (afterAlias || cleaned)
+    .replace(/^\([^)]{0,160}\)\s*,?\s*[-–—]?\s*/g, "")
+    .replace(/^[\s,;:()\-–—]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (/\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап|пак)|\b\d+\s*(?:р\/д|раз\/дн|раза?\s+в\s+день)/i.test(doseSource)) {
+    return normalizeDoctorRegimen(doseSource);
+  }
   const doseMatch = doseSource.match(/(\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап)(?:\s*[-–—:]?\s*[^.;,\n]{0,90})?)/i);
   if (doseMatch) return normalizeDoctorRegimen(doseMatch[1]);
   return "";
@@ -1348,7 +1426,7 @@ function normalizeDoctorRegimen(value) {
   return value
     .replace(/\s+/g, " ")
     .replace(/\s*[-–—:]\s*/g, " - ")
-    .replace(/(\d)\s+(мг|мкг|г|ед|ме|мл)/gi, "$1$2")
+    .replace(/(\d)\s+(мг|мкг|г|ед|ме|мл)(?![a-zа-я])/gi, "$1$2")
     .trim();
 }
 

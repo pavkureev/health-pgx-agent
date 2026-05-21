@@ -176,6 +176,43 @@ assert.strictEqual(
   "compact therapist protocol should detect all medications"
 );
 
+const gastroenterologistProtocol = `
+Семейный анамнез: дед умер от рака желудка.
+Жалобы: изжога, боли.
+Заключение:
+Гастродуоденит с наличием множественных эрозий и язвенного дефекта (23.12.23: 0.5х0.2 см) препилорического отдела желудка
+
+Рекомендации:
+Ганатон 50 мг - 1 таб х 3 р/д за 30 мин до завтрака, обеда. ужина 1 месяц
+АЛЬФАЗОКС, Р-Р ДЛЯ ПРИЕМА ВНУТРЬ 10 МЛ - ПАКЕТИК-САШЕ N
+20, по 1 пак. 3 раз/дн., длительность 30 дн., внутрь (per os), 1 пакетик х 3 р/д через 15-20 мин после
+завтрака, обеда, ужина в течение 1 месяца.
+Фамотидин 40 МГ - 1 таб. 1 раз/дн.,
+длительность 30 дн., внутрь
+Эзомепразол (НЕКСИУМ® ТАБ., ПОКР. ОБОЛОЧКОЙ, 40 МГ), - 1 таб. 2 раз/дн., длительность 14 дн.,
+внутрь (per os), 40 мг 1 таб х 2 р/д за 30 мин до завтрака и ужина 14 дней, далее 40 мг 1 таб х 1 р/д за 30
+мин до завтрака 14 дней, далее коррекция терапии у гастроэнтеролога по результатам ЭГДС.
+`;
+const gastroParsed = context.parseDoctorConclusion(gastroenterologistProtocol);
+assert.strictEqual(
+  gastroParsed.diagnoses.map((item) => item.label).join("|"),
+  "Гастродуоденит с эрозиями и язвенным дефектом",
+  "family oncology history should not become a diagnosis"
+);
+assert.strictEqual(
+  gastroParsed.medications.map((item) => item.name).join("|"),
+  ["Ганатон", "АЛЬФАЗОКС", "Фамотидин", "Эзомепразол"].join("|"),
+  "gastroenterologist protocol should detect all prescribed medications"
+);
+assert.ok(
+  gastroParsed.medications.find((item) => item.name === "АЛЬФАЗОКС").dose.includes("1 пакетик х 3 р/д"),
+  "multiline Alphazox regimen should stay attached to Alphazox"
+);
+assert.ok(
+  gastroParsed.medications.find((item) => item.name === "Эзомепразол").dose.includes("40мг 1 таб х 2 р/д"),
+  "multiline esomeprazole regimen should stay attached to esomeprazole"
+);
+
 context.document.querySelector("#patientData").value = `
 CYP2C19 *2/*2
 SLCO1B1 rs4149056 TC
