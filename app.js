@@ -3,6 +3,7 @@ const LAB_STORAGE_KEY = "pgx-agent-lab-records";
 const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
 const PARSER_VERSION = "2026-04-30.1";
+const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.10";
 const KNOWN_BIRTH_DATES = new Set(["1981-06-06"]);
 const supabaseClient = window.supabase && window.PGX_SUPABASE
   ? window.supabase.createClient(window.PGX_SUPABASE.url, window.PGX_SUPABASE.anonKey)
@@ -580,6 +581,7 @@ function renderProfiles() {
 
 function applyActiveProfile() {
   const profile = getActiveProfile();
+  refreshDoctorConclusionParse(profile);
   patientData.value = profile.patientData || "";
   patientDataView.value = profile.patientData || "";
   geneticInputOpen = !patientData.value.trim();
@@ -999,6 +1001,7 @@ async function loadDoctorConclusionFile() {
     doctorText.value = text;
     const parsed = parseDoctorConclusion(text);
     saveDoctorConclusion(text, parsed, { reviewStatus: "pending" });
+    reconcileDraftDoctorMedications(parsed);
     doctorStatus.className = "file-status";
     doctorStatus.textContent = `Заключение разобрано: ${file.name}. Проверьте распознавание и подтвердите перед добавлением лекарств в профиль.`;
     renderDoctorConclusion();
@@ -1017,6 +1020,7 @@ function parseDoctorTextInput() {
 
   const parsed = parseDoctorConclusion(doctorText.value);
   saveDoctorConclusion(doctorText.value, parsed, { reviewStatus: "pending" });
+  reconcileDraftDoctorMedications(parsed);
   doctorStatus.className = "file-status";
   doctorStatus.textContent = "Заключение разобрано. Проверьте распознавание и подтвердите перед добавлением лекарств в профиль.";
   renderDoctorConclusion();
@@ -1049,6 +1053,24 @@ function currentDoctorConclusion() {
   return getActiveProfile()?.metadata?.doctorConclusion || { text: "", parsed: { diagnoses: [], medications: [] }, reviewStatus: "" };
 }
 
+function refreshDoctorConclusionParse(profile = getActiveProfile()) {
+  const conclusion = profile?.metadata?.doctorConclusion;
+  if (!conclusion?.text?.trim() || conclusion.parserVersion === DOCTOR_CONCLUSION_PARSER_VERSION) return;
+  profile.metadata = {
+    ...(profile.metadata || {}),
+    doctorConclusion: {
+      ...conclusion,
+      parsed: parseDoctorConclusion(conclusion.text),
+      reviewStatus: "pending",
+      correctionOpen: false,
+      parserVersion: DOCTOR_CONCLUSION_PARSER_VERSION,
+      updatedAt: new Date().toISOString()
+    }
+  };
+  reconcileDraftDoctorMedications(profile.metadata.doctorConclusion.parsed);
+  saveCurrentProfileData();
+}
+
 function saveDoctorConclusion(text, parsed, options = {}) {
   const profile = getActiveProfile();
   const previous = currentDoctorConclusion();
@@ -1059,6 +1081,7 @@ function saveDoctorConclusion(text, parsed, options = {}) {
       parsed,
       reviewStatus: options.reviewStatus ?? previous.reviewStatus ?? "pending",
       correctionOpen: options.correctionOpen ?? previous.correctionOpen ?? false,
+      parserVersion: DOCTOR_CONCLUSION_PARSER_VERSION,
       updatedAt: new Date().toISOString()
     }
   };
@@ -1469,6 +1492,7 @@ function applyDoctorCorrections() {
     reviewStatus: "pending",
     correctionOpen: false
   });
+  reconcileDraftDoctorMedications({ diagnoses, medications });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = "Исправления сохранены. Проверьте результат и подтвердите распознавание.";
   renderDoctorConclusion();
@@ -1505,20 +1529,80 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
   if (!additions.length) return { added: 0, skipped: 0 };
 
   const existing = currentMedications();
-  const existingKeys = new Set(existing.map(medicationUniqueKey));
+  const additionsByKey = new Map(additions.map((item) => [medicationUniqueKey(item), item]));
+  let updated = 0;
+  const syncedExisting = existing.map((item) => {
+    const replacement = additionsByKey.get(medicationUniqueKey(item));
+    if (!replacement || !isUnconfirmedDoctorMedication(item)) return item;
+    updated += 1;
+    return enrichMedication({
+      ...item,
+      name: replacement.name,
+      dose: replacement.dose,
+      note: replacement.note,
+      substance: replacement.substance,
+      substanceLabel: replacement.substanceLabel,
+      group: replacement.group,
+      sourceName: "doctor conclusion",
+      sourceLine: replacement.sourceLine,
+      needsConfirmation: true
+    });
+  });
+  const existingKeys = new Set(syncedExisting.map(medicationUniqueKey));
   const fresh = additions.filter((item) => {
     const key = medicationUniqueKey(item);
     if (existingKeys.has(key) && !options.force) return false;
     existingKeys.add(key);
     return true;
   });
-  const merged = [...existing, ...fresh];
+  const merged = [...syncedExisting, ...fresh];
   saveCurrentMedications(merged);
-  return { added: fresh.length, skipped: additions.length - fresh.length };
+  return { added: fresh.length, updated, skipped: additions.length - fresh.length };
 }
 
 function medicationUniqueKey(item) {
   return normalizeText(item.substance || item.substanceLabel || item.name || "");
+}
+
+function reconcileDraftDoctorMedications(parsed) {
+  const expected = new Map((parsed.medications || []).map((item) => [medicationUniqueKey(item), item]));
+  const current = currentMedications();
+  let changed = false;
+  const reconciled = [];
+
+  for (const item of current) {
+    if (!isUnconfirmedDoctorMedication(item)) {
+      reconciled.push(item);
+      continue;
+    }
+
+    const expectedItem = expected.get(medicationUniqueKey(item));
+    if (!expectedItem) {
+      changed = true;
+      continue;
+    }
+
+    const updated = enrichMedication({
+      ...item,
+      name: expectedItem.name,
+      dose: expectedItem.dose,
+      note: expectedItem.note,
+      substance: expectedItem.substance,
+      substanceLabel: expectedItem.substanceLabel,
+      group: expectedItem.group,
+      sourceName: "doctor conclusion",
+      sourceLine: expectedItem.sourceLine,
+      needsConfirmation: true
+    });
+    changed = changed || JSON.stringify(updated) !== JSON.stringify(item);
+    reconciled.push(updated);
+  }
+
+  if (changed) saveCurrentMedications(reconciled);
+}
+
+function isUnconfirmedDoctorMedication(item) {
+  return item?.sourceName === "doctor conclusion" && item.needsConfirmation;
 }
 
 function parseLabReport(text, sourceName, fallbackTimestamp) {

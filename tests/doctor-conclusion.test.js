@@ -222,6 +222,37 @@ assert.ok(
   "multiline Nexium regimen should stay attached to Nexium"
 );
 
+context.saveCurrentMedications([
+  {
+    id: "old-doctor-omeprazole",
+    name: "Омез",
+    substance: "omeprazole",
+    substanceLabel: "Омепразол",
+    sourceName: "doctor conclusion",
+    needsConfirmation: true
+  },
+  {
+    id: "old-doctor-ganaton",
+    name: "Ганатон",
+    substance: "itopride",
+    substanceLabel: "Итоприд",
+    sourceName: "doctor conclusion",
+    needsConfirmation: true
+  }
+]);
+context.document.querySelector("#doctorText").value = gastroenterologistProtocol;
+context.document.querySelector("#parseDoctorText").onclick();
+const reconciledDoctorMedications = context.currentMedications();
+assert.ok(
+  !reconciledDoctorMedications.some((item) => item.name === "Омез"),
+  "stale unconfirmed anamnesis medication should be removed after re-parsing"
+);
+assert.ok(
+  reconciledDoctorMedications.find((item) => item.name === "Ганатон").dose.includes("50мг 1 таб х 3 р/д"),
+  "stale unconfirmed doctor medication should be updated with the latest regimen"
+);
+context.saveCurrentMedications([]);
+
 context.document.querySelector("#patientData").value = `
 CYP2C19 *2/*2
 SLCO1B1 rs4149056 TC
