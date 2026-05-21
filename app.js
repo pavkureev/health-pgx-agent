@@ -1234,6 +1234,7 @@ function doctorMedicationCandidateLines(text) {
     .map((line) => line.trim())
     .filter(Boolean);
   const candidates = [];
+  const hasPrescriptionBlock = lines.some((line) => /(назнач|рекоменд|лечение|терапия|препарат|медикамент|схема)/i.test(line));
   let inPrescriptionBlock = false;
 
   for (const line of lines) {
@@ -1248,6 +1249,9 @@ function doctorMedicationCandidateLines(text) {
       inPrescriptionBlock = false;
     }
     if (/(аллерг|не переносит|ранее принимал|отменен|отменить|анамнез)/i.test(line)) {
+      continue;
+    }
+    if (hasPrescriptionBlock && !inPrescriptionBlock) {
       continue;
     }
     if (line.length > 180) {

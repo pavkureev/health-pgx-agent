@@ -178,18 +178,19 @@ assert.strictEqual(
 
 const gastroenterologistProtocol = `
 Семейный анамнез: дед умер от рака желудка.
+Анамнез: ранее принимал Омез, сейчас в рекомендациях не указан.
 Жалобы: изжога, боли.
 Заключение:
 Гастродуоденит с наличием множественных эрозий и язвенного дефекта (23.12.23: 0.5х0.2 см) препилорического отдела желудка
 
 Рекомендации:
-Ганатон 50 мг - 1 таб х 3 р/д за 30 мин до завтрака, обеда. ужина 1 месяц
+Ганатон - 50 мг 1 таб х 3 р/д за 30 мин до завтрака, обеда. ужина 1 месяц
 АЛЬФАЗОКС, Р-Р ДЛЯ ПРИЕМА ВНУТРЬ 10 МЛ - ПАКЕТИК-САШЕ N
 20, по 1 пак. 3 раз/дн., длительность 30 дн., внутрь (per os), 1 пакетик х 3 р/д через 15-20 мин после
 завтрака, обеда, ужина в течение 1 месяца.
 Фамотидин 40 МГ - 1 таб. 1 раз/дн.,
 длительность 30 дн., внутрь
-Эзомепразол (НЕКСИУМ® ТАБ., ПОКР. ОБОЛОЧКОЙ, 40 МГ), - 1 таб. 2 раз/дн., длительность 14 дн.,
+Нексиум - ТАБ., ПОКР. ОБОЛОЧКОЙ, 40 МГ - по 1 таб. 2 раз/дн., длительность 14 дн.,
 внутрь (per os), 40 мг 1 таб х 2 р/д за 30 мин до завтрака и ужина 14 дней, далее 40 мг 1 таб х 1 р/д за 30
 мин до завтрака 14 дней, далее коррекция терапии у гастроэнтеролога по результатам ЭГДС.
 `;
@@ -201,16 +202,24 @@ assert.strictEqual(
 );
 assert.strictEqual(
   gastroParsed.medications.map((item) => item.name).join("|"),
-  ["Ганатон", "АЛЬФАЗОКС", "Фамотидин", "Эзомепразол"].join("|"),
+  ["Ганатон", "АЛЬФАЗОКС", "Фамотидин", "Нексиум"].join("|"),
   "gastroenterologist protocol should detect all prescribed medications"
+);
+assert.ok(
+  !gastroParsed.medications.some((item) => item.name === "Омез"),
+  "anamnesis medications should not become active prescriptions"
+);
+assert.ok(
+  gastroParsed.medications.find((item) => item.name === "Ганатон").dose.includes("50мг 1 таб х 3 р/д"),
+  "Ganaton regimen should be attached to Ganaton"
 );
 assert.ok(
   gastroParsed.medications.find((item) => item.name === "АЛЬФАЗОКС").dose.includes("1 пакетик х 3 р/д"),
   "multiline Alphazox regimen should stay attached to Alphazox"
 );
 assert.ok(
-  gastroParsed.medications.find((item) => item.name === "Эзомепразол").dose.includes("40мг 1 таб х 2 р/д"),
-  "multiline esomeprazole regimen should stay attached to esomeprazole"
+  gastroParsed.medications.find((item) => item.name === "Нексиум").dose.includes("40мг 1 таб х 2 р/д"),
+  "multiline Nexium regimen should stay attached to Nexium"
 );
 
 context.document.querySelector("#patientData").value = `
