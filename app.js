@@ -1073,13 +1073,13 @@ function parseDoctorConclusion(text) {
 }
 
 function extractDoctorDiagnoses(text) {
-  const normalized = normalizeText(text || "");
+  const diagnosisText = doctorDiagnosisCandidateText(text);
+  const normalized = normalizeText(diagnosisText);
   const diagnosisRules = [
     { key: "hypertension", label: "Артериальная гипертензия", patterns: ["артериальная гипертензия", "гипертоническая болезнь", "гипертензия", "i10"] },
     { key: "dyslipidemia", label: "Дислипидемия / высокий сердечно-сосудистый риск", patterns: ["дислипидемия", "гиперхолестеринемия", "атеросклероз", "ишемическая болезнь", "ибс", "e78", "i25"] },
     { key: "diabetes", label: "Нарушение углеводного обмена / диабет", patterns: ["сахарный диабет", "преддиабет", "нарушение толерантности к глюкозе", "e11", "e10"] },
     { key: "ckd", label: "Снижение функции почек / ХБП", patterns: ["хбп", "хроническая болезнь почек", "снижение скф", "почечная недостаточность", "n18"] },
-    { key: "liver", label: "Печеночный контекст", patterns: ["стеатоз", "жировой гепатоз", "гепатит", "повышение трансаминаз", "алт", "аст"] },
     { key: "depression", label: "Депрессия / тревожное расстройство", patterns: ["депрессия", "тревожное расстройство", "паническое расстройство", "f32", "f33", "f41"] },
     { key: "gerd", label: "Гастроэзофагеальный рефлюкс / ГЭРБ", patterns: ["гэрб", "гастроэзофагеальная", "гастроэзофагеальный", "гастроэзофагеального", "рефлюкс", "рефлекс", "k21"] },
     { key: "erosive_esophagitis", label: "Эрозивный рефлюкс-эзофагит", patterns: ["эрозивный рефлюкс-эзофагит", "рефлюкс-эзофагит", "эзофагит", "la классификации", "ст а по la"] },
@@ -1094,8 +1094,18 @@ function extractDoctorDiagnoses(text) {
     .map((rule) => ({
       key: rule.key,
       label: rule.label,
-      sourceLine: findSourceLine(text, rule.patterns) || "Найдено по тексту заключения"
+      sourceLine: findSourceLine(diagnosisText, rule.patterns) || "Найдено по тексту заключения"
     }));
+}
+
+function doctorDiagnosisCandidateText(text) {
+  const lines = cleanupExtractedText(text || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/(специализац|врач|пациент|прием|консультац|анамнез|жалоб|осмотр|рекоменд|назнач|лечение|терапия|препарат)/i.test(line));
+
+  return lines.join("\n");
 }
 
 function extractDoctorMedications(text) {
@@ -1137,12 +1147,19 @@ function doctorMedicationCandidateLines(text) {
     const normalized = normalizeText(line);
     if (/(назнач|рекоменд|лечение|терапия|препарат|медикамент|схема)/i.test(line)) {
       inPrescriptionBlock = true;
+      const rest = line.replace(/^.*?(?:назнач|рекоменд|лечение|терапия|препарат|медикамент|схема)\S*\s*[:\-]?\s*/i, "").trim();
+      if (rest) candidates.push(...splitDoctorMedicationParagraph(rest));
       continue;
     }
     if (inPrescriptionBlock && /(диагноз|жалоб|анамнез|объективн|осмотр|обследован|контроль|повторн|заключение|анализ|узи|экг|консультац)/i.test(line)) {
       inPrescriptionBlock = false;
     }
-    if (line.length > 180 || /(аллерг|не переносит|ранее принимал|отменен|отменить|анамнез)/i.test(line)) {
+    if (/(аллерг|не переносит|ранее принимал|отменен|отменить|анамнез)/i.test(line)) {
+      continue;
+    }
+    if (line.length > 180) {
+      const chunks = splitDoctorMedicationParagraph(line);
+      if (chunks.length) candidates.push(...chunks);
       continue;
     }
     if (inPrescriptionBlock || /^\s*(?:\d+[\).:-]|[-•*])\s*/.test(line) || /(мг|мкг|таб|кап|раз в день|утром|вечером|после еды|до еды)/i.test(line)) {
@@ -1155,6 +1172,27 @@ function doctorMedicationCandidateLines(text) {
   }
 
   return [...new Set(candidates)];
+}
+
+function splitDoctorMedicationParagraph(text) {
+  const normalizedParagraph = normalizeText(text || "");
+  const aliases = medicationKnowledge
+    .flatMap((medication) => medication.aliases)
+    .filter((alias) => normalizeText(alias).length >= 4)
+    .sort((a, b) => normalizeText(b).length - normalizeText(a).length);
+  const hits = aliases
+    .map((alias) => ({ alias, index: findAliasIndex(normalizedParagraph, normalizeText(alias)) }))
+    .filter((hit) => hit.index >= 0)
+    .sort((a, b) => a.index - b.index);
+
+  if (!hits.length) return [];
+  if (hits.length === 1) return [text.trim()];
+
+  return hits.map((hit, index) => {
+    const start = hit.index;
+    const end = hits[index + 1]?.index ?? text.length;
+    return text.slice(start, end).replace(/[;,]\s*$/g, "").trim();
+  }).filter(Boolean);
 }
 
 function doctorMedicationSegments(lines) {
@@ -1829,7 +1867,6 @@ function renderDoctorParsed(parsed) {
         ${diagnoses.length ? diagnoses.map((item) => `
           <article class="signal-item low">
             <strong>${escapeHtml(item.label)}</strong>
-            <p>${escapeHtml(item.sourceLine)}</p>
           </article>
         `).join("") : `<p class="file-status">Диагнозы не распознаны. Можно уточнить текст вручную.</p>`}
       </section>

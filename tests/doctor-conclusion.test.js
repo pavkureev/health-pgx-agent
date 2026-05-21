@@ -106,6 +106,7 @@ assert.strictEqual(
 );
 
 const therapistProtocol = `
+Специализация: Врач-терапевт участковый
 Диагноз:
 Гастроэзофагеальный рефлекс с эзофагитом
 Эрозивный рефлюкс-эзофагит ст А по LA классификации. Эндоскопические признаки
@@ -140,6 +141,29 @@ assert.strictEqual(
 const protocolSignals = context.doctorConclusionSignals(protocolParsed);
 assert.ok(protocolSignals.some((item) => item.title === "HP+ и схема эрадикации"), "HP eradication cross-check should exist");
 assert.ok(protocolSignals.some((item) => item.title === "Рефлюкс-эзофагит и ИПП"), "GERD/PPI cross-check should exist");
+
+const compactProtocol = `
+Специализация: Врач-терапевт участковый
+Диагноз: Гастроэзофагеальный рефлекс с эзофагитом. Эрозивный рефлюкс-эзофагит ст А по LA классификации. Эндоскопические признаки аксиальной хиатальной грыжи. Эндоскопические признаки поверхностного очагового гастрита. Эндоскопические признаки бульбита. Экспресс-тест на HP Положительный (+).
+Рекомендации: Рабепразол 20мг - по 1 таб 2 раза в день за 30 мин до еды 30 дней Амоксиклав 1000мг - 2 раза в день Кларитромицин 500 мг - 2 раза в день Де-нол 120 мг - по 2 кап 2 раза в день во время еды 14 дней
+`;
+const compactParsed = context.parseDoctorConclusion(compactProtocol);
+assert.strictEqual(
+  compactParsed.diagnoses.map((item) => item.label).join("|"),
+  [
+    "Гастроэзофагеальный рефлюкс / ГЭРБ",
+    "Эрозивный рефлюкс-эзофагит",
+    "Аксиальная хиатальная грыжа",
+    "Поверхностный очаговый гастрит / бульбит",
+    "Helicobacter pylori положительный"
+  ].join("|"),
+  "compact therapist protocol should keep only real diagnoses"
+);
+assert.strictEqual(
+  compactParsed.medications.map((item) => item.name).join("|"),
+  ["Рабепразол", "Амоксиклав", "Кларитромицин", "Де-нол"].join("|"),
+  "compact therapist protocol should detect all medications"
+);
 
 context.document.querySelector("#patientData").value = `
 CYP2C19 *2/*2
