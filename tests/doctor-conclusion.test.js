@@ -126,6 +126,17 @@ const protocolDiagnosisKeys = protocolParsed.diagnoses.map((item) => item.key);
 });
 assert.strictEqual(protocolParsed.medications.length, 4, "therapist protocol should produce four active medications");
 assert.strictEqual(
+  protocolParsed.diagnoses.map((item) => `${item.key}:${item.attention.label}`).join("|"),
+  [
+    "gerd:Требует наблюдения",
+    "erosive_esophagitis:Требует лечения",
+    "hiatal_hernia:Физиологическая особенность",
+    "gastritis_bulbitis:Требует наблюдения",
+    "hp_positive:Требует скорейшего лечения"
+  ].join("|"),
+  "therapist protocol diagnoses should include attention labels"
+);
+assert.strictEqual(
   protocolParsed.medications.map((item) => item.name).join("|"),
   ["Рабепразол", "Амоксиклав", "Кларитромицин", "Де-нол"].join("|")
 );

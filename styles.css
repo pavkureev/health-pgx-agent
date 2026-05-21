@@ -364,6 +364,33 @@ h2 {
   min-height: 120px;
 }
 
+.diagnosis-tag {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 7px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.diagnosis-tag.high {
+  background: #f9e8e6;
+  color: var(--danger);
+}
+
+.diagnosis-tag.moderate {
+  background: #fff4dd;
+  color: #8a5b16;
+}
+
+.diagnosis-tag.feature {
+  background: #edf1ef;
+  color: var(--muted);
+}
+
 .section-title {
   display: flex;
   align-items: center;

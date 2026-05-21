@@ -1094,8 +1094,74 @@ function extractDoctorDiagnoses(text) {
     .map((rule) => ({
       key: rule.key,
       label: rule.label,
+      attention: diagnosisAttention(rule.key),
       sourceLine: findSourceLine(diagnosisText, rule.patterns) || "Найдено по тексту заключения"
     }));
+}
+
+function diagnosisAttention(key) {
+  const attention = {
+    hp_positive: {
+      level: "high",
+      label: "Требует скорейшего лечения",
+      note: "Инфекция HP обычно требует согласованной схемы эрадикации и контроля результата."
+    },
+    erosive_esophagitis: {
+      level: "high",
+      label: "Требует лечения",
+      note: "Эрозивное воспаление пищевода лучше не оставлять без терапии и контроля симптомов."
+    },
+    oncology: {
+      level: "high",
+      label: "Требует срочного маршрута",
+      note: "Онкологический диагноз требует очного ведения профильным специалистом."
+    },
+    ckd: {
+      level: "high",
+      label: "Требует контроля",
+      note: "Функция почек влияет на безопасность и дозирование многих препаратов."
+    },
+    gerd: {
+      level: "moderate",
+      label: "Требует наблюдения",
+      note: "Обычно оценивают симптомы, ответ на терапию и факторы, усиливающие рефлюкс."
+    },
+    gastritis_bulbitis: {
+      level: "moderate",
+      label: "Требует наблюдения",
+      note: "Важно сопоставить с HP-статусом, симптомами и назначенной терапией."
+    },
+    hypertension: {
+      level: "moderate",
+      label: "Требует наблюдения",
+      note: "Нужны контроль давления, факторов риска и регулярность терапии."
+    },
+    dyslipidemia: {
+      level: "moderate",
+      label: "Требует наблюдения",
+      note: "Оценивают сердечно-сосудистый риск, ЛПНП и переносимость терапии."
+    },
+    diabetes: {
+      level: "moderate",
+      label: "Требует наблюдения",
+      note: "Полезно отслеживать HbA1c, вес, почки и сердечно-сосудистые риски."
+    },
+    depression: {
+      level: "moderate",
+      label: "Требует наблюдения",
+      note: "Важны динамика симптомов, переносимость и безопасность терапии."
+    },
+    hiatal_hernia: {
+      level: "feature",
+      label: "Физиологическая особенность",
+      note: "Анатомический фактор может поддерживать рефлюкс, но сам по себе не повод для паники."
+    }
+  };
+  return attention[key] || {
+    level: "moderate",
+    label: "Требует наблюдения",
+    note: "Нужна клиническая интерпретация вместе с врачом."
+  };
 }
 
 function doctorDiagnosisCandidateText(text) {
@@ -1334,6 +1400,7 @@ function parseManualDoctorDiagnoses(text) {
     .map((line, index) => ({
       key: `manual_${index + 1}`,
       label: line,
+      attention: diagnosisAttention("manual"),
       sourceLine: "Исправлено вручную"
     }));
   return [...detected, ...custom];
@@ -1865,8 +1932,9 @@ function renderDoctorParsed(parsed) {
           <span class="mini-counter">${diagnoses.length}</span>
         </div>
         ${diagnoses.length ? diagnoses.map((item) => `
-          <article class="signal-item low">
+          <article class="signal-item ${escapeHtml(diagnosisSeverity(item))}">
             <strong>${escapeHtml(item.label)}</strong>
+            <span class="diagnosis-tag ${escapeHtml(item.attention?.level || "moderate")}">${escapeHtml(item.attention?.label || "Требует наблюдения")}</span>
           </article>
         `).join("") : `<p class="file-status">Диагнозы не распознаны. Можно уточнить текст вручную.</p>`}
       </section>
@@ -1884,6 +1952,10 @@ function renderDoctorParsed(parsed) {
       </section>
     </div>
   `;
+}
+
+function diagnosisSeverity(item) {
+  return item.attention?.level === "high" ? "high" : "low";
 }
 
 function renderDoctorSignal(signal) {
