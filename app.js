@@ -100,6 +100,10 @@ const doctorCounter = document.querySelector("#doctorCounter");
 const doctorSummary = document.querySelector("#doctorSummary");
 const doctorParsed = document.querySelector("#doctorParsed");
 const doctorSignals = document.querySelector("#doctorSignals");
+const doctorReviewActions = document.querySelector("#doctorReviewActions");
+const doctorCorrectionPanel = document.querySelector("#doctorCorrectionPanel");
+const doctorDiagnosisEdit = document.querySelector("#doctorDiagnosisEdit");
+const doctorMedicationEdit = document.querySelector("#doctorMedicationEdit");
 const addDoctorMedicationsButton = document.querySelector("#addDoctorMedications");
 let currentUser = null;
 let cloudReady = false;
@@ -158,6 +162,8 @@ document.querySelector("#clearLabs").addEventListener("click", clearLabHistory);
 document.querySelector("#loadDoctorConclusion").addEventListener("click", loadDoctorConclusionFile);
 document.querySelector("#parseDoctorText").addEventListener("click", parseDoctorTextInput);
 document.querySelector("#addDoctorMedications").addEventListener("click", addDoctorMedicationsToProfile);
+document.querySelector("#editDoctorConclusion").addEventListener("click", showDoctorCorrectionForm);
+document.querySelector("#applyDoctorCorrections").addEventListener("click", applyDoctorCorrections);
 document.querySelector("#clearDoctorConclusion").addEventListener("click", clearDoctorConclusion);
 document.querySelector("#clear").addEventListener("click", () => {
   patientData.value = "";
@@ -991,17 +997,10 @@ async function loadDoctorConclusionFile() {
     const text = await extractTextFromFile(file);
     doctorText.value = text;
     const parsed = parseDoctorConclusion(text);
-    saveDoctorConclusion(text, parsed);
-    const sync = syncDoctorMedicationsToProfile(parsed);
+    saveDoctorConclusion(text, parsed, { reviewStatus: "pending" });
     doctorStatus.className = "file-status";
-    doctorStatus.textContent = [
-      `Заключение разобрано: ${file.name}.`,
-      sync.added ? `Назначения добавлены в лекарственный профиль: ${sync.added}.` : "",
-      sync.skipped ? `Уже были в профиле: ${sync.skipped}.` : "",
-      sync.added ? "Проверьте и подтвердите распознавание в блоке лекарств." : ""
-    ].filter(Boolean).join(" ");
+    doctorStatus.textContent = `Заключение разобрано: ${file.name}. Проверьте распознавание и подтвердите перед добавлением лекарств в профиль.`;
     renderDoctorConclusion();
-    renderHealthBlocks();
   } catch (error) {
     doctorStatus.className = "file-status error";
     doctorStatus.textContent = `Не удалось прочитать файл: ${error.message || "unknown error"}.`;
@@ -1016,39 +1015,35 @@ function parseDoctorTextInput() {
   }
 
   const parsed = parseDoctorConclusion(doctorText.value);
-  saveDoctorConclusion(doctorText.value, parsed);
-  const sync = syncDoctorMedicationsToProfile(parsed);
+  saveDoctorConclusion(doctorText.value, parsed, { reviewStatus: "pending" });
   doctorStatus.className = "file-status";
-  doctorStatus.textContent = [
-    "Заключение разобрано.",
-    sync.added ? `Назначения добавлены в лекарственный профиль: ${sync.added}.` : "",
-    sync.skipped ? `Уже были в профиле: ${sync.skipped}.` : "",
-    sync.added ? "Проверьте и подтвердите распознавание в блоке лекарств." : ""
-  ].filter(Boolean).join(" ");
+  doctorStatus.textContent = "Заключение разобрано. Проверьте распознавание и подтвердите перед добавлением лекарств в профиль.";
   renderDoctorConclusion();
-  renderHealthBlocks();
 }
 
 function clearDoctorConclusion() {
   doctorFile.value = "";
   doctorText.value = "";
-  saveDoctorConclusion("", { diagnoses: [], medications: [] });
+  saveDoctorConclusion("", { diagnoses: [], medications: [] }, { reviewStatus: "" });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = "Заключение очищено.";
   renderDoctorConclusion();
 }
 
 function currentDoctorConclusion() {
-  return getActiveProfile()?.metadata?.doctorConclusion || { text: "", parsed: { diagnoses: [], medications: [] } };
+  return getActiveProfile()?.metadata?.doctorConclusion || { text: "", parsed: { diagnoses: [], medications: [] }, reviewStatus: "" };
 }
 
-function saveDoctorConclusion(text, parsed) {
+function saveDoctorConclusion(text, parsed, options = {}) {
   const profile = getActiveProfile();
+  const previous = currentDoctorConclusion();
   profile.metadata = {
     ...(profile.metadata || {}),
     doctorConclusion: {
       text,
       parsed,
+      reviewStatus: options.reviewStatus ?? previous.reviewStatus ?? "pending",
+      correctionOpen: options.correctionOpen ?? previous.correctionOpen ?? false,
       updatedAt: new Date().toISOString()
     }
   };
@@ -1245,12 +1240,50 @@ function findSourceLine(text, patterns) {
 function addDoctorMedicationsToProfile() {
   const parsed = currentDoctorConclusion().parsed || { medications: [] };
   const sync = syncDoctorMedicationsToProfile(parsed);
+  saveDoctorConclusion(currentDoctorConclusion().text || doctorText.value, parsed, { reviewStatus: "confirmed", correctionOpen: false });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = sync.added
-    ? `Назначения добавлены в лекарственный профиль: ${sync.added}. Проверьте и подтвердите распознавание.`
-    : "Все распознанные назначения уже есть в лекарственном профиле.";
+    ? `Распознавание подтверждено. Назначения добавлены в лекарственный профиль: ${sync.added}.`
+    : "Распознавание подтверждено. Все распознанные назначения уже есть в лекарственном профиле.";
   renderDoctorConclusion();
   renderHealthBlocks();
+}
+
+function showDoctorCorrectionForm() {
+  const conclusion = currentDoctorConclusion();
+  const parsed = conclusion.parsed || { diagnoses: [], medications: [] };
+  doctorDiagnosisEdit.value = (parsed.diagnoses || []).map((item) => item.label).join("\n");
+  doctorMedicationEdit.value = (parsed.medications || [])
+    .map((item) => [item.name, item.dose].filter(Boolean).join(" "))
+    .join("\n");
+  saveDoctorConclusion(conclusion.text || doctorText.value, parsed, { reviewStatus: "pending", correctionOpen: true });
+  renderDoctorConclusion();
+}
+
+function applyDoctorCorrections() {
+  const diagnoses = parseManualDoctorDiagnoses(doctorDiagnosisEdit.value);
+  const medications = extractDoctorMedications(`Рекомендовано:\n${doctorMedicationEdit.value}`);
+  saveDoctorConclusion(doctorText.value || currentDoctorConclusion().text || "", { diagnoses, medications }, {
+    reviewStatus: "pending",
+    correctionOpen: false
+  });
+  doctorStatus.className = "file-status";
+  doctorStatus.textContent = "Исправления сохранены. Проверьте результат и подтвердите распознавание.";
+  renderDoctorConclusion();
+}
+
+function parseManualDoctorDiagnoses(text) {
+  const lines = cleanupExtractedText(text || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  const detected = extractDoctorDiagnoses(lines.join("\n"));
+  const detectedLabels = new Set(detected.map((item) => normalizeText(item.label)));
+  const custom = lines
+    .filter((line) => !detectedLabels.has(normalizeText(line)))
+    .map((line, index) => ({
+      key: `manual_${index + 1}`,
+      label: line,
+      sourceLine: "Исправлено вручную"
+    }));
+  return [...detected, ...custom];
 }
 
 function syncDoctorMedicationsToProfile(parsed, options = {}) {
@@ -1739,21 +1772,31 @@ function renderDoctorConclusion() {
   const medications = parsed.medications || [];
   const signals = doctorConclusionSignals(parsed);
   const total = diagnoses.length + medications.length;
+  const hasConclusion = Boolean(conclusion.text?.trim());
 
   doctorCounter.textContent = `${total} ${plural(total, "пункт", "пункта", "пунктов")}`;
-  addDoctorMedicationsButton.hidden = !medications.length;
+  doctorReviewActions.hidden = !hasConclusion;
+  addDoctorMedicationsButton.disabled = !medications.length;
+  doctorCorrectionPanel.hidden = !hasConclusion || !conclusion.correctionOpen;
   updateDoctorSectionMeta(parsed, signals);
 
-  if (!conclusion.text?.trim()) {
+  if (!hasConclusion) {
     doctorSummary.className = "summary empty";
     doctorSummary.textContent = "Загрузите заключение после приема, чтобы сопоставить диагнозы и назначения с генетикой, анализами и лекарственным профилем.";
     doctorParsed.innerHTML = "";
     doctorSignals.innerHTML = "";
+    doctorReviewActions.hidden = true;
+    doctorCorrectionPanel.hidden = true;
     return;
   }
 
   doctorSummary.className = "summary";
-  doctorSummary.textContent = `Найдено: ${diagnoses.length} ${plural(diagnoses.length, "диагноз", "диагноза", "диагнозов")} и ${medications.length} ${plural(medications.length, "назначение", "назначения", "назначений")}. Проверьте распознавание перед изменением профиля.`;
+  doctorSummary.textContent = [
+    `Найдено: ${diagnoses.length} ${plural(diagnoses.length, "диагноз", "диагноза", "диагнозов")} и ${medications.length} ${plural(medications.length, "назначение", "назначения", "назначений")}.`,
+    conclusion.reviewStatus === "confirmed"
+      ? "Распознавание подтверждено, назначения переданы в лекарственный профиль."
+      : "Подтвердите распознавание или внесите исправления перед добавлением лекарств в профиль."
+  ].join(" ");
   doctorParsed.innerHTML = renderDoctorParsed(parsed);
   doctorSignals.innerHTML = signals.length ? renderPriorityGroups(signals, renderDoctorSignal) : "";
 }

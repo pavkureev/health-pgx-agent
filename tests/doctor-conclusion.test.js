@@ -155,12 +155,25 @@ assert.ok(signals.some((item) => item.title === "Липидный диагноз
 
 context.document.querySelector("#doctorText").value = conclusion;
 context.document.querySelector("#parseDoctorText").onclick();
+assert.strictEqual(context.currentMedications().length, 0, "parsing should wait for user confirmation before syncing medications");
+assert.match(context.document.querySelector("#doctorSummary").textContent, /Подтвердите распознавание/, "doctor summary should ask for confirmation");
+
+context.document.querySelector("#addDoctorMedications").onclick();
 const syncedMedications = context.currentMedications();
 assert.ok(syncedMedications.some((item) => item.name === "Розувастатин"), "doctor medications should sync to medication profile");
 assert.ok(syncedMedications.every((item) => item.needsConfirmation), "synced doctor medications should require confirmation");
+assert.match(context.document.querySelector("#doctorSummary").textContent, /Распознавание подтверждено/, "doctor summary should reflect confirmation");
 
 context.document.querySelector("#parseDoctorText").onclick();
 const dedupedMedications = context.currentMedications();
 assert.strictEqual(dedupedMedications.length, syncedMedications.length, "re-parsing should not duplicate synced medications");
+
+context.document.querySelector("#editDoctorConclusion").onclick();
+context.document.querySelector("#doctorDiagnosisEdit").value = "ГЭРБ\nHP положительный";
+context.document.querySelector("#doctorMedicationEdit").value = "Рабепразол 20мг 2 раза в день\nДе-нол 120мг 2 раза в день";
+context.document.querySelector("#applyDoctorCorrections").onclick();
+const corrected = context.currentDoctorConclusion().parsed;
+assert.ok(corrected.diagnoses.some((item) => item.key === "gerd"), "manual diagnosis corrections should be parsed");
+assert.strictEqual(corrected.medications.map((item) => item.name).join("|"), "Рабепразол|Де-нол");
 
 console.log("doctor conclusion tests passed");

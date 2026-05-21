@@ -350,6 +350,20 @@ h2 {
   margin: 10px 0;
 }
 
+.doctor-correction {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.doctor-correction .compact-textarea {
+  min-height: 120px;
+}
+
 .section-title {
   display: flex;
   align-items: center;

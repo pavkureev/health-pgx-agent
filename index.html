@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PGx Agent MVP</title>
-    <link rel="stylesheet" href="./styles.css?v=20260521-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260521-3" />
   </head>
   <body>
     <main class="app-shell">
@@ -282,6 +282,19 @@ eGFR 82 мл/мин/1.73м2
               </div>
               <div id="doctorSummary" class="summary empty">Загрузите заключение после приема, чтобы сопоставить диагнозы и назначения с генетикой, анализами и лекарственным профилем.</div>
               <div id="doctorParsed" class="doctor-parsed"></div>
+              <div id="doctorReviewActions" class="button-row" hidden>
+                <button id="addDoctorMedications" class="primary-button" type="button">Распознано верно</button>
+                <button id="editDoctorConclusion" class="secondary-button" type="button">Внести исправления</button>
+              </div>
+              <div id="doctorCorrectionPanel" class="doctor-correction" hidden>
+                <label for="doctorDiagnosisEdit">Диагнозы</label>
+                <textarea id="doctorDiagnosisEdit" class="compact-textarea" spellcheck="false"></textarea>
+                <label for="doctorMedicationEdit">Лекарства и рекомендации по приёму</label>
+                <textarea id="doctorMedicationEdit" class="compact-textarea" spellcheck="false"></textarea>
+                <div class="button-row">
+                  <button id="applyDoctorCorrections" class="primary-button" type="button">Сохранить исправления</button>
+                </div>
+              </div>
               <div id="doctorSignals" class="results"></div>
 
               <details id="doctorInputDrawer" class="editor-drawer">
@@ -305,7 +318,6 @@ eGFR 82 мл/мин/1.73м2
 Омепразол 20 мг 1 раз в день"></textarea>
                   <div class="button-row">
                     <button id="parseDoctorText" class="primary-button" type="button">Разобрать текст</button>
-                    <button id="addDoctorMedications" class="secondary-button" type="button" hidden>Добавить назначения в лекарства</button>
                     <button id="clearDoctorConclusion" class="secondary-button" type="button">Очистить</button>
                   </div>
                 </div>
@@ -385,13 +397,13 @@ eGFR 82 мл/мин/1.73м2
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260521-2"></script>
-    <script src="./data/pgx-rules.js?v=20260521-2"></script>
-    <script src="./data/lab-analytes.js?v=20260521-2"></script>
-    <script src="./data/medication-knowledge.js?v=20260521-2"></script>
-    <script src="./data/evidence-flags.js?v=20260521-2"></script>
-    <script src="./data.js?v=20260521-2"></script>
-    <script src="./app.js?v=20260521-2"></script>
-    <script src="./js/pgx-extensions.js?v=20260521-2"></script>
+    <script src="./supabase-config.js?v=20260521-3"></script>
+    <script src="./data/pgx-rules.js?v=20260521-3"></script>
+    <script src="./data/lab-analytes.js?v=20260521-3"></script>
+    <script src="./data/medication-knowledge.js?v=20260521-3"></script>
+    <script src="./data/evidence-flags.js?v=20260521-3"></script>
+    <script src="./data.js?v=20260521-3"></script>
+    <script src="./app.js?v=20260521-3"></script>
+    <script src="./js/pgx-extensions.js?v=20260521-3"></script>
   </body>
 </html>
