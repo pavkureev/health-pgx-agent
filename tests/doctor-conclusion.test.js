@@ -128,11 +128,11 @@ assert.strictEqual(protocolParsed.medications.length, 4, "therapist protocol sho
 assert.strictEqual(
   protocolParsed.diagnoses.map((item) => `${item.key}:${item.attention.label}`).join("|"),
   [
-    "gerd:Требует наблюдения",
+    "hp_positive:Требует скорейшего лечения",
     "erosive_esophagitis:Требует лечения",
-    "hiatal_hernia:Физиологическая особенность",
+    "gerd:Требует наблюдения",
     "gastritis_bulbitis:Требует наблюдения",
-    "hp_positive:Требует скорейшего лечения"
+    "hiatal_hernia:Физиологическая особенность"
   ].join("|"),
   "therapist protocol diagnoses should include attention labels"
 );
@@ -162,11 +162,11 @@ const compactParsed = context.parseDoctorConclusion(compactProtocol);
 assert.strictEqual(
   compactParsed.diagnoses.map((item) => item.label).join("|"),
   [
-    "Гастроэзофагеальный рефлюкс / ГЭРБ",
+    "Helicobacter pylori положительный",
     "Эрозивный рефлюкс-эзофагит",
-    "Аксиальная хиатальная грыжа",
+    "Гастроэзофагеальный рефлюкс / ГЭРБ",
     "Поверхностный очаговый гастрит / бульбит",
-    "Helicobacter pylori положительный"
+    "Аксиальная хиатальная грыжа"
   ].join("|"),
   "compact therapist protocol should keep only real diagnoses"
 );

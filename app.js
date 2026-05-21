@@ -1096,7 +1096,8 @@ function extractDoctorDiagnoses(text) {
       label: rule.label,
       attention: diagnosisAttention(rule.key),
       sourceLine: findSourceLine(diagnosisText, rule.patterns) || "Найдено по тексту заключения"
-    }));
+    }))
+    .sort((a, b) => diagnosisAttentionRank(b) - diagnosisAttentionRank(a));
 }
 
 function diagnosisAttention(key) {
@@ -1956,6 +1957,21 @@ function renderDoctorParsed(parsed) {
 
 function diagnosisSeverity(item) {
   return item.attention?.level === "high" ? "high" : "low";
+}
+
+function diagnosisAttentionRank(item) {
+  const labelRank = {
+    "Требует скорейшего лечения": 4,
+    "Требует лечения": 3,
+    "Требует наблюдения": 2,
+    "Физиологическая особенность": 1
+  };
+  const levelRank = {
+    high: 3,
+    moderate: 2,
+    feature: 1
+  };
+  return labelRank[item.attention?.label] || levelRank[item.attention?.level] || 0;
 }
 
 function renderDoctorSignal(signal) {
