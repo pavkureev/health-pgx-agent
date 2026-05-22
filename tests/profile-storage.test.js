@@ -88,4 +88,25 @@ el("#profileSelect").value = secondProfileId;
 el("#profileSelect").onchange();
 assert.match(el("#patientData").value, /CYP2D6/, "second profile should keep its DNA data");
 
+const restoredGenetics = context.geneticFindingsToPatientData([
+  { gene: "CYP2C19", diplotype: "*2/*2" },
+  { gene: "SLCO1B1", rsid: "rs4149056", genotype: "TC" },
+  { gene: "HLA-B*58:01", phenotype: "positive" },
+  { gene: "CYP2C19", diplotype: "*2/*2" }
+]);
+assert.match(restoredGenetics, /CYP2C19 \*2\/\*2/, "diplotype findings should restore genetic input");
+assert.match(restoredGenetics, /SLCO1B1 rs4149056 TC/, "rsid genotype findings should restore genetic input");
+assert.match(restoredGenetics, /HLA-B\*58:01 positive/, "phenotype findings should restore genetic input");
+assert.strictEqual(
+  restoredGenetics.match(/CYP2C19/g).length,
+  1,
+  "duplicate genetic findings should be collapsed"
+);
+
+const restoredFromDocuments = context.geneticDocumentsToPatientData([
+  { kind: "genetic_report", file_name: "report.txt", extracted_text: "CYP2D6 poor metabolizer" }
+]);
+assert.match(restoredFromDocuments, /report\.txt/, "genetic document name should be kept as context");
+assert.match(restoredFromDocuments, /CYP2D6 poor metabolizer/, "genetic source document text should restore genetic input");
+
 console.log("profile storage tests passed");

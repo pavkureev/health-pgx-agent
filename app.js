@@ -3,7 +3,7 @@ const LAB_STORAGE_KEY = "pgx-agent-lab-records";
 const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
 const PARSER_VERSION = "2026-04-30.1";
-const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.12";
+const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.13";
 const KNOWN_BIRTH_DATES = new Set(["1981-06-06"]);
 const supabaseClient = window.supabase && window.PGX_SUPABASE
   ? window.supabase.createClient(window.PGX_SUPABASE.url, window.PGX_SUPABASE.anonKey)
@@ -441,6 +441,38 @@ async function loadCloudProfileDetails(profileId) {
   }
 
   profile.labRecords = observationsToLabRecords(data || []);
+
+  const { data: geneticFindings, error: geneticError } = await supabaseClient
+    .from("genetic_findings")
+    .select("gene, rsid, genotype, diplotype, phenotype, evidence_source, raw_line, created_at")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: true });
+
+  if (geneticError) {
+    profileStatus.textContent = `Не удалось загрузить генетику из Supabase: ${geneticError.message}`;
+    return;
+  }
+
+  if (!profile.patientData?.trim()) {
+    if (geneticFindings?.length) {
+      profile.patientData = geneticFindingsToPatientData(geneticFindings);
+    } else {
+      const { data: geneticDocuments, error: documentError } = await supabaseClient
+        .from("source_documents")
+        .select("kind, file_name, extracted_text, created_at")
+        .eq("profile_id", profileId)
+        .in("kind", ["vcf", "genetic_report", "manual"])
+        .not("extracted_text", "is", null)
+        .order("created_at", { ascending: true });
+
+      if (documentError) {
+        profileStatus.textContent = `Не удалось загрузить генетические отчеты из Supabase: ${documentError.message}`;
+        return;
+      }
+
+      profile.patientData = geneticDocumentsToPatientData(geneticDocuments || []);
+    }
+  }
 }
 
 function mapCloudProfile(row) {
@@ -581,9 +613,9 @@ function renderProfiles() {
 
 function applyActiveProfile() {
   const profile = getActiveProfile();
-  refreshDoctorConclusionParse(profile);
   patientData.value = profile.patientData || "";
   patientDataView.value = profile.patientData || "";
+  refreshDoctorConclusionParse(profile);
   geneticInputOpen = !patientData.value.trim();
   labRecords = profile.labRecords || [];
   vcfFile.value = "";
@@ -1701,6 +1733,50 @@ function observationsToLabRecords(observations) {
   }
 
   return [...byDocument.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function geneticFindingsToPatientData(findings = []) {
+  const lines = [];
+  const seen = new Set();
+
+  for (const finding of findings) {
+    const line = geneticFindingToProfileLine(finding);
+    const key = normalizeText(line);
+    if (!line || seen.has(key)) continue;
+    seen.add(key);
+    lines.push(line);
+  }
+
+  return lines.length
+    ? ["# Из Supabase genetic_findings", ...lines].join("\n")
+    : "";
+}
+
+function geneticDocumentsToPatientData(documents = []) {
+  const blocks = documents
+    .map((document) => ({
+      label: document.file_name || document.kind || "genetic report",
+      text: String(document.extracted_text || "").trim()
+    }))
+    .filter((document) => document.text);
+
+  if (!blocks.length) return "";
+
+  return blocks
+    .flatMap((document) => [`# Из Supabase source_documents: ${document.label}`, document.text])
+    .join("\n");
+}
+
+function geneticFindingToProfileLine(finding = {}) {
+  if (finding.raw_line?.trim()) return finding.raw_line.trim();
+
+  const gene = finding.gene?.trim();
+  if (!gene) return "";
+  if (finding.diplotype?.trim()) return `${gene} ${finding.diplotype.trim()}`;
+  if (finding.phenotype?.trim()) return `${gene} ${finding.phenotype.trim()}`;
+  if (finding.rsid?.trim() && finding.genotype?.trim()) return `${gene} ${finding.rsid.trim()} ${finding.genotype.trim()}`;
+  if (finding.genotype?.trim()) return `${gene} ${finding.genotype.trim()}`;
+  return "";
 }
 
 function findReportDate(text, sourceName, fallbackTimestamp) {
