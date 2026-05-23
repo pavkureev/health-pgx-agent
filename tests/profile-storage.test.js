@@ -83,6 +83,14 @@ el("#patientData").oninput();
 el("#profileSelect").value = firstProfileId;
 el("#profileSelect").onchange();
 assert.match(el("#patientData").value, /CYP2C19/, "first profile should keep its DNA data");
+el("#patientData").value = "";
+context.saveCurrentProfileData();
+assert.match(
+  context.getActiveProfile().patientData,
+  /CYP2C19/,
+  "non-genetic saves should not overwrite existing genetic data with an empty editor"
+);
+context.applyActiveProfile();
 
 el("#profileSelect").value = secondProfileId;
 el("#profileSelect").onchange();
@@ -108,5 +116,12 @@ const restoredFromDocuments = context.geneticDocumentsToPatientData([
 ]);
 assert.match(restoredFromDocuments, /report\.txt/, "genetic document name should be kept as context");
 assert.match(restoredFromDocuments, /CYP2D6 poor metabolizer/, "genetic source document text should restore genetic input");
+
+const restoredFromMisclassifiedDocuments = context.geneticDocumentsToPatientData([
+  { kind: "lab_text", file_name: "genetics-as-text.txt", extracted_text: "SLCO1B1 rs4149056 TC" },
+  { kind: "lab_text", file_name: "lab.txt", extracted_text: "ЛПНП 2.6 ммоль/л" }
+]);
+assert.match(restoredFromMisclassifiedDocuments, /genetics-as-text\.txt/, "genetic-looking text should restore even if document kind is wrong");
+assert.doesNotMatch(restoredFromMisclassifiedDocuments, /ЛПНП/, "non-genetic lab text should not be copied into genetic input");
 
 console.log("profile storage tests passed");

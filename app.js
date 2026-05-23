@@ -128,7 +128,7 @@ document.querySelector("#loadSample").addEventListener("click", () => {
   fileStatus.className = "file-status";
   fileStatus.textContent = "Загружен встроенный пример.";
   geneticInputOpen = false;
-  saveCurrentProfileData();
+  saveCurrentProfileData({ allowEmptyPatientData: true });
   analyze();
   renderGeneticInputState();
 });
@@ -146,7 +146,7 @@ textModeToggle.addEventListener("change", renderGeneticInputState);
 profileSelect.addEventListener("change", switchProfile);
 patientData.addEventListener("input", () => {
   patientDataView.value = patientData.value;
-  saveCurrentProfileData();
+  saveCurrentProfileData({ allowEmptyPatientData: true });
   analyze();
   renderGeneticInputState();
 });
@@ -176,7 +176,7 @@ document.querySelector("#clear").addEventListener("click", () => {
   fileStatus.className = "file-status";
   fileStatus.textContent = "Файл читается локально в браузере и никуда не отправляется.";
   geneticInputOpen = true;
-  saveCurrentProfileData();
+  saveCurrentProfileData({ allowEmptyPatientData: true });
   render([], {});
   renderGeneticInputState();
 });
@@ -462,7 +462,6 @@ async function loadCloudProfileDetails(profileId) {
         .from("source_documents")
         .select("kind, file_name, extracted_text, created_at")
         .eq("profile_id", profileId)
-        .in("kind", ["vcf", "genetic_report", "manual"])
         .not("extracted_text", "is", null)
         .order("created_at", { ascending: true });
 
@@ -571,9 +570,12 @@ function saveProfiles() {
   localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
 }
 
-function saveCurrentProfileData() {
+function saveCurrentProfileData(options = {}) {
   const profile = getActiveProfile();
-  profile.patientData = patientData.value;
+  const nextPatientData = patientData.value || "";
+  if (nextPatientData.trim() || options.allowEmptyPatientData || !profile.patientData?.trim()) {
+    profile.patientData = nextPatientData;
+  }
   profile.labRecords = labRecords;
   profile.updatedAt = new Date().toISOString();
   saveProfiles();
@@ -825,7 +827,7 @@ async function loadVcfFile() {
     geneticInputOpen = false;
     fileStatus.className = "file-status";
     fileStatus.textContent = `VCF загружен: найдено ${found} ${plural(found, "маркер", "маркера", "маркеров")}${skipped ? `, пропущено без genotype call: ${skipped}` : ""}.`;
-    saveCurrentProfileData();
+    saveCurrentProfileData({ allowEmptyPatientData: true });
     analyze();
     renderGeneticInputState();
   } catch (error) {
@@ -1809,15 +1811,38 @@ function geneticDocumentsToPatientData(documents = []) {
   const blocks = documents
     .map((document) => ({
       label: document.file_name || document.kind || "genetic report",
+      kind: document.kind || "",
       text: String(document.extracted_text || "").trim()
     }))
-    .filter((document) => document.text);
+    .filter((document) => document.text && isGeneticSourceDocument(document));
 
   if (!blocks.length) return "";
 
   return blocks
     .flatMap((document) => [`# Из Supabase source_documents: ${document.label}`, document.text])
     .join("\n");
+}
+
+function isGeneticSourceDocument(document = {}) {
+  if (["vcf", "genetic_report", "manual"].includes(document.kind)) return true;
+  return looksLikeGeneticText(document.text || "");
+}
+
+function looksLikeGeneticText(text = "") {
+  const normalized = String(text).toLowerCase();
+  return [
+    "cyp2c19",
+    "cyp2d6",
+    "slco1b1",
+    "cyp2c9",
+    "tpmt",
+    "nudt15",
+    "hla-b*57:01",
+    "hla-b*58:01",
+    "rs4149056",
+    "rs1799853",
+    "rs1057910"
+  ].some((marker) => normalized.includes(marker));
 }
 
 function geneticFindingToProfileLine(finding = {}) {
