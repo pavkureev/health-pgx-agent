@@ -329,6 +329,82 @@ h2 {
   overflow: hidden;
 }
 
+.doctor-review-summary {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.doctor-review-hero,
+.doctor-review-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.doctor-review-copy > strong {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.doctor-review-copy > p,
+.doctor-review-section .section-title p {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.doctor-status-pill,
+.doctor-review-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.doctor-status-pill {
+  width: fit-content;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid rgba(138, 91, 22, 0.22);
+  border-radius: 999px;
+  background: var(--warning);
+  color: #8a5b16;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.doctor-status-pill.confirmed {
+  border-color: rgba(40, 122, 105, 0.22);
+  background: #e9f4f1;
+  color: var(--accent-strong);
+}
+
+.doctor-review-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.doctor-review-metric {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+}
+
+.doctor-review-metric strong {
+  color: var(--ink);
+}
+
 .decision-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -348,6 +424,132 @@ h2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin: 10px 0;
+}
+
+.doctor-review-section .section-title {
+  align-items: flex-start;
+}
+
+.doctor-review-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.doctor-review-item + .doctor-review-item {
+  margin-top: 8px;
+}
+
+.doctor-review-item.is-accepted {
+  border-color: rgba(40, 122, 105, 0.32);
+  background: #f4faf8;
+}
+
+.doctor-review-main {
+  display: grid;
+  gap: 5px;
+}
+
+.doctor-review-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.review-detail {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.doctor-review-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.doctor-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  min-width: 34px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.doctor-review-item.is-accepted .accept-item {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.doctor-icon-button.danger-action {
+  margin-left: 4px;
+  color: var(--danger);
+}
+
+.doctor-icon-button.danger-action:hover {
+  border-color: rgba(180, 65, 60, 0.28);
+  background: #f9e8e6;
+}
+
+.button-icon,
+.status-icon,
+.summary-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.summary-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+
+.doctor-draft-checks {
+  display: grid;
+  gap: 10px;
+}
+
+.checklist {
+  display: grid;
+  gap: 8px;
+}
+
+.check-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.check-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #e9f4f1;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .doctor-correction {
@@ -927,6 +1129,10 @@ button {
 .primary-button,
 .secondary-button,
 .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 40px;
   padding: 0 14px;
 }
@@ -1175,5 +1381,23 @@ button {
 
   .counter {
     min-width: auto;
+  }
+
+  .doctor-review-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .doctor-review-metric {
+    justify-content: center;
+    border-radius: 8px;
+  }
+
+  .doctor-review-item {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-review-actions {
+    justify-content: flex-start;
   }
 }

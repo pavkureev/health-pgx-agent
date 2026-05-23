@@ -310,7 +310,7 @@ assert.ok(signals.some((item) => item.title === "Липидный диагноз
 context.document.querySelector("#doctorText").value = conclusion;
 context.document.querySelector("#parseDoctorText").onclick();
 assert.strictEqual(context.currentMedications().length, 0, "parsing should wait for user confirmation before syncing medications");
-assert.match(context.document.querySelector("#doctorSummary").textContent, /черновая проверка/i, "doctor summary should mark unconfirmed recognition as draft");
+assert.match(context.document.querySelector("#doctorSummary").innerHTML, /Ожидает подтверждения/, "doctor summary should mark unconfirmed recognition as pending");
 
 context.document.querySelector("#addDoctorMedications").onclick();
 const syncedMedications = context.currentMedications();
@@ -318,7 +318,7 @@ assert.ok(syncedMedications.some((item) => item.name === "Розувастати
 assert.ok(syncedMedications.every((item) => item.doctorConclusionId), "synced doctor medications should keep conclusion provenance");
 assert.ok(syncedMedications.every((item) => !item.needsConfirmation), "confirmed doctor medications should not require a second confirmation");
 assert.ok(syncedMedications.every((item) => item.recognitionStatus === "confirmed"), "confirmed doctor medications should carry confirmed recognition status");
-assert.match(context.document.querySelector("#doctorSummary").textContent, /Распознавание подтверждено/, "doctor summary should reflect confirmation");
+assert.match(context.document.querySelector("#doctorSummary").innerHTML, /Распознавание подтверждено/, "doctor summary should reflect confirmation");
 
 context.document.querySelector("#parseDoctorText").onclick();
 const dedupedMedications = context.currentMedications();

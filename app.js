@@ -1145,6 +1145,8 @@ function saveDoctorConclusion(text, parsed, options = {}) {
       parsed,
       reviewStatus: options.reviewStatus ?? previous.reviewStatus ?? "pending",
       correctionOpen: options.correctionOpen ?? previous.correctionOpen ?? false,
+      confirmedDiagnosisKeys: options.newId ? [] : options.confirmedDiagnosisKeys ?? previous.confirmedDiagnosisKeys ?? [],
+      confirmedMedicationKeys: options.newId ? [] : options.confirmedMedicationKeys ?? previous.confirmedMedicationKeys ?? [],
       parserVersion: DOCTOR_CONCLUSION_PARSER_VERSION,
       updatedAt: new Date().toISOString()
     }
@@ -2191,10 +2193,12 @@ function renderDoctorConclusion() {
   const signals = doctorConclusionSignals(parsed);
   const total = diagnoses.length + medications.length;
   const hasConclusion = Boolean(conclusion.text?.trim());
+  const confirmed = conclusion.reviewStatus === "confirmed";
 
   doctorCounter.textContent = `${total} ${plural(total, "пункт", "пункта", "пунктов")}`;
   doctorReviewActions.hidden = !hasConclusion;
-  addDoctorMedicationsButton.disabled = !medications.length;
+  addDoctorMedicationsButton.disabled = !medications.length || confirmed;
+  addDoctorMedicationsButton.innerHTML = `${doctorIcon("check")}${confirmed ? "Лекарства добавлены" : "Подтвердить всё"}`;
   doctorCorrectionPanel.hidden = !hasConclusion || !conclusion.correctionOpen;
   updateDoctorSectionMeta(parsed, signals);
 
@@ -2208,48 +2212,257 @@ function renderDoctorConclusion() {
     return;
   }
 
-  doctorSummary.className = "summary";
-  doctorSummary.textContent = [
-    `Найдено: ${diagnoses.length} ${plural(diagnoses.length, "диагноз", "диагноза", "диагнозов")} и ${medications.length} ${plural(medications.length, "назначение", "назначения", "назначений")}.`,
-    conclusion.reviewStatus === "confirmed"
-      ? "Распознавание подтверждено, назначения переданы в лекарственный профиль."
-      : "Это черновая проверка: подтвердите распознавание или внесите исправления перед добавлением лекарств в профиль."
-  ].join(" ");
-  doctorParsed.innerHTML = renderDoctorParsed(parsed);
-  doctorSignals.innerHTML = signals.length ? renderPriorityGroups(signals, renderDoctorSignal) : "";
+  doctorSummary.className = "doctor-review-summary";
+  doctorSummary.innerHTML = renderDoctorSummary(conclusion, diagnoses, medications, signals);
+  doctorParsed.innerHTML = renderDoctorParsed(parsed, conclusion);
+  doctorSignals.innerHTML = confirmed
+    ? signals.length ? renderPriorityGroups(signals, renderDoctorSignal) : ""
+    : renderDoctorDraftChecks();
+  bindDoctorReviewActions();
 }
 
-function renderDoctorParsed(parsed) {
+function renderDoctorSummary(conclusion, diagnoses, medications, signals) {
+  const confirmed = conclusion.reviewStatus === "confirmed";
+  const highCount = confirmed ? signals.filter((signal) => signal.severity === "high").length : 0;
+  return `
+    <div class="doctor-review-hero">
+      <div class="doctor-review-copy">
+        <div class="status-row">
+          <span class="doctor-status-pill ${confirmed ? "confirmed" : "pending"}">${doctorIcon(confirmed ? "check" : "clock", "status-icon")}${confirmed ? "Распознавание подтверждено" : "Ожидает подтверждения"}</span>
+        </div>
+        <strong>Проверьте распознавание</strong>
+        <p>Можно подтвердить все пункты сразу или каждый по отдельности.</p>
+        <div class="doctor-review-metrics" aria-label="Краткая сводка заключения">
+          ${renderDoctorMetric("file", diagnoses.length, "диагнозов")}
+          ${renderDoctorMetric("pill", medications.length, "назначения")}
+          ${renderDoctorMetric("shield", signals.length, confirmed ? "проверено" : "будут проверены")}
+          ${renderDoctorMetric("alert", highCount, "срочных сигналов")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDoctorMetric(iconName, value, label) {
+  return `
+    <span class="doctor-review-metric">
+      ${doctorIcon(iconName, "summary-icon")}
+      <strong>${escapeHtml(String(value))}</strong>
+      <span>${escapeHtml(label)}</span>
+    </span>
+  `;
+}
+
+function renderDoctorParsed(parsed, conclusion = currentDoctorConclusion()) {
   const diagnoses = parsed.diagnoses || [];
   const medications = parsed.medications || [];
   return `
     <div class="doctor-grid">
-      <section class="decision-section">
+      <section class="decision-section doctor-review-section">
         <div class="section-title">
-          <h3>Диагнозы</h3>
+          <div>
+            <h3>1. Проверьте распознавание</h3>
+            <p>Подтвердите верные пункты, исправьте ошибки.</p>
+          </div>
           <span class="mini-counter">${diagnoses.length}</span>
         </div>
-        ${diagnoses.length ? diagnoses.map((item) => `
-          <article class="signal-item ${escapeHtml(diagnosisSeverity(item))}">
-            <strong>${escapeHtml(item.label)}</strong>
-            <span class="diagnosis-tag ${escapeHtml(item.attention?.level || "moderate")}">${escapeHtml(item.attention?.label || "Требует наблюдения")}</span>
-          </article>
-        `).join("") : `<p class="file-status">Диагнозы не распознаны. Можно уточнить текст вручную.</p>`}
+        ${diagnoses.length ? diagnoses.map((item) => renderDoctorDiagnosisItem(item, conclusion)).join("") : `<p class="file-status">Диагнозы не распознаны. Можно уточнить текст вручную.</p>`}
       </section>
-      <section class="decision-section">
+      <section class="decision-section doctor-review-section">
         <div class="section-title">
-          <h3>Назначения</h3>
+          <div>
+            <h3>2. Назначения</h3>
+            <p>Проверьте препарат и режим приёма.</p>
+          </div>
           <span class="mini-counter">${medications.length}</span>
         </div>
-        ${medications.length ? medications.map((item) => `
-          <article class="signal-item low">
-            <strong>${escapeHtml(item.name)}</strong>
-            <p>${escapeHtml([item.dose || "доза не распознана", "после подтверждения будет добавлено в лекарственный профиль"].join(" · "))}</p>
-          </article>
-        `).join("") : `<p class="file-status">Назначения не распознаны. Можно добавить препараты вручную в лекарственном профиле.</p>`}
+        ${medications.length ? medications.map((item) => renderDoctorMedicationItem(item, conclusion)).join("") : `<p class="file-status">Назначения не распознаны. Можно добавить препараты вручную в лекарственном профиле.</p>`}
       </section>
     </div>
   `;
+}
+
+function renderDoctorDiagnosisItem(item, conclusion) {
+  const key = doctorDiagnosisKey(item);
+  const accepted = isDoctorReviewItemAccepted(conclusion, "diagnosis", key);
+  const confirmed = conclusion.reviewStatus === "confirmed";
+  return `
+          <article class="doctor-review-item ${accepted ? "is-accepted" : ""}">
+            <div class="doctor-review-main">
+              <div class="doctor-review-title">
+            <strong>${escapeHtml(item.label)}</strong>
+                ${confirmed || accepted ? `<span class="diagnosis-tag ${escapeHtml(item.attention?.level || "moderate")}">${escapeHtml(item.attention?.label || "Требует наблюдения")}</span>` : `<span class="diagnosis-tag feature">диагноз</span>`}
+              </div>
+              <p class="review-detail">${escapeHtml(item.sourceLine || "Источник: заключение")}</p>
+            </div>
+            ${renderDoctorItemActions("diagnosis", key, accepted)}
+          </article>
+  `;
+}
+
+function renderDoctorMedicationItem(item, conclusion) {
+  const key = doctorMedicationReviewKey(item);
+  const accepted = isDoctorReviewItemAccepted(conclusion, "medication", key);
+  return `
+          <article class="doctor-review-item ${accepted ? "is-accepted" : ""}">
+            <div class="doctor-review-main">
+              <div class="doctor-review-title">
+            <strong>${escapeHtml(item.name)}</strong>
+                ${item.substanceLabel ? `<span class="diagnosis-tag feature">${escapeHtml(item.substanceLabel)}</span>` : `<span class="diagnosis-tag feature">вещество не определено</span>`}
+              </div>
+              <p class="review-detail">${escapeHtml(item.dose || "доза не распознана")}</p>
+            </div>
+            ${renderDoctorItemActions("medication", key, accepted)}
+          </article>
+  `;
+}
+
+function renderDoctorItemActions(type, key, accepted) {
+  return `
+    <div class="doctor-review-actions">
+      <button class="doctor-icon-button accept-item" type="button" data-doctor-confirm-${type}="${escapeHtml(key)}" title="Отметить как верное" aria-label="Отметить как верное">${doctorIcon("check")}</button>
+      <button class="doctor-icon-button" type="button" data-doctor-edit-list="1" title="Изменить" aria-label="Изменить">${doctorIcon("pencil")}</button>
+      <button class="doctor-icon-button danger-action" type="button" data-doctor-remove-${type}="${escapeHtml(key)}" title="Удалить" aria-label="Удалить">${doctorIcon("trash")}</button>
+    </div>
+  `;
+}
+
+function renderDoctorDraftChecks() {
+  return `
+    <div class="doctor-draft-checks">
+      <section class="decision-section">
+        <div class="section-title">
+          <div>
+            <h3>Что произойдёт после подтверждения</h3>
+            <p>Пока распознавание не подтверждено, проверки предварительные.</p>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="check-item"><span class="check-mark">1</span><span>Лекарства попадут в профиль с действующими веществами.</span></div>
+          <div class="check-item"><span class="check-mark">2</span><span>Приложение сверит назначения с PGx-маркерами и текущими анализами.</span></div>
+          <div class="check-item"><span class="check-mark">3</span><span>Проверки доказательности и сочетаний появятся в списке вопросов врачу.</span></div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function bindDoctorReviewActions() {
+  if (typeof doctorParsed.querySelectorAll !== "function") return;
+  doctorParsed.querySelectorAll("[data-doctor-confirm-diagnosis]").forEach((button) => {
+    button.addEventListener("click", () => confirmDoctorReviewItem("diagnosis", button.dataset.doctorConfirmDiagnosis));
+  });
+  doctorParsed.querySelectorAll("[data-doctor-confirm-medication]").forEach((button) => {
+    button.addEventListener("click", () => confirmDoctorReviewItem("medication", button.dataset.doctorConfirmMedication));
+  });
+  doctorParsed.querySelectorAll("[data-doctor-remove-diagnosis]").forEach((button) => {
+    button.addEventListener("click", () => removeDoctorReviewItem("diagnosis", button.dataset.doctorRemoveDiagnosis));
+  });
+  doctorParsed.querySelectorAll("[data-doctor-remove-medication]").forEach((button) => {
+    button.addEventListener("click", () => removeDoctorReviewItem("medication", button.dataset.doctorRemoveMedication));
+  });
+  doctorParsed.querySelectorAll("[data-doctor-edit-list]").forEach((button) => {
+    button.addEventListener("click", showDoctorCorrectionForm);
+  });
+}
+
+function doctorDiagnosisKey(item) {
+  return item?.key || normalizeText(item?.label || "");
+}
+
+function doctorMedicationReviewKey(item) {
+  return medicationUniqueKey(item);
+}
+
+function isDoctorReviewItemAccepted(conclusion, type, key) {
+  if (conclusion.reviewStatus === "confirmed") return true;
+  const keys = type === "diagnosis" ? conclusion.confirmedDiagnosisKeys : conclusion.confirmedMedicationKeys;
+  return Array.isArray(keys) && keys.includes(key);
+}
+
+function confirmDoctorReviewItem(type, key) {
+  const conclusion = currentDoctorConclusion();
+  const parsed = conclusion.parsed || { diagnoses: [], medications: [] };
+  const diagnosisKeys = new Set(conclusion.confirmedDiagnosisKeys || []);
+  const medicationKeys = new Set(conclusion.confirmedMedicationKeys || []);
+
+  if (type === "diagnosis") diagnosisKeys.add(key);
+  if (type === "medication") {
+    medicationKeys.add(key);
+    const medication = (parsed.medications || []).find((item) => doctorMedicationReviewKey(item) === key);
+    if (medication) {
+      syncDoctorMedicationsToProfile({ medications: [medication] }, {
+        doctorConclusionId: conclusion.id,
+        recognitionStatus: "confirmed",
+        needsConfirmation: false
+      });
+    }
+  }
+
+  const allDiagnosesAccepted = (parsed.diagnoses || []).every((item) => diagnosisKeys.has(doctorDiagnosisKey(item)));
+  const allMedicationsAccepted = (parsed.medications || []).every((item) => medicationKeys.has(doctorMedicationReviewKey(item)));
+  const allAccepted = allDiagnosesAccepted && allMedicationsAccepted && ((parsed.diagnoses || []).length + (parsed.medications || []).length > 0);
+
+  if (allAccepted) {
+    syncDoctorMedicationsToProfile(parsed, {
+      doctorConclusionId: conclusion.id,
+      recognitionStatus: "confirmed",
+      needsConfirmation: false
+    });
+  }
+
+  saveDoctorConclusion(conclusion.text || doctorText.value, parsed, {
+    reviewStatus: allAccepted ? "confirmed" : "pending",
+    correctionOpen: false,
+    confirmedDiagnosisKeys: [...diagnosisKeys],
+    confirmedMedicationKeys: [...medicationKeys]
+  });
+  doctorStatus.className = "file-status";
+  doctorStatus.textContent = allAccepted
+    ? "Все пункты подтверждены. Лекарства добавлены в профиль."
+    : "Пункт подтверждён.";
+  renderDoctorConclusion();
+  renderHealthBlocks();
+}
+
+function removeDoctorReviewItem(type, key) {
+  const conclusion = currentDoctorConclusion();
+  const parsed = conclusion.parsed || { diagnoses: [], medications: [] };
+  const nextParsed = {
+    diagnoses: type === "diagnosis"
+      ? (parsed.diagnoses || []).filter((item) => doctorDiagnosisKey(item) !== key)
+      : parsed.diagnoses || [],
+    medications: type === "medication"
+      ? (parsed.medications || []).filter((item) => doctorMedicationReviewKey(item) !== key)
+      : parsed.medications || []
+  };
+  const confirmedDiagnosisKeys = (conclusion.confirmedDiagnosisKeys || []).filter((item) => item !== key);
+  const confirmedMedicationKeys = (conclusion.confirmedMedicationKeys || []).filter((item) => item !== key);
+  saveDoctorConclusion(conclusion.text || doctorText.value, nextParsed, {
+    reviewStatus: "pending",
+    correctionOpen: false,
+    confirmedDiagnosisKeys,
+    confirmedMedicationKeys
+  });
+  reconcileDraftDoctorMedications(nextParsed, { doctorConclusionId: conclusion.id });
+  doctorStatus.className = "file-status";
+  doctorStatus.textContent = type === "diagnosis" ? "Диагноз удалён из распознавания." : "Назначение удалено из распознавания.";
+  renderDoctorConclusion();
+  renderHealthBlocks();
+}
+
+function doctorIcon(name, className = "button-icon") {
+  const icons = {
+    check: `<path d="M20 6 9 17l-5-5"></path>`,
+    clock: `<circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path>`,
+    pencil: `<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>`,
+    trash: `<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path>`,
+    file: `<path d="M8 3h8l2 3v15H6V6z"></path><path d="M9 11h6"></path><path d="M9 15h6"></path>`,
+    pill: `<path d="M10 21 3 14a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z"></path><path d="m8 8 8 8"></path>`,
+    shield: `<path d="M12 3 20 7v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"></path><path d="m9 12 2 2 4-5"></path>`,
+    alert: `<path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3h3.4L21 10.3v3.4L13.7 21h-3.4L3 13.7v-3.4z"></path>`
+  };
+  return `<svg class="${escapeHtml(className)}" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.check}</svg>`;
 }
 
 function diagnosisSeverity(item) {
