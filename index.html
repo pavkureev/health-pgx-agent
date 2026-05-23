@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PGx Agent MVP</title>
-    <link rel="stylesheet" href="./styles.css?v=20260523-04" />
+    <link rel="stylesheet" href="./styles.css?v=20260524-01" />
   </head>
   <body>
     <main class="app-shell">
@@ -76,9 +76,71 @@
           <p id="profileStatus" class="file-status">Данные сохраняются локально в выбранном профиле.</p>
         </section>
 
-        <details class="app-section genetics-section">
+        <details class="app-section doctor-section">
           <summary class="app-section-summary">
             <span class="section-kicker">1</span>
+            <span class="section-copy">
+              <strong>План после приёма</strong>
+              <span id="doctorSectionMeta" class="section-meta">Нет заключения · загрузка открыта ниже</span>
+            </span>
+            <span class="section-toggle">Раскрыть</span>
+          </summary>
+          <div class="app-section-body">
+            <section class="panel doctor-panel">
+              <div class="panel-header">
+                <h2 id="doctorPanelTitle">Загрузите заключение</h2>
+                <span class="counter" id="doctorCounter">0 пунктов</span>
+              </div>
+              <div id="doctorSummary" class="summary empty">Загрузите заключение после приема, чтобы перенести диагнозы и назначения в проверяемый список.</div>
+              <div id="doctorReviewActions" class="button-row" hidden>
+                <button id="addDoctorMedications" class="primary-button" type="button">Подтвердить всё</button>
+                <button id="editDoctorConclusion" class="secondary-button" type="button">Исправить список</button>
+                <button id="deleteDoctorConclusion" class="secondary-button" type="button">Удалить заключение</button>
+              </div>
+              <div id="doctorParsed" class="doctor-parsed"></div>
+              <div id="doctorCorrectionPanel" class="doctor-correction" hidden>
+                <label for="doctorDiagnosisEdit">Диагнозы</label>
+                <textarea id="doctorDiagnosisEdit" class="compact-textarea" spellcheck="false"></textarea>
+                <label for="doctorMedicationEdit">Лекарства и рекомендации по приёму</label>
+                <textarea id="doctorMedicationEdit" class="compact-textarea" spellcheck="false"></textarea>
+                <div class="button-row">
+                  <button id="applyDoctorCorrections" class="primary-button" type="button">Сохранить исправления</button>
+                </div>
+              </div>
+              <div id="doctorSignals" class="results"></div>
+
+              <details id="doctorInputDrawer" class="editor-drawer">
+                <summary>Добавить заключение</summary>
+                <div class="drawer-body">
+                  <div class="file-loader">
+                    <label for="doctorFile">Загрузите PDF или текст заключения</label>
+                    <div class="file-row">
+                      <input id="doctorFile" type="file" accept=".pdf,.txt,text/plain,application/pdf" />
+                      <button id="loadDoctorConclusion" class="secondary-button" type="button">Перенести из файла</button>
+                    </div>
+                    <p id="doctorStatus" class="file-status">Текстовые PDF читаются локально. Сканы пока требуют OCR или ручной вставки текста.</p>
+                  </div>
+
+                  <label for="doctorText" class="lab-text-label">Текст заключения, если файл не распознался</label>
+                  <textarea id="doctorText" class="compact-textarea" spellcheck="false" placeholder="Например:
+Диагноз: артериальная гипертензия, дислипидемия.
+Назначено:
+Розувастатин 10 мг вечером
+Клопидогрел 75 мг утром
+Омепразол 20 мг 1 раз в день"></textarea>
+                  <div class="button-row">
+                    <button id="parseDoctorText" class="primary-button" type="button">Перенести из текста</button>
+                    <button id="clearDoctorConclusion" class="secondary-button" type="button">Очистить форму</button>
+                  </div>
+                </div>
+              </details>
+            </section>
+          </div>
+        </details>
+
+        <details class="app-section genetics-section">
+          <summary class="app-section-summary">
+            <span class="section-kicker">2</span>
             <span class="section-copy">
               <strong>Рекомендации по генетике</strong>
               <span id="geneticsSectionMeta" class="section-meta">Нет генетических данных · загрузка открыта ниже</span>
@@ -149,7 +211,7 @@ HLA-B*57:01 negative"></textarea>
 
         <details class="app-section labs-section">
           <summary class="app-section-summary">
-            <span class="section-kicker">2</span>
+            <span class="section-kicker">3</span>
             <span class="section-copy">
               <strong>Результаты анализов</strong>
               <span id="labsSectionMeta" class="section-meta">Нет анализов · загрузка открыта ниже</span>
@@ -265,68 +327,6 @@ eGFR 82 мл/мин/1.73м2
           </div>
         </details>
 
-        <details class="app-section doctor-section">
-          <summary class="app-section-summary">
-            <span class="section-kicker">3</span>
-            <span class="section-copy">
-              <strong>Заключение врача</strong>
-              <span id="doctorSectionMeta" class="section-meta">Нет заключения · загрузка открыта ниже</span>
-            </span>
-            <span class="section-toggle">Раскрыть</span>
-          </summary>
-          <div class="app-section-body">
-            <section class="panel doctor-panel">
-              <div class="panel-header">
-                <h2>Разбор заключения</h2>
-                <span class="counter" id="doctorCounter">0 пунктов</span>
-              </div>
-              <div id="doctorSummary" class="summary empty">Загрузите заключение после приема, чтобы сопоставить диагнозы и назначения с генетикой, анализами и лекарственным профилем.</div>
-              <div id="doctorReviewActions" class="button-row" hidden>
-                <button id="addDoctorMedications" class="primary-button" type="button">Подтвердить всё</button>
-                <button id="editDoctorConclusion" class="secondary-button" type="button">Исправить список</button>
-                <button id="deleteDoctorConclusion" class="secondary-button" type="button">Удалить заключение</button>
-              </div>
-              <div id="doctorParsed" class="doctor-parsed"></div>
-              <div id="doctorCorrectionPanel" class="doctor-correction" hidden>
-                <label for="doctorDiagnosisEdit">Диагнозы</label>
-                <textarea id="doctorDiagnosisEdit" class="compact-textarea" spellcheck="false"></textarea>
-                <label for="doctorMedicationEdit">Лекарства и рекомендации по приёму</label>
-                <textarea id="doctorMedicationEdit" class="compact-textarea" spellcheck="false"></textarea>
-                <div class="button-row">
-                  <button id="applyDoctorCorrections" class="primary-button" type="button">Сохранить исправления</button>
-                </div>
-              </div>
-              <div id="doctorSignals" class="results"></div>
-
-              <details id="doctorInputDrawer" class="editor-drawer">
-                <summary>Добавить заключение</summary>
-                <div class="drawer-body">
-                  <div class="file-loader">
-                    <label for="doctorFile">Загрузите PDF или текст заключения</label>
-                    <div class="file-row">
-                      <input id="doctorFile" type="file" accept=".pdf,.txt,text/plain,application/pdf" />
-                      <button id="loadDoctorConclusion" class="secondary-button" type="button">Разобрать</button>
-                    </div>
-                    <p id="doctorStatus" class="file-status">Текстовые PDF читаются локально. Сканы пока требуют OCR или ручной вставки текста.</p>
-                  </div>
-
-                  <label for="doctorText" class="lab-text-label">Текст заключения, если файл не распознался</label>
-                  <textarea id="doctorText" class="compact-textarea" spellcheck="false" placeholder="Например:
-Диагноз: артериальная гипертензия, дислипидемия.
-Назначено:
-Розувастатин 10 мг вечером
-Клопидогрел 75 мг утром
-Омепразол 20 мг 1 раз в день"></textarea>
-                  <div class="button-row">
-                    <button id="parseDoctorText" class="primary-button" type="button">Разобрать текст</button>
-                    <button id="clearDoctorConclusion" class="secondary-button" type="button">Очистить форму</button>
-                  </div>
-                </div>
-              </details>
-            </section>
-          </div>
-        </details>
-
         <details class="app-section medications-section">
           <summary class="app-section-summary">
             <span class="section-kicker">4</span>
@@ -398,13 +398,13 @@ eGFR 82 мл/мин/1.73м2
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260523-04"></script>
-    <script src="./data/pgx-rules.js?v=20260523-04"></script>
-    <script src="./data/lab-analytes.js?v=20260523-04"></script>
-    <script src="./data/medication-knowledge.js?v=20260523-04"></script>
-    <script src="./data/evidence-flags.js?v=20260523-04"></script>
-    <script src="./data.js?v=20260523-04"></script>
-    <script src="./app.js?v=20260523-04"></script>
-    <script src="./js/pgx-extensions.js?v=20260523-04"></script>
+    <script src="./supabase-config.js?v=20260524-01"></script>
+    <script src="./data/pgx-rules.js?v=20260524-01"></script>
+    <script src="./data/lab-analytes.js?v=20260524-01"></script>
+    <script src="./data/medication-knowledge.js?v=20260524-01"></script>
+    <script src="./data/evidence-flags.js?v=20260524-01"></script>
+    <script src="./data.js?v=20260524-01"></script>
+    <script src="./app.js?v=20260524-01"></script>
+    <script src="./js/pgx-extensions.js?v=20260524-01"></script>
   </body>
 </html>

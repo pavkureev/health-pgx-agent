@@ -98,6 +98,7 @@ const doctorFile = document.querySelector("#doctorFile");
 const doctorText = document.querySelector("#doctorText");
 const doctorStatus = document.querySelector("#doctorStatus");
 const doctorCounter = document.querySelector("#doctorCounter");
+const doctorPanelTitle = document.querySelector("#doctorPanelTitle");
 const doctorSummary = document.querySelector("#doctorSummary");
 const doctorParsed = document.querySelector("#doctorParsed");
 const doctorSignals = document.querySelector("#doctorSignals");
@@ -1059,7 +1060,7 @@ async function loadDoctorConclusionFile() {
     saveDoctorConclusion(text, parsed, { reviewStatus: "pending", newId: true });
     reconcileDraftDoctorMedications(parsed, { doctorConclusionId: currentDoctorConclusion().id });
     doctorStatus.className = "file-status";
-    doctorStatus.textContent = `Заключение разобрано: ${file.name}. Проверьте распознавание и подтвердите перед добавлением лекарств в профиль.`;
+    doctorStatus.textContent = `Данные перенесены из файла: ${file.name}. Сверьте черновик и подтвердите перед добавлением лекарств в профиль.`;
     renderDoctorConclusion();
   } catch (error) {
     doctorStatus.className = "file-status error";
@@ -1082,7 +1083,7 @@ function parseDoctorTextInput() {
   });
   reconcileDraftDoctorMedications(parsed, { doctorConclusionId: currentDoctorConclusion().id });
   doctorStatus.className = "file-status";
-  doctorStatus.textContent = "Заключение разобрано. Проверьте распознавание и подтвердите перед добавлением лекарств в профиль.";
+  doctorStatus.textContent = "Данные перенесены в черновик. Сверьте распознавание и подтвердите перед добавлением лекарств в профиль.";
   renderDoctorConclusion();
 }
 
@@ -1104,7 +1105,7 @@ function deleteDoctorConclusion() {
   profile.metadata = metadata;
   saveCurrentProfileData();
   doctorStatus.className = "file-status";
-  doctorStatus.textContent = "Заключение врача удалено. Подтвержденные лекарства в лекарственном профиле сохранены.";
+  doctorStatus.textContent = "Заключение удалено. Подтвержденные лекарства в лекарственном профиле сохранены.";
   renderDoctorConclusion();
   renderHealthBlocks();
 }
@@ -1580,7 +1581,7 @@ function applyDoctorCorrections() {
   });
   reconcileDraftDoctorMedications({ diagnoses, medications }, { doctorConclusionId: currentDoctorConclusion().id });
   doctorStatus.className = "file-status";
-  doctorStatus.textContent = "Исправления сохранены. Проверьте результат и подтвердите распознавание.";
+  doctorStatus.textContent = "Исправления сохранены. Сверьте результат и подтвердите распознавание.";
   renderDoctorConclusion();
 }
 
@@ -2230,6 +2231,7 @@ function renderDoctorConclusion() {
   const confirmed = conclusion.reviewStatus === "confirmed";
 
   doctorCounter.textContent = `${total} ${plural(total, "пункт", "пункта", "пунктов")}`;
+  if (doctorPanelTitle) doctorPanelTitle.textContent = hasConclusion ? "Сверьте черновик" : "Загрузите заключение";
   doctorReviewActions.hidden = !hasConclusion;
   addDoctorMedicationsButton.disabled = !medications.length || confirmed;
   addDoctorMedicationsButton.innerHTML = `${doctorIcon("check")}${confirmed ? "Лекарства добавлены" : "Подтвердить всё"}`;
@@ -2237,8 +2239,8 @@ function renderDoctorConclusion() {
   updateDoctorSectionMeta(parsed, signals);
 
   if (!hasConclusion) {
-    doctorSummary.className = "summary empty";
-    doctorSummary.textContent = "Загрузите заключение после приема, чтобы сопоставить диагнозы и назначения с генетикой, анализами и лекарственным профилем.";
+    doctorSummary.className = "doctor-review-summary";
+    doctorSummary.innerHTML = renderDoctorStartSummary();
     doctorParsed.innerHTML = "";
     doctorSignals.innerHTML = "";
     doctorReviewActions.hidden = true;
@@ -2264,14 +2266,56 @@ function renderDoctorSummary(conclusion, diagnoses, medications, signals) {
         <div class="status-row">
           <span class="doctor-status-pill ${confirmed ? "confirmed" : "pending"}">${doctorIcon(confirmed ? "check" : "clock", "status-icon")}${confirmed ? "Распознавание подтверждено" : "Ожидает подтверждения"}</span>
         </div>
-        <strong>Проверьте распознавание</strong>
-        <p>Можно подтвердить все пункты сразу или каждый по отдельности.</p>
+        <strong>${confirmed ? "Подсказки готовы" : "Сверьте, что всё перенесено верно"}</strong>
+        <p>${confirmed ? "Подтверждённые пункты используются для лекарственного профиля, подсказок и вопросов врачу." : "Можно подтвердить все пункты сразу или каждый по отдельности."}</p>
+        ${renderDoctorProgress(confirmed ? "insights" : "review")}
         <div class="doctor-review-metrics" aria-label="Краткая сводка заключения">
           ${renderDoctorMetric("file", diagnoses.length, "диагнозов")}
           ${renderDoctorMetric("pill", medications.length, "назначения")}
-          ${renderDoctorMetric("shield", signals.length, confirmed ? "проверено" : "будут проверены")}
-          ${renderDoctorMetric("alert", highCount, "срочных сигналов")}
+          ${renderDoctorMetric("shield", signals.length, confirmed ? "сверено" : "будут сверены")}
+          ${renderDoctorMetric("alert", highCount, "срочных вопросов")}
         </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDoctorStartSummary() {
+  return `
+    <div class="doctor-review-hero">
+      <div class="doctor-review-copy">
+        <div class="status-row">
+          <span class="doctor-status-pill pending">${doctorIcon("file", "status-icon")}После приёма врача</span>
+        </div>
+        <strong>Загрузите заключение</strong>
+        <p>Сначала появится черновик. Вы подтвердите, что диагнозы, назначения и режим приёма перенесены верно, и только потом увидите подсказки.</p>
+        ${renderDoctorProgress("start")}
+      </div>
+    </div>
+  `;
+}
+
+function renderDoctorProgress(activeStep = "start") {
+  const steps = [
+    ["start", "Загрузка", "Заключение"],
+    ["review", "Проверка", "Факты"],
+    ["insights", "Выводы", "Вопросы"],
+    ["context", "Контекст", "Данные"]
+  ];
+  const activeIndex = Math.max(0, steps.findIndex(([key]) => key === activeStep));
+  return `
+    <div class="doctor-flow-progress" aria-label="Путь работы">
+      <div class="doctor-flow-head">
+        <span>Путь работы</span>
+        <span>${activeIndex + 1} из ${steps.length}</span>
+      </div>
+      <div class="doctor-flow-steps">
+        ${steps.map(([key, title, subtitle], index) => `
+          <span class="doctor-flow-step ${index < activeIndex ? "is-done" : ""} ${index === activeIndex ? "is-active" : ""}">
+            <strong>${escapeHtml(title)}</strong>
+            <small>${escapeHtml(subtitle)}</small>
+          </span>
+        `).join("")}
       </div>
     </div>
   `;
@@ -2295,8 +2339,8 @@ function renderDoctorParsed(parsed, conclusion = currentDoctorConclusion()) {
       <section class="decision-section doctor-review-section">
         <div class="section-title">
           <div>
-            <h3>1. Проверьте распознавание</h3>
-            <p>Подтвердите верные пункты, исправьте ошибки.</p>
+            <h3>Диагнозы</h3>
+            <p>Сверьте пункты из заключения.</p>
           </div>
           <span class="mini-counter">${diagnoses.length}</span>
         </div>
@@ -2306,7 +2350,7 @@ function renderDoctorParsed(parsed, conclusion = currentDoctorConclusion()) {
         <div class="section-title">
           <div>
             <h3>2. Назначения</h3>
-            <p>Проверьте препарат и режим приёма.</p>
+            <p>Сверьте препарат и режим приёма.</p>
           </div>
           <span class="mini-counter">${medications.length}</span>
         </div>
@@ -2375,13 +2419,13 @@ function renderDoctorDraftChecks() {
         <div class="section-title">
           <div>
             <h3>Что произойдёт после подтверждения</h3>
-            <p>Пока распознавание не подтверждено, проверки предварительные.</p>
+            <p>Пока распознавание не подтверждено, подсказки не показываются.</p>
           </div>
         </div>
         <div class="checklist">
           <div class="check-item"><span class="check-mark">1</span><span>Лекарства попадут в профиль с действующими веществами.</span></div>
           <div class="check-item"><span class="check-mark">2</span><span>Приложение сверит назначения с PGx-маркерами и текущими анализами.</span></div>
-          <div class="check-item"><span class="check-mark">3</span><span>Проверки доказательности и сочетаний появятся в списке вопросов врачу.</span></div>
+          <div class="check-item"><span class="check-mark">3</span><span>Подсказки по доказательности и сочетаниям появятся в списке вопросов врачу.</span></div>
         </div>
       </section>
     </div>
