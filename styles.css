@@ -436,8 +436,7 @@ h2 {
 
 .doctor-review-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   align-items: start;
   padding: 9px;
   border: 1px solid var(--line);
@@ -475,6 +474,12 @@ h2 {
 .doctor-review-actions {
   display: flex;
   gap: 6px;
+  justify-content: flex-end;
+  align-self: end;
+}
+
+.doctor-review-actions.compact {
+  justify-content: flex-end;
 }
 
 .doctor-icon-button {

@@ -1551,14 +1551,23 @@ function addDoctorMedicationsToProfile() {
   renderHealthBlocks();
 }
 
-function showDoctorCorrectionForm() {
+function showDoctorCorrectionForm(options = {}) {
   const conclusion = currentDoctorConclusion();
   const parsed = conclusion.parsed || { diagnoses: [], medications: [] };
+  const confirmedDiagnosisKeys = new Set(conclusion.confirmedDiagnosisKeys || []);
+  const confirmedMedicationKeys = new Set(conclusion.confirmedMedicationKeys || []);
+  if (options.type === "diagnosis" && options.key) confirmedDiagnosisKeys.delete(options.key);
+  if (options.type === "medication" && options.key) confirmedMedicationKeys.delete(options.key);
   doctorDiagnosisEdit.value = (parsed.diagnoses || []).map((item) => item.label).join("\n");
   doctorMedicationEdit.value = (parsed.medications || [])
     .map((item) => [item.name, item.dose].filter(Boolean).join(" "))
     .join("\n");
-  saveDoctorConclusion(conclusion.text || doctorText.value, parsed, { reviewStatus: "pending", correctionOpen: true });
+  saveDoctorConclusion(conclusion.text || doctorText.value, parsed, {
+    reviewStatus: "pending",
+    correctionOpen: true,
+    confirmedDiagnosisKeys: [...confirmedDiagnosisKeys],
+    confirmedMedicationKeys: [...confirmedMedicationKeys]
+  });
   renderDoctorConclusion();
 }
 
@@ -2343,10 +2352,17 @@ function renderDoctorMedicationItem(item, conclusion) {
 }
 
 function renderDoctorItemActions(type, key, accepted) {
+  if (accepted) {
+    return `
+      <div class="doctor-review-actions compact">
+        <button class="doctor-icon-button" type="button" data-doctor-edit-${type}="${escapeHtml(key)}" title="Изменить" aria-label="Изменить">${doctorIcon("pencil")}</button>
+      </div>
+    `;
+  }
   return `
     <div class="doctor-review-actions">
       <button class="doctor-icon-button accept-item" type="button" data-doctor-confirm-${type}="${escapeHtml(key)}" title="Отметить как верное" aria-label="Отметить как верное">${doctorIcon("check")}</button>
-      <button class="doctor-icon-button" type="button" data-doctor-edit-list="1" title="Изменить" aria-label="Изменить">${doctorIcon("pencil")}</button>
+      <button class="doctor-icon-button" type="button" data-doctor-edit-${type}="${escapeHtml(key)}" title="Изменить" aria-label="Изменить">${doctorIcon("pencil")}</button>
       <button class="doctor-icon-button danger-action" type="button" data-doctor-remove-${type}="${escapeHtml(key)}" title="Удалить" aria-label="Удалить">${doctorIcon("trash")}</button>
     </div>
   `;
@@ -2386,8 +2402,11 @@ function bindDoctorReviewActions() {
   doctorParsed.querySelectorAll("[data-doctor-remove-medication]").forEach((button) => {
     button.addEventListener("click", () => removeDoctorReviewItem("medication", button.dataset.doctorRemoveMedication));
   });
-  doctorParsed.querySelectorAll("[data-doctor-edit-list]").forEach((button) => {
-    button.addEventListener("click", showDoctorCorrectionForm);
+  doctorParsed.querySelectorAll("[data-doctor-edit-diagnosis]").forEach((button) => {
+    button.addEventListener("click", () => showDoctorCorrectionForm({ type: "diagnosis", key: button.dataset.doctorEditDiagnosis }));
+  });
+  doctorParsed.querySelectorAll("[data-doctor-edit-medication]").forEach((button) => {
+    button.addEventListener("click", () => showDoctorCorrectionForm({ type: "medication", key: button.dataset.doctorEditMedication }));
   });
 }
 
