@@ -310,17 +310,40 @@ assert.ok(signals.some((item) => item.title === "Липидный диагноз
 context.document.querySelector("#doctorText").value = conclusion;
 context.document.querySelector("#parseDoctorText").onclick();
 assert.strictEqual(context.currentMedications().length, 0, "parsing should wait for user confirmation before syncing medications");
-assert.match(context.document.querySelector("#doctorSummary").textContent, /Подтвердите распознавание/, "doctor summary should ask for confirmation");
+assert.match(context.document.querySelector("#doctorSummary").textContent, /черновая проверка/i, "doctor summary should mark unconfirmed recognition as draft");
 
 context.document.querySelector("#addDoctorMedications").onclick();
 const syncedMedications = context.currentMedications();
 assert.ok(syncedMedications.some((item) => item.name === "Розувастатин"), "doctor medications should sync to medication profile");
-assert.ok(syncedMedications.every((item) => item.needsConfirmation), "synced doctor medications should require confirmation");
+assert.ok(syncedMedications.every((item) => item.doctorConclusionId), "synced doctor medications should keep conclusion provenance");
+assert.ok(syncedMedications.every((item) => !item.needsConfirmation), "confirmed doctor medications should not require a second confirmation");
+assert.ok(syncedMedications.every((item) => item.recognitionStatus === "confirmed"), "confirmed doctor medications should carry confirmed recognition status");
 assert.match(context.document.querySelector("#doctorSummary").textContent, /Распознавание подтверждено/, "doctor summary should reflect confirmation");
 
 context.document.querySelector("#parseDoctorText").onclick();
 const dedupedMedications = context.currentMedications();
 assert.strictEqual(dedupedMedications.length, syncedMedications.length, "re-parsing should not duplicate synced medications");
+
+const scopedConclusionId = syncedMedications[0].doctorConclusionId;
+context.saveCurrentMedications([
+  ...syncedMedications,
+  {
+    id: "previous-conclusion-med",
+    name: "Фамотидин",
+    substance: "famotidine",
+    substanceLabel: "Фамотидин",
+    sourceName: "doctor conclusion",
+    doctorConclusionId: "doctor-previous",
+    needsConfirmation: false,
+    recognitionStatus: "confirmed"
+  }
+]);
+context.reconcileDraftDoctorMedications({ medications: [] }, { doctorConclusionId: scopedConclusionId });
+assert.ok(
+  context.currentMedications().some((item) => item.id === "previous-conclusion-med"),
+  "reconciliation should not delete medications from a different doctor conclusion"
+);
+context.saveCurrentMedications(syncedMedications);
 
 context.document.querySelector("#editDoctorConclusion").onclick();
 context.document.querySelector("#doctorDiagnosisEdit").value = "ГЭРБ\nHP положительный";

@@ -3,7 +3,7 @@ const LAB_STORAGE_KEY = "pgx-agent-lab-records";
 const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
 const PARSER_VERSION = "2026-04-30.1";
-const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.13";
+const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.14";
 const KNOWN_BIRTH_DATES = new Set(["1981-06-06"]);
 const supabaseClient = window.supabase && window.PGX_SUPABASE
   ? window.supabase.createClient(window.PGX_SUPABASE.url, window.PGX_SUPABASE.anonKey)
@@ -109,6 +109,7 @@ const addDoctorMedicationsButton = document.querySelector("#addDoctorMedications
 let currentUser = null;
 let cloudReady = false;
 let savingCloudProfile = false;
+const pendingCloudProfileSaves = new Map();
 let magicLinkSentEmail = "";
 let geneticInputOpen = true;
 let profiles = loadProfiles();
@@ -576,26 +577,43 @@ function saveCurrentProfileData() {
   profile.labRecords = labRecords;
   profile.updatedAt = new Date().toISOString();
   saveProfiles();
-  saveCloudProfileMetadata();
+  queueCloudProfileMetadataSave(profile);
+}
+
+function queueCloudProfileMetadataSave(profile = getActiveProfile()) {
+  if (!cloudReady || !profile?.id) return;
+  pendingCloudProfileSaves.set(profile.id, {
+    id: profile.id,
+    name: profile.name,
+    metadata: { ...(profile.metadata || {}) },
+    patientData: profile.patientData || ""
+  });
+  void saveCloudProfileMetadata();
 }
 
 async function saveCloudProfileMetadata() {
   if (!cloudReady || savingCloudProfile) return;
-  const profile = getActiveProfile();
-  if (!profile?.id) return;
 
   savingCloudProfile = true;
-  const { error } = await supabaseClient
-    .from("patient_profiles")
-    .update({
-      display_name: profile.name,
-      metadata: { ...(profile.metadata || {}), patientData: profile.patientData || "" }
-    })
-    .eq("id", profile.id);
-  savingCloudProfile = false;
+  try {
+    while (pendingCloudProfileSaves.size) {
+      const [profileId, snapshot] = pendingCloudProfileSaves.entries().next().value;
+      pendingCloudProfileSaves.delete(profileId);
+      const { error } = await supabaseClient
+        .from("patient_profiles")
+        .update({
+          display_name: snapshot.name,
+          metadata: { ...(snapshot.metadata || {}), patientData: snapshot.patientData || "" }
+        })
+        .eq("id", profileId);
 
-  if (error) {
-    profileStatus.textContent = `Supabase: не удалось сохранить профиль (${error.message}).`;
+      if (error) {
+        profileStatus.textContent = `Supabase: не удалось сохранить профиль (${error.message}).`;
+      }
+    }
+  } finally {
+    savingCloudProfile = false;
+    if (pendingCloudProfileSaves.size) void saveCloudProfileMetadata();
   }
 }
 
@@ -716,6 +734,10 @@ async function switchProfile() {
 
 function createId() {
   return `profile-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function createDoctorConclusionId() {
+  return `doctor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function parseProfile(text) {
@@ -1032,8 +1054,8 @@ async function loadDoctorConclusionFile() {
     const text = await extractTextFromFile(file);
     doctorText.value = text;
     const parsed = parseDoctorConclusion(text);
-    saveDoctorConclusion(text, parsed, { reviewStatus: "pending" });
-    reconcileDraftDoctorMedications(parsed);
+    saveDoctorConclusion(text, parsed, { reviewStatus: "pending", newId: true });
+    reconcileDraftDoctorMedications(parsed, { doctorConclusionId: currentDoctorConclusion().id });
     doctorStatus.className = "file-status";
     doctorStatus.textContent = `Заключение разобрано: ${file.name}. Проверьте распознавание и подтвердите перед добавлением лекарств в профиль.`;
     renderDoctorConclusion();
@@ -1051,8 +1073,12 @@ function parseDoctorTextInput() {
   }
 
   const parsed = parseDoctorConclusion(doctorText.value);
-  saveDoctorConclusion(doctorText.value, parsed, { reviewStatus: "pending" });
-  reconcileDraftDoctorMedications(parsed);
+  const previous = currentDoctorConclusion();
+  saveDoctorConclusion(doctorText.value, parsed, {
+    reviewStatus: "pending",
+    newId: normalizeText(previous.text || "") !== normalizeText(doctorText.value)
+  });
+  reconcileDraftDoctorMedications(parsed, { doctorConclusionId: currentDoctorConclusion().id });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = "Заключение разобрано. Проверьте распознавание и подтвердите перед добавлением лекарств в профиль.";
   renderDoctorConclusion();
@@ -1082,7 +1108,7 @@ function deleteDoctorConclusion() {
 }
 
 function currentDoctorConclusion() {
-  return getActiveProfile()?.metadata?.doctorConclusion || { text: "", parsed: { diagnoses: [], medications: [] }, reviewStatus: "" };
+  return getActiveProfile()?.metadata?.doctorConclusion || { id: "", text: "", parsed: { diagnoses: [], medications: [] }, reviewStatus: "" };
 }
 
 function refreshDoctorConclusionParse(profile = getActiveProfile()) {
@@ -1092,6 +1118,7 @@ function refreshDoctorConclusionParse(profile = getActiveProfile()) {
     ...(profile.metadata || {}),
     doctorConclusion: {
       ...conclusion,
+      id: conclusion.id || createDoctorConclusionId(),
       parsed: parseDoctorConclusion(conclusion.text),
       reviewStatus: "pending",
       correctionOpen: false,
@@ -1099,16 +1126,21 @@ function refreshDoctorConclusionParse(profile = getActiveProfile()) {
       updatedAt: new Date().toISOString()
     }
   };
-  reconcileDraftDoctorMedications(profile.metadata.doctorConclusion.parsed);
+  reconcileDraftDoctorMedications(profile.metadata.doctorConclusion.parsed, { doctorConclusionId: profile.metadata.doctorConclusion.id });
   saveCurrentProfileData();
 }
 
 function saveDoctorConclusion(text, parsed, options = {}) {
   const profile = getActiveProfile();
   const previous = currentDoctorConclusion();
+  const hasText = Boolean(text?.trim());
+  const id = hasText
+    ? options.id || (options.newId ? createDoctorConclusionId() : previous.id || createDoctorConclusionId())
+    : "";
   profile.metadata = {
     ...(profile.metadata || {}),
     doctorConclusion: {
+      id,
       text,
       parsed,
       reviewStatus: options.reviewStatus ?? previous.reviewStatus ?? "pending",
@@ -1499,9 +1531,14 @@ function findSourceLine(text, patterns) {
 }
 
 function addDoctorMedicationsToProfile() {
-  const parsed = currentDoctorConclusion().parsed || { medications: [] };
-  const sync = syncDoctorMedicationsToProfile(parsed);
-  saveDoctorConclusion(currentDoctorConclusion().text || doctorText.value, parsed, { reviewStatus: "confirmed", correctionOpen: false });
+  const conclusion = currentDoctorConclusion();
+  const parsed = conclusion.parsed || { medications: [] };
+  const sync = syncDoctorMedicationsToProfile(parsed, {
+    doctorConclusionId: conclusion.id,
+    recognitionStatus: "confirmed",
+    needsConfirmation: false
+  });
+  saveDoctorConclusion(conclusion.text || doctorText.value, parsed, { reviewStatus: "confirmed", correctionOpen: false });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = sync.added
     ? `Распознавание подтверждено. Назначения добавлены в лекарственный профиль: ${sync.added}.`
@@ -1528,7 +1565,7 @@ function applyDoctorCorrections() {
     reviewStatus: "pending",
     correctionOpen: false
   });
-  reconcileDraftDoctorMedications({ diagnoses, medications });
+  reconcileDraftDoctorMedications({ diagnoses, medications }, { doctorConclusionId: currentDoctorConclusion().id });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = "Исправления сохранены. Проверьте результат и подтвердите распознавание.";
   renderDoctorConclusion();
@@ -1550,6 +1587,10 @@ function parseManualDoctorDiagnoses(text) {
 }
 
 function syncDoctorMedicationsToProfile(parsed, options = {}) {
+  const conclusion = currentDoctorConclusion();
+  const doctorConclusionId = options.doctorConclusionId || conclusion.id || createDoctorConclusionId();
+  const needsConfirmation = options.needsConfirmation ?? false;
+  const recognitionStatus = options.recognitionStatus || (needsConfirmation ? "pending" : "confirmed");
   const additions = (parsed.medications || []).map((item) => enrichMedication({
     id: `med-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name: item.name,
@@ -1559,8 +1600,10 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
     substanceLabel: item.substanceLabel,
     group: item.group,
     sourceName: "doctor conclusion",
+    doctorConclusionId,
+    recognitionStatus,
     sourceLine: item.sourceLine,
-    needsConfirmation: true
+    needsConfirmation
   }));
   if (!additions.length) return { added: 0, skipped: 0 };
 
@@ -1569,7 +1612,7 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
   let updated = 0;
   const syncedExisting = existing.map((item) => {
     const replacement = additionsByKey.get(medicationUniqueKey(item));
-    if (!replacement || !isDoctorConclusionMedication(item)) return item;
+    if (!replacement || !isDoctorConclusionMedication(item, doctorConclusionId)) return item;
     updated += 1;
     return enrichMedication({
       ...item,
@@ -1580,8 +1623,10 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
       substanceLabel: replacement.substanceLabel,
       group: replacement.group,
       sourceName: "doctor conclusion",
+      doctorConclusionId,
+      recognitionStatus,
       sourceLine: replacement.sourceLine,
-      needsConfirmation: true
+      needsConfirmation
     });
   });
   const existingKeys = new Set(syncedExisting.map(medicationUniqueKey));
@@ -1600,14 +1645,15 @@ function medicationUniqueKey(item) {
   return normalizeText(item.substance || item.substanceLabel || item.name || "");
 }
 
-function reconcileDraftDoctorMedications(parsed) {
+function reconcileDraftDoctorMedications(parsed, options = {}) {
+  const doctorConclusionId = options.doctorConclusionId || currentDoctorConclusion().id || "";
   const expected = new Map((parsed.medications || []).map((item) => [medicationUniqueKey(item), item]));
   const current = currentMedications();
   let changed = false;
   const reconciled = [];
 
   for (const item of current) {
-    if (!isDoctorConclusionMedication(item)) {
+    if (!isDoctorConclusionMedication(item, doctorConclusionId)) {
       reconciled.push(item);
       continue;
     }
@@ -1627,8 +1673,10 @@ function reconcileDraftDoctorMedications(parsed) {
       substanceLabel: expectedItem.substanceLabel,
       group: expectedItem.group,
       sourceName: "doctor conclusion",
+      doctorConclusionId: doctorConclusionId || item.doctorConclusionId || "",
+      recognitionStatus: item.recognitionStatus || "draft",
       sourceLine: expectedItem.sourceLine,
-      needsConfirmation: true
+      needsConfirmation: item.needsConfirmation ?? false
     });
     changed = changed || JSON.stringify(updated) !== JSON.stringify(item);
     reconciled.push(updated);
@@ -1637,8 +1685,11 @@ function reconcileDraftDoctorMedications(parsed) {
   if (changed) saveCurrentMedications(reconciled);
 }
 
-function isDoctorConclusionMedication(item) {
-  return item?.sourceName === "doctor conclusion";
+function isDoctorConclusionMedication(item, doctorConclusionId = "") {
+  if (item?.sourceName !== "doctor conclusion") return false;
+  if (!doctorConclusionId) return true;
+  if (!item.doctorConclusionId) return true;
+  return item.doctorConclusionId === doctorConclusionId;
 }
 
 function parseLabReport(text, sourceName, fallbackTimestamp) {
@@ -2162,7 +2213,7 @@ function renderDoctorConclusion() {
     `Найдено: ${diagnoses.length} ${plural(diagnoses.length, "диагноз", "диагноза", "диагнозов")} и ${medications.length} ${plural(medications.length, "назначение", "назначения", "назначений")}.`,
     conclusion.reviewStatus === "confirmed"
       ? "Распознавание подтверждено, назначения переданы в лекарственный профиль."
-      : "Подтвердите распознавание или внесите исправления перед добавлением лекарств в профиль."
+      : "Это черновая проверка: подтвердите распознавание или внесите исправления перед добавлением лекарств в профиль."
   ].join(" ");
   doctorParsed.innerHTML = renderDoctorParsed(parsed);
   doctorSignals.innerHTML = signals.length ? renderPriorityGroups(signals, renderDoctorSignal) : "";
@@ -2193,7 +2244,7 @@ function renderDoctorParsed(parsed) {
         ${medications.length ? medications.map((item) => `
           <article class="signal-item low">
             <strong>${escapeHtml(item.name)}</strong>
-            <p>${escapeHtml([item.dose || "доза не распознана", "будет добавлено в лекарственный профиль для подтверждения"].join(" · "))}</p>
+            <p>${escapeHtml([item.dose || "доза не распознана", "после подтверждения будет добавлено в лекарственный профиль"].join(" · "))}</p>
           </article>
         `).join("") : `<p class="file-status">Назначения не распознаны. Можно добавить препараты вручную в лекарственном профиле.</p>`}
       </section>
