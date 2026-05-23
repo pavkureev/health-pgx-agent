@@ -337,6 +337,10 @@ h2 {
   background: var(--surface-soft);
 }
 
+#doctorReviewActions {
+  margin: 0 0 12px;
+}
+
 .doctor-review-hero,
 .doctor-review-copy {
   display: grid;
@@ -1360,12 +1364,27 @@ button {
   }
 
   .app-section-summary {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .section-toggle {
-    grid-column: 1 / -1;
-    width: 100%;
+    grid-column: auto;
+    min-width: 38px;
+    width: 38px;
+    padding: 7px 0;
+    font-size: 0;
+  }
+
+  .section-toggle::before {
+    content: "⌄";
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .app-section[open] .section-toggle::before {
+    content: "⌃";
+    font-size: 16px;
+    line-height: 1;
   }
 
   .button-row,
