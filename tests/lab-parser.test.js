@@ -10,9 +10,10 @@ const dataScripts = [
   "data.js"
 ];
 
-function createHarness() {
+function createHarness(options = {}) {
   const elements = new Map();
   const store = new Map();
+  const prompts = [];
   const context2d = new Proxy(
     {},
     {
@@ -49,7 +50,12 @@ function createHarness() {
   }
 
   const context = {
-    window: {},
+    window: {
+      prompt(message, defaultValue) {
+        prompts.push({ message, defaultValue });
+        return options.promptResponse ?? null;
+      }
+    },
     document: { querySelector: el },
     localStorage: {
       getItem(key) {
@@ -67,7 +73,7 @@ function createHarness() {
     vm.runInContext(fs.readFileSync(script, "utf8"), context);
   }
   vm.runInContext(fs.readFileSync("app.js", "utf8"), context);
-  return { el };
+  return { el, prompts };
 }
 
 function parseManualLab(text) {
@@ -222,5 +228,46 @@ Abbott (США)
 assert.match(tshRows.html, /ТТГ[\s\S]*0,617/, "TSH should be parsed as 0.617 мМЕ/л");
 assert.doesNotMatch(tshRows.html, /ТТГ[\s\S]*4<\/span>/, "TSH must not use the reference range as result");
 assert.match(tshRows.options, /value="tsh"/, "TSH should be available in metric dropdown");
+
+const tshFirstResult = `
+Зарегистрирован: 04.06.2026 08:48:00
+ТТГ
+0.617
+мМЕ/л
+`;
+const tshSecondResult = `
+Зарегистрирован: 04.06.2026 08:48:00
+ТТГ
+2.5
+мМЕ/л
+`;
+
+const cancelHarness = createHarness({ promptResponse: "1" });
+cancelHarness.el("#labText").value = tshFirstResult;
+cancelHarness.el("#parseLabText").onclick();
+cancelHarness.el("#labText").value = tshSecondResult;
+cancelHarness.el("#parseLabText").onclick();
+assert.strictEqual(cancelHarness.prompts.length, 1, "conflicting TSH upload should ask the user");
+assert.match(cancelHarness.el("#labStatus").textContent, /Загрузка отменена/, "cancel choice should stop new data upload");
+assert.match(cancelHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*0,617/, "cancel choice should keep old TSH value");
+assert.doesNotMatch(cancelHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*2,5/, "cancel choice should not add new TSH value");
+
+const replaceHarness = createHarness({ promptResponse: "2" });
+replaceHarness.el("#labText").value = tshFirstResult;
+replaceHarness.el("#parseLabText").onclick();
+replaceHarness.el("#labText").value = tshSecondResult;
+replaceHarness.el("#parseLabText").onclick();
+assert.match(replaceHarness.el("#labStatus").textContent, /Заменено 1/, "replace choice should report replacement");
+assert.doesNotMatch(replaceHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*0,617/, "replace choice should remove old TSH value");
+assert.match(replaceHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*2,5/, "replace choice should add new TSH value");
+
+const keepHarness = createHarness({ promptResponse: "3" });
+keepHarness.el("#labText").value = tshFirstResult;
+keepHarness.el("#parseLabText").onclick();
+keepHarness.el("#labText").value = tshSecondResult;
+keepHarness.el("#parseLabText").onclick();
+assert.match(keepHarness.el("#labStatus").textContent, /оставлены рядом: 1/, "keep choice should report parallel values");
+assert.match(keepHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*0,617/, "keep choice should keep old TSH value");
+assert.match(keepHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*2,5/, "keep choice should add new TSH value");
 
 console.log("lab parser tests passed");

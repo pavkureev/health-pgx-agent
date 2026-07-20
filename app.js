@@ -903,16 +903,11 @@ async function loadLabFiles() {
     }
   }
 
-  if (added.length) {
-    labRecords = dedupeLabRecords([...labRecords, ...added]);
-    if (cloudReady) await saveCloudLabRecords(added);
-    saveCurrentProfileData();
-    renderLabHistory();
-  }
+  const resolution = added.length ? await addLabRecordsWithConflictResolution(added) : { addedCount: 0 };
 
   labStatus.className = failed.length && !added.length ? "file-status error" : "file-status";
   labStatus.textContent = [
-    added.length ? `Добавлено ${added.length} ${plural(added.length, "отчет", "отчета", "отчетов")}.` : "",
+    formatLabUploadStatus(resolution, "отчет"),
     failed.length ? `Не разобрано: ${failed.join(", ")}.` : ""
   ].filter(Boolean).join(" ");
   renderLabDiagnostics(diagnostics);
@@ -1037,12 +1032,164 @@ async function addLabText() {
     return;
   }
 
-  labRecords = dedupeLabRecords([...labRecords, record]);
-  if (cloudReady) await saveCloudLabRecords([record]);
-  saveCurrentProfileData();
-  renderLabHistory();
+  const resolutionResult = addLabRecordsWithConflictResolution([record]);
+  const resolution = resolutionResult instanceof Promise ? await resolutionResult : resolutionResult;
   labStatus.className = "file-status";
-  labStatus.textContent = `Добавлено ${record.values.length} ${plural(record.values.length, "показатель", "показателя", "показателей")}.`;
+  labStatus.textContent = formatLabUploadStatus(resolution, "показатель", record.values.length);
+}
+
+function addLabRecordsWithConflictResolution(incomingRecords) {
+  const conflicts = findLabValueConflicts(labRecords, incomingRecords);
+  const action = conflicts.length ? requestLabConflictResolution(conflicts) : "keep";
+
+  if (action === "cancel") {
+    return { action, addedCount: 0, conflictCount: conflicts.length };
+  }
+
+  const nextLabRecords = action === "replace"
+    ? dedupeLabRecords([...removeConflictingLabValues(labRecords, conflicts), ...incomingRecords])
+    : dedupeLabRecords([...labRecords, ...incomingRecords]);
+  const result = {
+    action,
+    addedCount: incomingRecords.length,
+    conflictCount: conflicts.length
+  };
+
+  const commit = () => {
+    labRecords = nextLabRecords;
+    saveCurrentProfileData();
+    renderLabHistory();
+    return result;
+  };
+
+  if (!cloudReady) return commit();
+
+  return (async () => {
+    if (action === "replace") await deleteCloudLabConflictingObservations(conflicts);
+    await saveCloudLabRecords(incomingRecords);
+    return commit();
+  })();
+}
+
+function findLabValueConflicts(existingRecords, incomingRecords) {
+  const existingByDateAndKey = new Map();
+
+  for (const record of existingRecords) {
+    for (const value of record.values || []) {
+      const key = labConflictKey(record.date, value.key);
+      if (!existingByDateAndKey.has(key)) existingByDateAndKey.set(key, []);
+      existingByDateAndKey.get(key).push({ record, value });
+    }
+  }
+
+  const conflicts = [];
+  const seen = new Set();
+
+  for (const record of incomingRecords) {
+    for (const incoming of record.values || []) {
+      const key = labConflictKey(record.date, incoming.key);
+      const existingValues = existingByDateAndKey.get(key) || [];
+      const differentValues = existingValues.filter((item) => !sameLabValue(item.value, incoming));
+      if (!differentValues.length || seen.has(key)) continue;
+
+      seen.add(key);
+      conflicts.push({
+        date: record.date,
+        key: incoming.key,
+        label: incoming.label,
+        incoming,
+        existing: differentValues.map((item) => item.value)
+      });
+    }
+  }
+
+  return conflicts;
+}
+
+function requestLabConflictResolution(conflicts) {
+  const examples = conflicts.slice(0, 5).map((conflict) => {
+    const oldValues = conflict.existing
+      .map((value) => `${formatNumber(value.value)} ${value.unit || ""}`.trim())
+      .join(", ");
+    const newValue = `${formatNumber(conflict.incoming.value)} ${conflict.incoming.unit || ""}`.trim();
+    return `${formatDate(conflict.date)} · ${conflict.label}: было ${oldValues}, новое ${newValue}`;
+  }).join("\n");
+  const extra = conflicts.length > 5 ? `\n...и ещё ${conflicts.length - 5}` : "";
+  const message = [
+    "В новых данных есть показатели, которые уже загружены на ту же дату, но с другим значением.",
+    "",
+    examples + extra,
+    "",
+    "Что сделать?",
+    "1 — отменить загрузку новых данных",
+    "2 — заменить старые значения новыми",
+    "3 — оставить оба значения"
+  ].join("\n");
+
+  const answer = typeof window.prompt === "function" ? window.prompt(message, "3") : "3";
+  const normalized = normalizeText(String(answer || ""));
+  if (!answer || normalized === "1" || normalized.includes("отмен")) return "cancel";
+  if (normalized === "2" || normalized.includes("замен")) return "replace";
+  return "keep";
+}
+
+function removeConflictingLabValues(records, conflicts) {
+  const conflictKeys = new Set(conflicts.map((conflict) => labConflictKey(conflict.date, conflict.key)));
+
+  return records
+    .map((record) => {
+      const values = (record.values || []).filter((value) => !conflictKeys.has(labConflictKey(record.date, value.key)));
+      return { ...record, values, id: labRecordId(record.date, record.sourceName, values) };
+    })
+    .filter((record) => record.values.length);
+}
+
+async function deleteCloudLabConflictingObservations(conflicts) {
+  if (!cloudReady || !conflicts.length) return;
+  const profile = getActiveProfile();
+  const keysByDate = conflicts.reduce((acc, conflict) => {
+    if (!acc.has(conflict.date)) acc.set(conflict.date, new Set());
+    acc.get(conflict.date).add(conflict.key);
+    return acc;
+  }, new Map());
+
+  for (const [date, keys] of keysByDate.entries()) {
+    const { error } = await supabaseClient
+      .from("lab_observations")
+      .delete()
+      .eq("profile_id", profile.id)
+      .eq("observed_on", date)
+      .in("analyte_key", [...keys]);
+
+    if (error) {
+      labStatus.textContent = `Supabase: старые значения не удалены (${error.message}).`;
+      throw error;
+    }
+  }
+}
+
+function formatLabUploadStatus(resolution, itemType, manualValueCount = null) {
+  if (resolution?.action === "cancel") {
+    return `Загрузка отменена: найдено ${resolution.conflictCount} ${plural(resolution.conflictCount, "конфликт", "конфликта", "конфликтов")} по дате и показателю.`;
+  }
+
+  const addedCount = itemType === "показатель" && manualValueCount !== null ? manualValueCount : resolution?.addedCount || 0;
+  if (!addedCount) return "";
+
+  const addedText = `Добавлено ${addedCount} ${plural(addedCount, itemType, itemType === "отчет" ? "отчета" : "показателя", itemType === "отчет" ? "отчетов" : "показателей")}.`;
+  if (!resolution?.conflictCount) return addedText;
+  if (resolution.action === "replace") {
+    return `${addedText} Заменено ${resolution.conflictCount} старых ${plural(resolution.conflictCount, "значение", "значения", "значений")}.`;
+  }
+  return `${addedText} Конфликтующие значения оставлены рядом: ${resolution.conflictCount}.`;
+}
+
+function labConflictKey(date, key) {
+  return `${date}|${key}`;
+}
+
+function sameLabValue(left, right) {
+  return Math.abs(Number(left.value) - Number(right.value)) < 0.000001;
 }
 
 async function loadDoctorConclusionFile() {
@@ -1725,11 +1872,15 @@ function parseLabReport(text, sourceName, fallbackTimestamp) {
   }
 
   return {
-    id: `${reportDate}-${sourceName}-${values.map((item) => `${item.key}:${item.value}`).join("|")}`,
+    id: labRecordId(reportDate, sourceName, values),
     sourceName,
     date: reportDate,
     values
   };
+}
+
+function labRecordId(date, sourceName, values) {
+  return `${date}-${sourceName}-${values.map((item) => `${item.key}:${item.value}`).join("|")}`;
 }
 
 async function saveCloudLabRecords(records) {
