@@ -2,7 +2,7 @@ const { rules, phenotypeMaps, snpHints, labAnalytes, medicationKnowledge, shotLi
 const LAB_STORAGE_KEY = "pgx-agent-lab-records";
 const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
-const PARSER_VERSION = "2026-04-30.1";
+const PARSER_VERSION = "2026-07-20.1";
 const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.14";
 const KNOWN_BIRTH_DATES = new Set(["1981-06-06"]);
 const supabaseClient = window.supabase && window.PGX_SUPABASE
@@ -812,7 +812,7 @@ async function loadVcfFile() {
     const { lines, found, skipped } = parseVcf(text);
     if (!lines.length) {
       fileStatus.className = "file-status error";
-      fileStatus.textContent = "В этом VCF не нашлось известных MVP-маркеров. Можно вставить фенотипы вручную ниже.";
+      fileStatus.textContent = "В этом VCF не нашлось поддерживаемых маркеров. Можно вставить фенотипы вручную ниже.";
       return;
     }
 
@@ -2096,6 +2096,7 @@ function unitPatternForAnalyte(analyte = {}) {
     "ед/л": "ед\\/л|u\\/l|ме\\/л|iu\\/l",
     "мкмоль/л": "мкмоль\\/л|umol\\/l|µmol\\/l",
     "г/л": "г\\/л|g\\/l",
+    "мед/л": "мед\\/л|ме\\/л|мме\\/л|miu\\/l|uIU\\/ml|uIU\\/mL|mIU\\/l|mIU\\/L",
     "%": "%"
   };
   return patterns[unit] || "ммоль\\/л|mmol\\/l|мг\\/л|mg\\/l|мг\\/дл|mg\\/dl|%|ед\\/л|u\\/l|мкмоль\\/л|umol\\/l|нг\\/мл|ng\\/ml|пг\\/мл|pg\\/ml|г\\/л|g\\/l|мкг\\/л|ug\\/l";
@@ -2266,8 +2267,8 @@ function renderDoctorSummary(conclusion, diagnoses, medications, signals) {
         <div class="status-row">
           <span class="doctor-status-pill ${confirmed ? "confirmed" : "pending"}">${doctorIcon(confirmed ? "check" : "clock", "status-icon")}${confirmed ? "Распознавание подтверждено" : "Ожидает подтверждения"}</span>
         </div>
-        <strong>${confirmed ? "Подсказки готовы" : "Сверьте, что всё перенесено верно"}</strong>
-        <p>${confirmed ? "Подтверждённые пункты используются для лекарственного профиля, подсказок и вопросов врачу." : "Можно подтвердить все пункты сразу или каждый по отдельности."}</p>
+        <strong>${confirmed ? "Вопросы врачу готовы" : "Сверьте черновик"}</strong>
+        <p>${confirmed ? "Подтверждённые пункты используются для лекарственного профиля, важных находок и вопросов врачу." : "Можно подтвердить все пункты сразу или каждый по отдельности."}</p>
         ${renderDoctorProgress(confirmed ? "insights" : "review")}
         <div class="doctor-review-metrics" aria-label="Краткая сводка заключения">
           ${renderDoctorMetric("file", diagnoses.length, "диагнозов")}
@@ -2425,7 +2426,7 @@ function renderDoctorDraftChecks() {
         <div class="checklist">
           <div class="check-item"><span class="check-mark">1</span><span>Лекарства попадут в профиль с действующими веществами.</span></div>
           <div class="check-item"><span class="check-mark">2</span><span>Приложение сверит назначения с PGx-маркерами и текущими анализами.</span></div>
-          <div class="check-item"><span class="check-mark">3</span><span>Подсказки по доказательности и сочетаниям появятся в списке вопросов врачу.</span></div>
+          <div class="check-item"><span class="check-mark">3</span><span>Важные находки по доказательности и сочетаниям появятся в списке вопросов врачу.</span></div>
         </div>
       </section>
     </div>
@@ -2599,7 +2600,7 @@ function updateDoctorSectionMeta(parsed, signals) {
   const parts = [
     String(diagnoses.length) + " " + plural(diagnoses.length, "диагноз", "диагноза", "диагнозов"),
     String(medications.length) + " " + plural(medications.length, "назначение", "назначения", "назначений"),
-    String(signals.length) + " " + plural(signals.length, "сигнал", "сигнала", "сигналов")
+    String(signals.length) + " " + plural(signals.length, "находка", "находки", "находок")
   ];
   if (highCount) parts.push("высокий приоритет: " + highCount);
   doctorSectionMeta.textContent = parts.join(" · ");
@@ -2720,7 +2721,7 @@ function labClinicalSignals() {
     title: "Оценить мышечный риск",
     metric: "КФК",
     severity: "moderate",
-    body: "Повышенная КФК важна при обсуждении статинов и жалоб на мышечные симптомы, особенно вместе с фармакогенетическим сигналом SLCO1B1."
+    body: "Повышенная КФК важна при обсуждении статинов и жалоб на мышечные симптомы, особенно вместе с фармакогенетической находкой SLCO1B1."
   });
 
   addThresholdSignal(signals, latest.potassium, (item) => item.value > 5.2 || item.value < 3.5, {
@@ -2797,7 +2798,7 @@ function renderHealthBlocks() {
   ].length;
 
   if (showDecisionPanel) {
-    decisionCounter.textContent = `${total} ${plural(total, "сигнал", "сигнала", "сигналов")}`;
+    decisionCounter.textContent = `${total} ${plural(total, "находка", "находки", "находок")}`;
     renderSignalList(qualityChecks, qualityCounter, qualitySignals);
     renderSignalList(clinicalChecks, clinicalCounter, clinicalSignals);
     renderSignalList(pgxCoverage, pgxCounter, pgxSignals);
@@ -2835,7 +2836,7 @@ function updateGeneticsSectionMeta(matches, genes) {
   const highCount = matches.filter((match) => match.severity === "high").length;
   const parts = [
     String(genes.length) + " " + plural(genes.length, "маркер", "маркера", "маркеров"),
-    String(matches.length) + " " + plural(matches.length, "сигнал", "сигнала", "сигналов")
+    String(matches.length) + " " + plural(matches.length, "находка", "находки", "находок")
   ];
   if (highCount) parts.push("высокий приоритет: " + highCount);
   geneticsSectionMeta.textContent = parts.join(" · ");
@@ -2855,7 +2856,7 @@ function updateLabsSectionMeta() {
     String(labRecords.length) + " " + plural(labRecords.length, "отчет", "отчета", "отчетов"),
     String(metricCount) + " " + plural(metricCount, "показатель", "показателя", "показателей"),
     latestDate ? "последний: " + formatDate(latestDate) : "",
-    activeSignals ? "сигналы: " + activeSignals : "без активных пороговых сигналов"
+    activeSignals ? "важные находки: " + activeSignals : "без важных пороговых находок"
   ].filter(Boolean).join(" · ");
 }
 
@@ -2885,7 +2886,7 @@ function renderSignalList(container, counter, signals) {
     ? signals.map(renderSignalItem).join("")
     : renderSignalItem({
         severity: "low",
-        title: "Пока нет активных сигналов",
+        title: "Пока нет важных находок",
         body: "Этот блок начнет заполняться после загрузки генетики, анализов или списка препаратов."
       });
 }
@@ -2909,7 +2910,7 @@ function dataQualitySignals() {
     severity: geneCount ? "low" : "moderate",
     title: geneCount ? `Распознано ${geneCount} генетических маркеров` : "Нет генетических данных",
     body: geneCount
-      ? "Фармакогенетический блок может сопоставлять найденные маркеры с правилами в базе MVP."
+      ? "Фармакогенетический блок может сопоставлять найденные маркеры с поддерживаемыми правилами."
       : "Загрузите VCF Genotek или вставьте текст отчета, чтобы появились gene-drug проверки."
   });
 
@@ -2918,7 +2919,7 @@ function dataQualitySignals() {
     title: labRecords.length ? `Загружено ${labRecords.length} отчетов` : "Нет истории анализов",
     body: labRecords.length
       ? `В истории найдено ${totalValues} ${plural(totalValues, "показатель", "показателя", "показателей")}.`
-      : "Загрузите PDF или текстовые результаты, чтобы появились графики и клинические сигналы."
+      : "Загрузите PDF или текстовые результаты, чтобы появились графики и клинические находки."
   });
 
   const duplicates = duplicateLabValues();
@@ -3001,7 +3002,7 @@ function expandedClinicalSignals() {
     signals.push({
       severity: "low",
       title: "Критичных отклонений не найдено",
-      body: "По текущим поддерживаемым показателям нет активных пороговых сигналов. Это не заменяет медицинскую интерпретацию."
+      body: "По текущим поддерживаемым показателям нет важных пороговых находок. Это не заменяет медицинскую интерпретацию."
     });
   }
 
@@ -3210,10 +3211,10 @@ function pgxCoverageSignals() {
 
   signals.push({
     severity: foundCovered.length ? "low" : "moderate",
-    title: foundCovered.length ? `Покрыто ${foundCovered.length} gene-drug генов` : "Нет совпадений с правилами MVP",
+    title: foundCovered.length ? `Покрыто ${foundCovered.length} gene-drug генов` : "Нет совпадений с поддерживаемыми правилами",
     body: foundCovered.length
       ? `Найдены: ${foundCovered.join(", ")}. Эти гены уже используются в рекомендациях.`
-      : "После загрузки VCF появится проверка по клопидогрелу, статинам, НПВС, ИПП, опиоидам, тиопуринам и HLA-сигналам."
+      : "После загрузки VCF появится сверка по клопидогрелу, статинам, НПВС, ИПП, опиоидам, тиопуринам и HLA-находкам."
   });
 
   signals.push({
@@ -3615,7 +3616,7 @@ function medicationRiskSignals(sourceMedications) {
           severity: profile.SLCO1B1 === "poor function" ? "high" : "moderate",
           medication: medication.name,
           title: "Статин + SLCO1B1",
-          body: "Найден фармакогенетический сигнал повышенного риска мышечных симптомов для отдельных статинов.",
+          body: "Найдена фармакогенетическая находка повышенного риска мышечных симптомов для отдельных статинов.",
           source: "CPIC/FDA statin PGx"
         });
       }
@@ -3998,7 +3999,7 @@ function formatShortDate(value) {
 }
 
 function formatNumber(value) {
-  return Number(value).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+  return Number(value).toLocaleString("ru-RU", { maximumFractionDigits: 3 });
 }
 
 function genotypeFromVcfGt(gt, ref, alts) {
@@ -4055,7 +4056,7 @@ function render(matches, profile) {
 
   if (!patientData.value.trim()) {
     summaryEl.className = "summary empty";
-    summaryEl.textContent = "Загрузите пример или вставьте данные, чтобы увидеть найденные gene-drug сигналы.";
+    summaryEl.textContent = "Загрузите пример или вставьте данные, чтобы увидеть важные gene-drug находки.";
     resultsEl.innerHTML = "";
     renderHealthBlocks();
     return;
@@ -4073,7 +4074,7 @@ function render(matches, profile) {
 
   const highCount = matches.filter((match) => match.severity === "high").length;
   summaryEl.className = "summary";
-  summaryEl.textContent = `Найдено ${matches.length} ${plural(matches.length, "сигнал", "сигнала", "сигналов")}. ${highCount ? `Высокий приоритет: ${highCount}. ` : ""}Проверьте это с врачом до любых изменений терапии.`;
+  summaryEl.textContent = `Найдено ${matches.length} ${plural(matches.length, "важная находка", "важные находки", "важных находок")}. ${highCount ? `Важно обсудить: ${highCount}. ` : ""}Обсудите эти пункты с врачом до любых изменений терапии.`;
 
   resultsEl.innerHTML = renderPriorityGroups(matches, renderCard);
   renderHealthBlocks();
@@ -4084,7 +4085,7 @@ function renderPriorityGroups(items, renderItem) {
     {
       severity: "high",
       title: "Важно обсудить с врачом",
-      note: "Сигналы, где возможны значимые ограничения, риски или необходимость альтернативы."
+      note: "Важные находки, где возможны значимые ограничения, риски или необходимость альтернативы."
     },
     {
       severity: "moderate",

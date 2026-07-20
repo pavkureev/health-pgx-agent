@@ -204,4 +204,23 @@ assert.match(helixRows.html, /ЛПВП[\s\S]*1,84/, "HDL should be 1.84");
 assert.doesNotMatch(helixRows.html, /Ферритин[\s\S]*133/, "Ferritin must not reuse CK value");
 assert.doesNotMatch(helixRows.html, /ЛПВП[\s\S]*133/, "HDL must not reuse CK value");
 
+const tshRows = parseManualLab(`
+Зарегистрирован: 04.06.2026 08:48:00
+Тиреотропный гормон (ТТГ, мЕд/л) в сыворотке крови В процессе
+Параметр
+Значение
+Единица измерения
+Референсное значение
+Комментарий
+ТТГ
+0.617
+мМЕ/л
+0.4 - 4
+Технология Alinity,
+Abbott (США)
+`);
+assert.match(tshRows.html, /ТТГ[\s\S]*0,617/, "TSH should be parsed as 0.617 мМЕ/л");
+assert.doesNotMatch(tshRows.html, /ТТГ[\s\S]*4<\/span>/, "TSH must not use the reference range as result");
+assert.match(tshRows.options, /value="tsh"/, "TSH should be available in metric dropdown");
+
 console.log("lab parser tests passed");

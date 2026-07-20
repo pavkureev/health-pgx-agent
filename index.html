@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PGx Agent MVP</title>
-    <link rel="stylesheet" href="./styles.css?v=20260524-01" />
+    <title>Health PGx Agent</title>
+    <link rel="stylesheet" href="./styles.css?v=20260720-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -21,7 +21,7 @@
 
         <section class="notice" aria-label="Важное предупреждение">
           <strong>Не медицинское назначение.</strong>
-          Этот прототип помогает собрать фармакогенетические сигналы из известных правил и подготовить вопросы врачу.
+          Этот помощник помогает собрать важные находки из известных правил и подготовить вопросы врачу.
           Не меняйте препараты или дозировки без медицинского специалиста.
         </section>
 
@@ -142,7 +142,7 @@
           <summary class="app-section-summary">
             <span class="section-kicker">2</span>
             <span class="section-copy">
-              <strong>Рекомендации по генетике</strong>
+              <strong>Генетика и лекарства</strong>
               <span id="geneticsSectionMeta" class="section-meta">Нет генетических данных · загрузка открыта ниже</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
@@ -150,11 +150,11 @@
           <div class="app-section-body">
             <section class="panel results-panel">
               <div class="panel-header">
-                <h2>Рекомендации</h2>
+                <h2>Важные gene-drug находки</h2>
                 <span class="counter" id="matchCounter">0 совпадений</span>
               </div>
               <div id="summary" class="summary empty">
-                Загрузите пример или вставьте данные, чтобы увидеть найденные gene-drug сигналы.
+                Загрузите пример или вставьте данные, чтобы увидеть важные gene-drug находки.
               </div>
               <div id="geneticFilterPanel" class="compact-control">
                 <label for="drugSearch">Фильтр по препарату или группе</label>
@@ -213,7 +213,7 @@ HLA-B*57:01 negative"></textarea>
           <summary class="app-section-summary">
             <span class="section-kicker">3</span>
             <span class="section-copy">
-              <strong>Результаты анализов</strong>
+              <strong>Что показывают анализы</strong>
               <span id="labsSectionMeta" class="section-meta">Нет анализов · загрузка открыта ниже</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
@@ -221,7 +221,7 @@ HLA-B*57:01 negative"></textarea>
           <div class="app-section-body">
             <section class="panel lab-panel">
               <div class="panel-header">
-                <h2>Биохимия и другие анализы</h2>
+                <h2>Показатели и график</h2>
                 <span class="counter" id="labCounter">0 записей</span>
               </div>
 
@@ -287,8 +287,8 @@ eGFR 82 мл/мин/1.73м2
 
             <section class="panel decision-panel">
               <div class="panel-header">
-                <h2>Проверки и интеграции</h2>
-                <span class="counter" id="decisionCounter">0 сигналов</span>
+                <h2>Дополнительные проверки</h2>
+                <span class="counter" id="decisionCounter">0 находок</span>
               </div>
               <div class="decision-grid">
                 <section class="decision-section">
@@ -331,7 +331,7 @@ eGFR 82 мл/мин/1.73м2
           <summary class="app-section-summary">
             <span class="section-kicker">4</span>
             <span class="section-copy">
-              <strong>Прописанные лекарства</strong>
+              <strong>Лекарственный профиль</strong>
               <span id="medicationsSectionMeta" class="section-meta">Нет препаратов · добавление открыто ниже</span>
             </span>
             <span class="section-toggle">Раскрыть</span>
@@ -339,7 +339,7 @@ eGFR 82 мл/мин/1.73м2
           <div class="app-section-body">
             <section class="panel medication-panel">
               <div class="panel-header">
-                <h2>Лекарственный профиль</h2>
+                <h2>Текущие препараты</h2>
                 <span class="counter" id="medicationCounter">0 препаратов</span>
               </div>
               <div id="medicationList" class="medication-list"></div>
@@ -373,38 +373,18 @@ eGFR 82 мл/мин/1.73м2
             </section>
           </div>
         </details>
-
-        <section class="panel">
-          <div class="panel-header">
-            <h2>Что умеет этот MVP</h2>
-          </div>
-          <div class="capabilities">
-            <div>
-              <strong>Понимает базовые записи</strong>
-              <p>Фенотипы, diplotype-записи вида CYP2C19 *2/*17 и несколько распространенных SNP.</p>
-            </div>
-            <div>
-              <strong>Выдает объяснимые сигналы</strong>
-              <p>Показывает препарат, ген, найденный фенотип, действие и источник правила.</p>
-            </div>
-            <div>
-              <strong>Оставляет место врачу</strong>
-              <p>Отделяет справочную рекомендацию от назначения и отмечает ограничения данных.</p>
-            </div>
-          </div>
-        </section>
       </section>
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260524-01"></script>
-    <script src="./data/pgx-rules.js?v=20260524-01"></script>
-    <script src="./data/lab-analytes.js?v=20260524-01"></script>
-    <script src="./data/medication-knowledge.js?v=20260524-01"></script>
-    <script src="./data/evidence-flags.js?v=20260524-01"></script>
-    <script src="./data.js?v=20260524-01"></script>
-    <script src="./app.js?v=20260524-01"></script>
-    <script src="./js/pgx-extensions.js?v=20260524-01"></script>
+    <script src="./supabase-config.js?v=20260720-1"></script>
+    <script src="./data/pgx-rules.js?v=20260720-1"></script>
+    <script src="./data/lab-analytes.js?v=20260720-1"></script>
+    <script src="./data/medication-knowledge.js?v=20260720-1"></script>
+    <script src="./data/evidence-flags.js?v=20260720-1"></script>
+    <script src="./data.js?v=20260720-1"></script>
+    <script src="./app.js?v=20260720-1"></script>
+    <script src="./js/pgx-extensions.js?v=20260720-1"></script>
   </body>
 </html>
