@@ -3029,7 +3029,7 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
   }
   if (unconfirmedMedications) {
     actions.push({
-      icon: "pill",
+      icon: "medications",
       title: "Подтвердите препараты",
       body: `${unconfirmedMedications} ${plural(unconfirmedMedications, "препарат", "препарата", "препаратов")} требуют проверки вещества или режима.`,
       target: "medications",
@@ -3039,7 +3039,7 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
   }
   if (highMedicationSignals) {
     actions.push({
-      icon: "alert",
+      icon: "medications",
       title: "Есть лекарственные предупреждения",
       body: `${highMedicationSignals} ${plural(highMedicationSignals, "важный пункт", "важных пункта", "важных пунктов")} стоит обсудить с врачом.`,
       target: "medications",
@@ -3049,7 +3049,7 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
   }
   if (activeClinicalSignals) {
     actions.push({
-      icon: "shield",
+      icon: "labs",
       title: "Проверьте важные находки в анализах",
       body: `${activeClinicalSignals} ${plural(activeClinicalSignals, "сигнал", "сигнала", "сигналов")} по динамике или порогам.`,
       target: "labs",
@@ -3067,7 +3067,7 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
   }
   if (!hasLabData) {
     actions.push({
-      icon: "shield",
+      icon: "labs",
       title: "Добавьте анализы",
       body: "Появятся графики динамики и лабораторные подсказки.",
       target: "labs",
@@ -3076,7 +3076,7 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
   }
   if (!hasGeneticData) {
     actions.push({
-      icon: "alert",
+      icon: "genetics",
       title: "Добавьте генетику",
       body: "PGx-маркеры помогут проверить лекарства и вопросы врачу.",
       target: "genetics",
@@ -3085,7 +3085,7 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
   }
   if (!hasMedicationData) {
     actions.push({
-      icon: "pill",
+      icon: "medications",
       title: "Заполните лекарства",
       body: "Профиль проверит действующие вещества, сочетания и справочные флаги.",
       target: "medications",
@@ -3096,14 +3096,14 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
   if (!actions.length) {
     actions.push(
       {
-        icon: "check",
+        icon: "now",
         title: "Данные собраны",
         body: `${geneCount} ${plural(geneCount, "генетический маркер", "генетических маркера", "генетических маркеров")}, ${labRecords.length} ${plural(labRecords.length, "отчёт", "отчёта", "отчётов")} и ${medications.length} ${plural(medications.length, "препарат", "препарата", "препаратов")}.`,
         target: "labs",
         cta: "Открыть"
       },
       {
-        icon: "shield",
+        icon: "genetics",
         title: "Смотрите важные находки",
         body: `${pgxSignals.length + activeClinicalSignals + medicationSignals.length} ${plural(pgxSignals.length + activeClinicalSignals + medicationSignals.length, "подсказка", "подсказки", "подсказок")} по текущим данным.`,
         target: "genetics",
@@ -3123,7 +3123,7 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
 function renderNowActionCard(action) {
   return `
     <article class="now-action-card ${action.priority ? "is-priority" : ""}">
-      <span class="now-action-icon">${doctorIcon(action.icon, "summary-icon")}</span>
+      <span class="now-action-icon">${appNavigationIcon(action.icon, "summary-icon")}</span>
       <div>
         <strong>${escapeHtml(action.title)}</strong>
         <span>${escapeHtml(action.body)}</span>
@@ -3131,6 +3131,20 @@ function renderNowActionCard(action) {
       <button class="${action.priority ? "primary-button" : "secondary-button"}" type="button" data-now-target="${escapeHtml(action.target)}">${escapeHtml(action.cta)}</button>
     </article>
   `;
+}
+
+function appNavigationIcon(name, className = "summary-icon") {
+  const tabName = {
+    now: "now",
+    labs: "labs",
+    genetics: "genetics",
+    medications: "medications"
+  }[name];
+  const source = tabName && typeof document.querySelector === "function"
+    ? document.querySelector(`.tab-button[data-tab-target="${tabName}"] svg`)
+    : null;
+  if (!source?.outerHTML) return doctorIcon(name, className);
+  return source.outerHTML.replace("<svg", `<svg class="${escapeHtml(className)} app-nav-icon"`);
 }
 
 function renderSectionDrawers() {

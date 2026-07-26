@@ -297,6 +297,13 @@ h2 {
   vector-effect: non-scaling-stroke;
 }
 
+.bottom-tabs svg path[stroke],
+.profile-jump svg path[stroke],
+.section-kicker svg path[stroke],
+.now-action-icon svg path[stroke] {
+  fill: none;
+}
+
 .section-copy {
   display: grid;
   gap: 5px;
