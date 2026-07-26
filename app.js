@@ -99,6 +99,8 @@ const pgxCoverage = document.querySelector("#pgxCoverage");
 const integrationChecks = document.querySelector("#integrationChecks");
 const medicationName = document.querySelector("#medicationName");
 const medicationDose = document.querySelector("#medicationDose");
+const medicationStart = document.querySelector("#medicationStart");
+const medicationEnd = document.querySelector("#medicationEnd");
 const medicationNote = document.querySelector("#medicationNote");
 const medicationCounter = document.querySelector("#medicationCounter");
 const medicationList = document.querySelector("#medicationList");
@@ -129,6 +131,8 @@ let activeProfileId = loadActiveProfileId();
 ensureActiveProfile();
 let labRecords = getActiveProfile().labRecords || [];
 let pendingLabDelete = null;
+let archivedMedicationVisibleCount = 10;
+let medicationArchiveOpen = false;
 
 if (window.pdfjsLib) {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -1835,7 +1839,7 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
       needsConfirmation
     });
   });
-  const existingKeys = new Set(syncedExisting.map(medicationUniqueKey));
+  const existingKeys = new Set(syncedExisting.filter((item) => !item.archived).map(medicationUniqueKey));
   const fresh = additions.filter((item) => {
     const key = medicationUniqueKey(item);
     if (existingKeys.has(key) && !options.force) return false;
@@ -3253,7 +3257,7 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
 
   const conclusion = currentDoctorConclusion();
   const parsed = conclusion.parsed || { diagnoses: [], medications: [] };
-  const medications = currentMedications();
+  const medications = activeMedications();
   const { profile } = parseProfile(patientData.value);
   const hasGeneticData = Boolean(patientData.value.trim());
   const hasLabData = Boolean(labRecords.length);
@@ -3401,7 +3405,7 @@ function renderSectionDrawers() {
   const hasGeneticData = Boolean(patientData.value.trim());
   const hasLabData = Boolean(labRecords.length);
   const hasDoctorData = Boolean(currentDoctorConclusion().text?.trim());
-  const hasMedicationData = Boolean(currentMedications().length);
+  const hasMedicationData = Boolean(activeMedications().length);
 
   if (geneticsSection) geneticsSection.open = true;
   if (labsSection) labsSection.open = true;
@@ -3450,8 +3454,11 @@ function updateLabsSectionMeta() {
 
 function updateMedicationsSectionMeta(medications, signals) {
   if (!medicationsSectionMeta) return;
+  const archivedCount = archivedMedications().length;
   if (!medications.length) {
-    medicationsSectionMeta.textContent = "Нет препаратов · добавление открыто ниже";
+    medicationsSectionMeta.textContent = archivedCount
+      ? `Нет текущих препаратов · в архиве ${archivedCount}`
+      : "Нет препаратов · добавление открыто ниже";
     return;
   }
 
@@ -3465,6 +3472,7 @@ function updateMedicationsSectionMeta(medications, signals) {
   ];
   if (unconfirmed) parts.push("нужно подтвердить: " + unconfirmed);
   if (highCount) parts.push("высокий приоритет: " + highCount);
+  if (archivedCount) parts.push("архив: " + archivedCount);
   medicationsSectionMeta.textContent = parts.join(" · ");
 }
 
@@ -3845,6 +3853,16 @@ function currentMedications() {
   return (getActiveProfile()?.metadata?.medications || []).map((item) => enrichMedication(item));
 }
 
+function activeMedications() {
+  return currentMedications().filter((item) => !item.archived);
+}
+
+function archivedMedications() {
+  return currentMedications()
+    .filter((item) => item.archived)
+    .sort((a, b) => String(b.archivedAt || b.endedAt || "").localeCompare(String(a.archivedAt || a.endedAt || "")));
+}
+
 function saveCurrentMedications(medications) {
   const profile = getActiveProfile();
   profile.metadata = { ...(profile.metadata || {}), medications: medications.map((item) => enrichMedication(item)) };
@@ -3862,11 +3880,15 @@ async function addMedication() {
       id,
       name,
       dose: medicationDose.value.trim(),
+      startedAt: medicationStart?.value || "",
+      endedAt: medicationEnd?.value || "",
       note: medicationNote.value.trim()
     }
   ];
   medicationName.value = "";
   medicationDose.value = "";
+  if (medicationStart) medicationStart.value = "";
+  if (medicationEnd) medicationEnd.value = "";
   medicationNote.value = "";
   saveCurrentMedications(medications);
   renderHealthBlocks();
@@ -3884,6 +3906,10 @@ function enrichMedication(medication) {
   const shotList = findShotListMedication(medication.name, substanceLabel, group);
   return {
     ...medication,
+    archived: Boolean(medication.archived),
+    startedAt: medication.startedAt || medication.startDate || "",
+    endedAt: medication.endedAt || medication.endDate || "",
+    archivedAt: medication.archivedAt || "",
     substance: manualSubstanceLabel || known?.substance || cleanMedicationSubstanceLabel(medication.substance || "") || "",
     substanceLabel,
     manualSubstanceLabel,
@@ -3914,6 +3940,40 @@ function removeMedication(id) {
   renderHealthBlocks();
 }
 
+function archiveMedication(id) {
+  const today = todayIsoDate();
+  const medications = currentMedications().map((item) => item.id === id
+    ? enrichMedication({
+        ...item,
+        archived: true,
+        archivedAt: new Date().toISOString(),
+        endedAt: item.endedAt || today
+      })
+    : item);
+  saveCurrentMedications(medications);
+  medicationLookupStatus.textContent = "Препарат перенесён в архив.";
+  renderHealthBlocks();
+}
+
+function restoreMedication(id) {
+  const medications = currentMedications().map((item) => item.id === id
+    ? enrichMedication({
+        ...item,
+        archived: false,
+        archivedAt: ""
+      })
+    : item);
+  saveCurrentMedications(medications);
+  medicationLookupStatus.textContent = "Препарат возвращён в текущий список.";
+  renderHealthBlocks();
+}
+
+function showMoreArchivedMedications() {
+  medicationArchiveOpen = true;
+  archivedMedicationVisibleCount += 10;
+  renderHealthBlocks();
+}
+
 function updateMedicationSubstance(id) {
   const input = [...medicationList.querySelectorAll("[data-substance-edit]")].find((item) => item.dataset.substanceEdit === id);
   const manualSubstanceLabel = cleanMedicationSubstanceLabel(input?.value || "");
@@ -3936,25 +3996,33 @@ function updateMedicationSubstance(id) {
 }
 
 function renderMedicationProfile(signals) {
-  const medications = currentMedications();
-  medicationCounter.textContent = `${medications.length} ${plural(medications.length, "препарат", "препарата", "препаратов")}`;
-  medicationList.innerHTML = medications.length
-    ? medications.map((item) => `
-      <article class="medication-row">
-        <strong>${escapeHtml(item.name)}${medicationConfirmationHtml(item)}</strong>
-        <span class="medication-substance-cell">${medicationSubstanceHtml(item)}${renderSubstanceEditControl(item)}</span>
-        <span>${escapeHtml(item.dose || "Доза не указана")}</span>
-        <span>${escapeHtml(medicationRowNote(item))}</span>
-        <div class="medication-row-actions">
-          <button class="secondary-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
-        </div>
-      </article>
-    `).join("")
-    : `<p class="file-status">Добавьте текущие препараты, чтобы сопоставить их с генетикой и анализами.</p>`;
+  const medications = activeMedications();
+  const archive = archivedMedications();
+  medicationCounter.textContent = `${medications.length} ${plural(medications.length, "текущий препарат", "текущих препарата", "текущих препаратов")}`;
+  medicationList.innerHTML = [
+    medications.length
+      ? medications.map((item) => renderMedicationRow(item)).join("")
+      : `<p class="file-status">Добавьте текущие препараты, чтобы сопоставить их с генетикой и анализами.</p>`,
+    renderMedicationArchive(archive)
+  ].filter(Boolean).join("");
 
   if (typeof medicationList.querySelectorAll === "function") {
+    medicationList.querySelectorAll("[data-medication-archive]").forEach((drawer) => {
+      drawer.addEventListener("toggle", () => {
+        medicationArchiveOpen = drawer.open;
+      });
+    });
+    medicationList.querySelectorAll("[data-archive-medication]").forEach((button) => {
+      button.addEventListener("click", () => archiveMedication(button.dataset.archiveMedication));
+    });
     medicationList.querySelectorAll("[data-remove-medication]").forEach((button) => {
       button.addEventListener("click", () => removeMedication(button.dataset.removeMedication));
+    });
+    medicationList.querySelectorAll("[data-restore-medication]").forEach((button) => {
+      button.addEventListener("click", () => restoreMedication(button.dataset.restoreMedication));
+    });
+    medicationList.querySelectorAll("[data-show-more-archived-medications]").forEach((button) => {
+      button.addEventListener("click", showMoreArchivedMedications);
     });
     medicationList.querySelectorAll("[data-save-substance]").forEach((button) => {
       button.addEventListener("click", () => updateMedicationSubstance(button.dataset.saveSubstance));
@@ -3966,12 +4034,64 @@ function renderMedicationProfile(signals) {
 
   const identified = medications.filter((item) => item.substanceLabel).length;
   updateMedicationsSectionMeta(medications, signals);
-  medicationSummary.hidden = !medications.length;
+  medicationSummary.hidden = !medications.length && !archive.length;
   medicationSummary.innerHTML = medications.length
-    ? `<strong>Действующее вещество:</strong> определено для ${identified} из ${medications.length} ${plural(medications.length, "препарата", "препаратов", "препаратов")}. Если поле не определилось, откройте проверку на ПоискЛекарств или введите международное название вместо торгового.`
+    ? `<strong>Действующее вещество:</strong> определено для ${identified} из ${medications.length} ${plural(medications.length, "текущего препарата", "текущих препаратов", "текущих препаратов")}. Если поле не определилось, откройте проверку на ПоискЛекарств или введите международное название вместо торгового.`
+    : archive.length
+      ? `<strong>Архив:</strong> в истории сохранено ${archive.length} ${plural(archive.length, "препарат", "препарата", "препаратов")}. Архивные препараты не участвуют в текущих предупреждениях.`
     : "";
-  if (!medications.length) medicationLookupStatus.textContent = "";
+  if (!medications.length && !archive.length) medicationLookupStatus.textContent = "";
   medicationChecks.innerHTML = signals.length ? renderPriorityGroups(signals, renderMedicationSignal) : "";
+}
+
+function renderMedicationRow(item) {
+  return `
+    <article class="medication-row">
+      <strong>${escapeHtml(item.name)}${medicationConfirmationHtml(item)}</strong>
+      <span class="medication-substance-cell">${medicationSubstanceHtml(item)}${renderSubstanceEditControl(item)}</span>
+      <span>${escapeHtml(item.dose || "Доза не указана")}</span>
+      <span>${escapeHtml(medicationCourseText(item))}</span>
+      <span>${escapeHtml(medicationRowNote(item))}</span>
+      <div class="medication-row-actions">
+        <button class="secondary-button" type="button" data-archive-medication="${escapeHtml(item.id)}">В архив</button>
+        <button class="secondary-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderMedicationArchive(archive) {
+  if (!archive.length) return "";
+  const visible = archive.slice(0, archivedMedicationVisibleCount);
+  const remaining = Math.max(0, archive.length - visible.length);
+  return `
+    <details class="medication-archive" data-medication-archive ${medicationArchiveOpen ? "open" : ""}>
+      <summary>
+        <span>Архив препаратов</span>
+        <span class="mini-counter">${archive.length}</span>
+      </summary>
+      <div class="medication-archive-list">
+        ${visible.map(renderArchivedMedicationRow).join("")}
+      </div>
+      ${remaining ? `<button class="compact-link-button" type="button" data-show-more-archived-medications>Показать ещё ${Math.min(10, remaining)}</button>` : ""}
+    </details>
+  `;
+}
+
+function renderArchivedMedicationRow(item) {
+  return `
+    <article class="medication-row archived">
+      <strong>${escapeHtml(item.name)}</strong>
+      <span class="medication-substance-cell">${medicationSubstanceHtml(item)}</span>
+      <span>${escapeHtml(item.dose || "Доза не указана")}</span>
+      <span>${escapeHtml(medicationCourseText(item))}</span>
+      <span>${escapeHtml(medicationArchiveNote(item))}</span>
+      <div class="medication-row-actions">
+        <button class="secondary-button" type="button" data-restore-medication="${escapeHtml(item.id)}">Вернуть</button>
+        <button class="secondary-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
+      </div>
+    </article>
+  `;
 }
 
 function medicationConfirmationHtml(item) {
@@ -4024,7 +4144,7 @@ function medicationSourceLabel(item) {
 }
 
 async function lookupMissingMedicationSubstances() {
-  const medications = currentMedications();
+  const medications = activeMedications();
   const targets = medications.filter((item) => !item.substanceLabel);
   if (!medications.length) {
     medicationLookupStatus.textContent = "Добавьте препараты, чтобы уточнить действующие вещества.";
@@ -4160,6 +4280,21 @@ function medicationRowNote(item) {
   return parts.join(" · ") || "Комментарий не указан";
 }
 
+function medicationArchiveNote(item) {
+  const parts = [];
+  if (item.archivedAt) parts.push(`Архивировано ${formatDateTime(item.archivedAt)}`);
+  const note = medicationRowNote(item);
+  if (note !== "Комментарий не указан") parts.push(note);
+  return parts.join(" · ") || "Архивная запись";
+}
+
+function medicationCourseText(item) {
+  if (item.startedAt && item.endedAt) return `Курс: ${formatDate(item.startedAt)} — ${formatDate(item.endedAt)}`;
+  if (item.startedAt) return `С ${formatDate(item.startedAt)}`;
+  if (item.endedAt) return `До ${formatDate(item.endedAt)}`;
+  return "Сроки не указаны";
+}
+
 function renderMedicationSignal(signal) {
   return `
     <article class="result-card ${escapeHtml(signal.severity)}">
@@ -4175,7 +4310,7 @@ function renderMedicationSignal(signal) {
 }
 
 function medicationRiskSignals(sourceMedications) {
-  const medications = sourceMedications || currentMedications();
+  const medications = sourceMedications || activeMedications();
   if (!medications.length) return [];
 
   const { profile, evidence } = parseProfile(patientData.value);
@@ -4577,8 +4712,13 @@ function drawEmptyChart(context, width, height, message) {
 }
 
 function formatDate(value) {
+  if (!value || !String(value).includes("-")) return String(value || "");
   const [year, month, day] = value.split("-");
   return `${day}.${month}.${year}`;
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function formatDateTime(value) {

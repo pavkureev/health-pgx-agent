@@ -929,7 +929,7 @@ h2 {
 
 .medication-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1.2fr) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) minmax(130px, 0.75fr) minmax(130px, 0.75fr) minmax(190px, 1.1fr) auto;
   gap: 10px;
   align-items: end;
 }
@@ -942,13 +942,22 @@ h2 {
 
 .medication-row {
   display: grid;
-  grid-template-columns: minmax(130px, 0.9fr) minmax(160px, 1fr) minmax(120px, 0.75fr) minmax(150px, 1fr) auto;
+  grid-template-columns: minmax(130px, 0.9fr) minmax(150px, 1fr) minmax(110px, 0.7fr) minmax(120px, 0.78fr) minmax(140px, 0.9fr) auto;
   gap: 8px;
   align-items: center;
   padding: 9px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-soft);
+}
+
+.medication-row.archived {
+  background: #fff;
+  color: var(--muted);
+}
+
+.medication-row.archived strong {
+  color: var(--ink);
 }
 
 .medication-row span {
@@ -1034,6 +1043,42 @@ h2 {
 
 .medication-row-actions .secondary-button {
   white-space: nowrap;
+}
+
+.medication-archive {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.medication-archive summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 650;
+  list-style: none;
+}
+
+.medication-archive summary::-webkit-details-marker {
+  display: none;
+}
+
+.medication-archive summary::after {
+  content: "⌄";
+  color: var(--muted);
+}
+
+.medication-archive[open] summary::after {
+  content: "⌃";
+}
+
+.medication-archive-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
 }
 
 .profile-actions {

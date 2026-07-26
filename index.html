@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Health PGx Agent</title>
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260726-4" />
-    <link rel="stylesheet" href="./styles.css?v=20260726-4" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260726-5" />
+    <link rel="stylesheet" href="./styles.css?v=20260726-5" />
   </head>
   <body>
     <main class="app-shell">
@@ -405,6 +405,14 @@ eGFR 82 мл/мин/1.73м2
                       <input id="medicationDose" type="text" placeholder="Например: 10 мг вечером" />
                     </div>
                     <div>
+                      <label for="medicationStart">Начало приёма</label>
+                      <input id="medicationStart" type="date" />
+                    </div>
+                    <div>
+                      <label for="medicationEnd">Окончание</label>
+                      <input id="medicationEnd" type="date" />
+                    </div>
+                    <div>
                       <label for="medicationNote">Комментарий</label>
                       <input id="medicationNote" type="text" placeholder="Зачем назначен или что беспокоит" />
                     </div>
@@ -468,13 +476,13 @@ eGFR 82 мл/мин/1.73м2
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260726-4"></script>
-    <script src="./data/pgx-rules.js?v=20260726-4"></script>
-    <script src="./data/lab-analytes.js?v=20260726-4"></script>
-    <script src="./data/medication-knowledge.js?v=20260726-4"></script>
-    <script src="./data/evidence-flags.js?v=20260726-4"></script>
-    <script src="./data.js?v=20260726-4"></script>
-    <script src="./app.js?v=20260726-4"></script>
-    <script src="./js/pgx-extensions.js?v=20260726-4"></script>
+    <script src="./supabase-config.js?v=20260726-5"></script>
+    <script src="./data/pgx-rules.js?v=20260726-5"></script>
+    <script src="./data/lab-analytes.js?v=20260726-5"></script>
+    <script src="./data/medication-knowledge.js?v=20260726-5"></script>
+    <script src="./data/evidence-flags.js?v=20260726-5"></script>
+    <script src="./data.js?v=20260726-5"></script>
+    <script src="./app.js?v=20260726-5"></script>
+    <script src="./js/pgx-extensions.js?v=20260726-5"></script>
   </body>
 </html>

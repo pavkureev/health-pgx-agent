@@ -184,6 +184,15 @@ assert.ok(
   context.medicationRiskSignals().some((signal) => signal.title === "Тамоксифен + CYP2D6"),
   "Тамоксифен + CYP2D6 medication signal should exist"
 );
+context.archiveMedication("med-tamoxifen-only");
+assert.strictEqual(context.activeMedications().length, 0, "archived medication should leave active list");
+assert.strictEqual(context.archivedMedications().length, 1, "archived medication should stay in medication history");
+assert.ok(
+  !context.medicationRiskSignals().some((signal) => signal.title === "Тамоксифен + CYP2D6"),
+  "archived medication should not drive current PGx signal"
+);
+context.restoreMedication("med-tamoxifen-only");
+assert.strictEqual(context.activeMedications().length, 1, "restored medication should return to active list");
 
 context.document.querySelector("#patientData").value = "CYP3A5 *1/*3";
 context.saveCurrentMedications([{ id: "manual-substance", name: "неизвестный бренд", manualSubstanceLabel: "такролимус" }]);
