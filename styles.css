@@ -398,16 +398,25 @@ h2 {
   color: var(--accent-strong);
 }
 
+.editor-drawer > summary:has(.mini-counter) {
+  column-gap: 0;
+}
+
 .editor-drawer > summary:has(.mini-counter) .mini-counter {
-  height: 24px;
-  margin-right: -10px;
-  padding: 3px 9px 3px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  margin-right: 0;
+  padding: 0 10px 0 12px;
   border: 1px solid var(--line);
   border-right: 0;
   border-radius: 999px 0 0 999px;
 }
 
 .editor-drawer > summary:has(.mini-counter)::after {
+  width: 30px;
+  height: 28px;
   border-left: 0;
   border-radius: 0 999px 999px 0;
 }
