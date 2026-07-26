@@ -1052,9 +1052,9 @@ h2 {
 }
 
 .medication-archive summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   cursor: pointer;
   color: var(--ink);
@@ -1066,13 +1066,24 @@ h2 {
   display: none;
 }
 
-.medication-archive summary::after {
-  content: "⌄";
+.archive-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 96px;
   color: var(--muted);
 }
 
-.medication-archive[open] summary::after {
-  content: "⌃";
+.archive-chevron {
+  width: 14px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1;
+}
+
+.medication-archive[open] .archive-chevron {
+  transform: rotate(180deg);
 }
 
 .medication-archive-list {

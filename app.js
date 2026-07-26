@@ -4068,7 +4068,10 @@ function renderMedicationArchive(archive) {
     <details class="medication-archive" data-medication-archive ${medicationArchiveOpen ? "open" : ""}>
       <summary>
         <span>Архив препаратов</span>
-        <span class="mini-counter">${archive.length}</span>
+        <span class="archive-toggle" aria-hidden="true">
+          <span class="mini-counter">${archive.length}</span>
+          <span class="archive-chevron">⌄</span>
+        </span>
       </summary>
       <div class="medication-archive-list">
         ${visible.map(renderArchivedMedicationRow).join("")}
