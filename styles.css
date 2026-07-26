@@ -304,6 +304,26 @@ h2 {
   fill: none;
 }
 
+.bottom-tabs svg path[stroke] {
+  stroke-width: 1.8;
+}
+
+.now-action-icon .app-nav-icon-now path[stroke],
+.now-action-icon .app-nav-icon-labs path[stroke] {
+  stroke-width: 1.75;
+}
+
+.now-action-icon .app-nav-icon-genetics {
+  width: 18px;
+  height: 18px;
+}
+
+.now-action-icon .app-nav-icon-genetics path[fill] {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0.9);
+}
+
 .section-copy {
   display: grid;
   gap: 5px;

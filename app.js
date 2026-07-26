@@ -3144,7 +3144,7 @@ function appNavigationIcon(name, className = "summary-icon") {
     ? document.querySelector(`.tab-button[data-tab-target="${tabName}"] svg`)
     : null;
   if (!source?.outerHTML) return doctorIcon(name, className);
-  return source.outerHTML.replace("<svg", `<svg class="${escapeHtml(className)} app-nav-icon"`);
+  return source.outerHTML.replace("<svg", `<svg class="${escapeHtml(className)} app-nav-icon app-nav-icon-${escapeHtml(tabName)}"`);
 }
 
 function renderSectionDrawers() {
