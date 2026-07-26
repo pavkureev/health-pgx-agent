@@ -243,21 +243,17 @@ h2 {
 
 .app-section-summary {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   min-height: 74px;
   padding: 14px;
-  cursor: pointer;
+  cursor: default;
   list-style: none;
 }
 
 .app-section-summary::-webkit-details-marker {
   display: none;
-}
-
-.app-section-summary:hover {
-  background: var(--surface-soft);
 }
 
 .section-kicker {
@@ -344,51 +340,6 @@ h2 {
   line-height: 1.35;
 }
 
-.section-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 86px;
-  padding: 6px 9px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface-alt);
-  color: var(--muted);
-  text-align: center;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.section-toggle::after {
-  content: "⌄";
-  font-size: 13px;
-  line-height: 1;
-}
-
-.app-section[open] .section-toggle {
-  border-color: rgba(14, 124, 123, 0.22);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-}
-
-.app-section[open] .section-toggle::before {
-  content: "Скрыть";
-}
-
-.app-section[open] .section-toggle {
-  font-size: 0;
-}
-
-.app-section[open] .section-toggle::before {
-  font-size: 12px;
-}
-
-.app-section[open] .section-toggle::after {
-  content: "⌃";
-  font-size: 13px;
-}
-
 .app-section-body {
   display: grid;
   gap: 14px;
@@ -442,6 +393,26 @@ h2 {
 .editor-drawer[open] > summary::after,
 .substance-edit[open] summary::after {
   content: "⌃";
+  border-color: rgba(14, 124, 123, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.editor-drawer > summary:has(.mini-counter) .mini-counter {
+  height: 24px;
+  margin-right: -10px;
+  padding: 3px 9px 3px 10px;
+  border: 1px solid var(--line);
+  border-right: 0;
+  border-radius: 999px 0 0 999px;
+}
+
+.editor-drawer > summary:has(.mini-counter)::after {
+  border-left: 0;
+  border-radius: 0 999px 999px 0;
+}
+
+.editor-drawer[open] > summary:has(.mini-counter) .mini-counter {
   border-color: rgba(14, 124, 123, 0.22);
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -1094,18 +1065,26 @@ h2 {
 .archive-toggle {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 82px;
-  padding: 4px 7px;
+  justify-content: center;
+  gap: 7px;
+  min-width: 58px;
+  min-height: 28px;
+  padding: 4px 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface-alt);
   color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.archive-count {
+  min-width: 1ch;
+  text-align: center;
 }
 
 .archive-chevron {
-  width: 16px;
+  width: 12px;
   color: var(--muted);
   text-align: center;
   line-height: 1;
@@ -1986,30 +1965,6 @@ button {
   .now-action-card button {
     grid-column: 1 / -1;
     width: 100%;
-  }
-
-  .app-section-summary {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-
-  .section-toggle {
-    grid-column: auto;
-    min-width: 38px;
-    width: 38px;
-    padding: 7px 0;
-    font-size: 0;
-  }
-
-  .section-toggle::before {
-    content: "⌄";
-    font-size: 16px;
-    line-height: 1;
-  }
-
-  .app-section[open] .section-toggle::before {
-    content: "⌃";
-    font-size: 16px;
-    line-height: 1;
   }
 
   .button-row,

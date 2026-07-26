@@ -79,6 +79,7 @@ const doctorSection = document.querySelector(".doctor-section");
 const medicationsSection = document.querySelector(".medications-section");
 const nowSection = document.querySelector("#nowSection");
 const nowActions = document.querySelector("#nowActions");
+const appSectionSummaries = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll(".app-section > .app-section-summary")] : [];
 const tabButtons = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll(".tab-button")] : [];
 const tabTargetButtons = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll("[data-tab-target]")] : [];
 const geneticsSectionMeta = document.querySelector("#geneticsSectionMeta");
@@ -216,9 +217,19 @@ labMetricList.addEventListener("change", (event) => {
   updateDateInputTone(input);
 });
 toggleLabMetrics.addEventListener("click", toggleLabMetricList);
+bindFixedAppSections();
 bindAppNavigation();
 applyAppView(activeAppView);
 initSupabaseAuth();
+
+function bindFixedAppSections() {
+  appSectionSummaries.forEach((summary) => {
+    summary.addEventListener("click", (event) => event.preventDefault());
+    summary.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") event.preventDefault();
+    });
+  });
+}
 
 function bindAppNavigation() {
   tabTargetButtons.forEach((button) => {
@@ -4133,7 +4144,7 @@ function renderMedicationArchive(archive) {
       <summary>
         <span>Архив препаратов</span>
         <span class="archive-toggle" aria-hidden="true">
-          <span class="mini-counter">${archive.length}</span>
+          <span class="archive-count">${archive.length}</span>
           <span class="archive-chevron">⌄</span>
         </span>
       </summary>
