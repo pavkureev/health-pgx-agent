@@ -345,19 +345,31 @@ h2 {
 }
 
 .section-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 86px;
-  padding: 7px 10px;
-  border-radius: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   background: var(--surface-alt);
-  color: var(--accent-strong);
+  color: var(--muted);
   text-align: center;
   font-size: 12px;
   font-weight: 650;
 }
 
+.section-toggle::after {
+  content: "⌄";
+  font-size: 13px;
+  line-height: 1;
+}
+
 .app-section[open] .section-toggle {
-  background: var(--accent);
-  color: #fff;
+  border-color: rgba(14, 124, 123, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .app-section[open] .section-toggle::before {
@@ -370,6 +382,11 @@ h2 {
 
 .app-section[open] .section-toggle::before {
   font-size: 12px;
+}
+
+.app-section[open] .section-toggle::after {
+  content: "⌃";
+  font-size: 13px;
 }
 
 .app-section-body {
@@ -414,9 +431,10 @@ h2 {
   place-items: center;
   width: 24px;
   height: 24px;
+  border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface-alt);
-  color: var(--accent-strong);
+  color: var(--muted);
   font-size: 13px;
   line-height: 1;
 }
@@ -424,6 +442,9 @@ h2 {
 .editor-drawer[open] > summary::after,
 .substance-edit[open] summary::after {
   content: "⌃";
+  border-color: rgba(14, 124, 123, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .drawer-body {
@@ -1022,7 +1043,7 @@ h2 {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: var(--accent-strong);
+  color: var(--muted);
   font-size: 13px;
   font-weight: 650;
   list-style: none;
@@ -1075,15 +1096,25 @@ h2 {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  min-width: 96px;
+  min-width: 82px;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-alt);
   color: var(--muted);
 }
 
 .archive-chevron {
-  width: 14px;
+  width: 16px;
   color: var(--muted);
   text-align: center;
   line-height: 1;
+}
+
+.medication-archive[open] .archive-toggle {
+  border-color: rgba(14, 124, 123, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .medication-archive[open] .archive-chevron {
@@ -1178,6 +1209,21 @@ textarea {
 input {
   height: 40px;
   padding: 0 12px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-soft);
+  opacity: 1;
+}
+
+input[type="date"] {
+  color: var(--muted-soft);
+}
+
+input[type="date"].has-value,
+input[type="date"]:focus {
+  color: var(--ink);
 }
 
 select {
@@ -1350,9 +1396,39 @@ input[type="file"] {
 }
 
 .lab-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   cursor: pointer;
-  color: var(--ink);
+  color: var(--muted);
   font-weight: 650;
+  list-style: none;
+}
+
+.lab-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.lab-details summary::after {
+  content: "⌄";
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.lab-details[open] summary::after {
+  content: "⌃";
+  border-color: rgba(14, 124, 123, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .lab-text-label {
@@ -1617,7 +1693,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.86);
-  color: var(--accent-strong);
+  color: var(--muted);
   box-shadow: 0 2px 10px rgba(23, 37, 35, 0.05);
 }
 

@@ -58,6 +58,7 @@ const profileCounter = document.querySelector("#profileCounter");
 const profileStatus = document.querySelector("#profileStatus");
 const profileJump = document.querySelector(".profile-jump");
 const profileJumpLabel = document.querySelector("#profileJumpLabel");
+const loadSampleButton = document.querySelector("#loadSample");
 const profilePanel = document.querySelector(".profile-panel");
 const authPanel = document.querySelector(".auth-panel");
 const authEmail = document.querySelector("#authEmail");
@@ -142,7 +143,7 @@ if (window.pdfjsLib) {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 }
 
-document.querySelector("#loadSample").addEventListener("click", () => {
+loadSampleButton?.addEventListener("click", () => {
   patientData.value = sample;
   patientDataView.value = sample;
   drugSearch.value = "";
@@ -209,6 +210,10 @@ labMetricList.addEventListener("change", (event) => {
   if (!event.target.matches("[data-lab-metric]")) return;
   labMetric.value = event.target.value;
   drawLabChart(event.target.value);
+});
+[medicationStart, medicationEnd].forEach((input) => {
+  input?.addEventListener("input", () => updateDateInputTone(input));
+  updateDateInputTone(input);
 });
 toggleLabMetrics.addEventListener("click", toggleLabMetricList);
 bindAppNavigation();
@@ -309,6 +314,7 @@ async function initSupabaseAuth() {
 
 function renderAuthState() {
   if (!supabaseClient) {
+    updateSampleButtonVisibility();
     authTitle.textContent = "Залогиньтесь или зарегистрируйтесь, чтобы ваши данные сохранялись";
     authMode.textContent = "Локально";
     authStatus.textContent = "Supabase SDK не загружен. Данные хранятся только локально.";
@@ -323,6 +329,7 @@ function renderAuthState() {
   }
 
   if (currentUser) {
+    updateSampleButtonVisibility();
     authTitle.textContent = "Аккаунт";
     authMode.textContent = "Supabase";
     loginBox.hidden = true;
@@ -335,6 +342,7 @@ function renderAuthState() {
     return;
   }
 
+  updateSampleButtonVisibility();
   authEmail.disabled = false;
   authMode.textContent = "Локально";
   authTitle.textContent = "Залогиньтесь или зарегистрируйтесь, чтобы ваши данные сохранялись";
@@ -351,6 +359,14 @@ function renderAuthState() {
     authStatus.textContent = "Войдите по email, чтобы сохранять профили и анализы в Supabase. Без входа данные хранятся только в этом браузере.";
   }
   renderWelcome();
+}
+
+function updateSampleButtonVisibility() {
+  if (loadSampleButton) loadSampleButton.hidden = Boolean(currentUser);
+}
+
+function updateDateInputTone(input) {
+  input?.classList?.toggle("has-value", Boolean(input.value));
 }
 
 function renderWelcome() {
@@ -3935,6 +3951,8 @@ async function addMedication() {
   medicationDose.value = "";
   if (medicationStart) medicationStart.value = "";
   if (medicationEnd) medicationEnd.value = "";
+  updateDateInputTone(medicationStart);
+  updateDateInputTone(medicationEnd);
   medicationNote.value = "";
   saveCurrentMedications(medications);
   renderHealthBlocks();
