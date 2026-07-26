@@ -135,6 +135,10 @@ h2 {
   padding: 14px;
 }
 
+.view-hidden {
+  display: none !important;
+}
+
 .now-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
@@ -1622,6 +1626,12 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.profile-jump.is-active {
+  border-color: rgba(14, 124, 123, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .summary {

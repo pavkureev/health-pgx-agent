@@ -135,6 +135,8 @@ let labRecords = getActiveProfile().labRecords || [];
 let pendingLabDelete = null;
 let archivedMedicationVisibleCount = 10;
 let medicationArchiveOpen = false;
+let activeAppView = "now";
+let activeInlineSection = "";
 
 if (window.pdfjsLib) {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -210,6 +212,7 @@ labMetricList.addEventListener("change", (event) => {
 });
 toggleLabMetrics.addEventListener("click", toggleLabMetricList);
 bindAppNavigation();
+applyAppView(activeAppView);
 initSupabaseAuth();
 
 function bindAppNavigation() {
@@ -222,13 +225,10 @@ function navigateToTab(target) {
   const targetNode = tabTargetNode(target);
   if (!targetNode) return;
 
+  activeInlineSection = target === "doctor" ? "doctor" : "";
+  applyAppView(normalizeAppViewTarget(target));
   if (targetNode.matches?.("details")) targetNode.open = true;
-  if (tabButtons.some((button) => button.dataset.tabTarget === target)) {
-    tabButtons.forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.tabTarget === target);
-    });
-  }
-  targetNode.scrollIntoView({ behavior: "smooth", block: "start" });
+  targetNode.scrollIntoView?.({ behavior: "smooth", block: "start" });
 }
 
 function tabTargetNode(target) {
@@ -237,9 +237,40 @@ function tabTargetNode(target) {
     labs: labsSection,
     genetics: geneticsSection,
     medications: medicationsSection,
-    profile: profilePanel && !profilePanel.hidden ? profilePanel : authPanel,
+    profile: authPanel || profilePanel,
     doctor: doctorSection
   }[target] || null;
+}
+
+function normalizeAppViewTarget(target) {
+  if (target === "doctor") return "now";
+  return ["now", "labs", "genetics", "medications", "profile"].includes(target) ? target : "now";
+}
+
+function applyAppView(target = "now") {
+  activeAppView = normalizeAppViewTarget(target);
+  const viewGroups = {
+    now: activeInlineSection === "doctor" ? [nowSection, doctorSection] : [nowSection],
+    labs: [labsSection],
+    genetics: [geneticsSection],
+    medications: [medicationsSection],
+    profile: [authPanel, profilePanel, doctorSection]
+  };
+  const viewNodes = Object.values(viewGroups).flat().filter(Boolean);
+
+  viewNodes.forEach((node) => {
+    const isVisible = viewGroups[activeAppView].includes(node);
+    if (node.classList?.toggle) {
+      node.classList.toggle("view-hidden", !isVisible);
+    } else {
+      node.hidden = !isVisible;
+    }
+  });
+
+  tabButtons.forEach((button) => {
+    button.classList?.toggle("is-active", button.dataset.tabTarget === activeAppView);
+  });
+  profileJump?.classList?.toggle("is-active", activeAppView === "profile");
 }
 
 function normalizeText(value) {
