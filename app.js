@@ -56,6 +56,8 @@ const profileSelect = document.querySelector("#profileSelect");
 const profileName = document.querySelector("#profileName");
 const profileCounter = document.querySelector("#profileCounter");
 const profileStatus = document.querySelector("#profileStatus");
+const profileJump = document.querySelector(".profile-jump");
+const profileJumpLabel = document.querySelector("#profileJumpLabel");
 const profilePanel = document.querySelector(".profile-panel");
 const authPanel = document.querySelector(".auth-panel");
 const authEmail = document.querySelector("#authEmail");
@@ -326,6 +328,7 @@ function renderWelcome() {
 
   if (!currentUser) {
     onboardingBox.hidden = true;
+    updateProfileJumpLabel("");
     return;
   }
 
@@ -334,6 +337,7 @@ function renderWelcome() {
   const needsName = !name;
 
   onboardingBox.hidden = !needsName;
+  updateProfileJumpLabel(name);
 
   if (needsName) {
     displayName.value = "";
@@ -357,6 +361,17 @@ function renderWelcome() {
     <button id="signOutInline" class="secondary-button" type="button">Выйти</button>
   `;
   signedInBox.querySelector("#signOutInline").addEventListener("click", signOut);
+}
+
+function updateProfileJumpLabel(name) {
+  const label = name || "Профиль";
+  if (profileJumpLabel) profileJumpLabel.textContent = label;
+  if (profileJump) {
+    profileJump.title = label === "Профиль" ? "Профиль" : `Профиль: ${label}`;
+    if (typeof profileJump.setAttribute === "function") {
+      profileJump.setAttribute("aria-label", profileJump.title);
+    }
+  }
 }
 
 function getDisplayName(profile) {
