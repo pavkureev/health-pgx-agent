@@ -1,19 +1,22 @@
 :root {
   color-scheme: light;
-  --bg: #f4f6f8;
+  --bg: #f6f8f7;
   --surface: #ffffff;
-  --surface-alt: #f1f4f3;
-  --surface-soft: #f8faf9;
-  --ink: #17211d;
-  --muted: #63706b;
-  --muted-soft: #7a8581;
-  --line: #d9e0dd;
-  --accent: #287a69;
-  --accent-strong: #155e54;
+  --surface-alt: #edf5f4;
+  --surface-soft: #fbfcfc;
+  --ink: #172523;
+  --muted: #667673;
+  --muted-soft: #7c8986;
+  --line: #d8e3e0;
+  --accent: #0e7c7b;
+  --accent-strong: #096766;
+  --accent-soft: #e3f5f4;
+  --accent-shadow: rgba(14, 124, 123, 0.18);
   --warning: #fff4dd;
   --warning-line: #e2b35c;
   --danger: #b4413c;
-  --shadow: 0 14px 36px rgba(31, 48, 43, 0.09);
+  --shadow: 0 8px 24px rgba(23, 37, 35, 0.06);
+  --button-shadow: 0 2px 8px rgba(14, 124, 123, 0.18);
 }
 
 * {
@@ -28,12 +31,18 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(40, 122, 105, 0.12), rgba(244, 246, 248, 0) 320px),
+    radial-gradient(circle at 30% -10%, rgba(14, 124, 123, 0.12), rgba(246, 248, 247, 0) 320px),
+    linear-gradient(180deg, rgba(227, 245, 244, 0.9), rgba(246, 248, 247, 0) 360px),
     var(--bg);
   color: var(--ink);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 18px;
 }
 
 button,
@@ -45,7 +54,7 @@ textarea {
 .app-shell {
   width: min(1240px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 24px 0 40px;
+  padding: 24px 0 108px;
 }
 
 .workspace {
@@ -59,6 +68,22 @@ textarea {
   justify-content: space-between;
   gap: 16px;
   min-height: 44px;
+}
+
+.brand-lockup {
+  display: grid;
+  gap: 2px;
+}
+
+.brand-lockup strong {
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.top-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .eyebrow {
@@ -76,8 +101,9 @@ p {
 }
 
 h1 {
-  font-size: clamp(32px, 4vw, 54px);
-  line-height: 1;
+  max-width: 760px;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.04;
 }
 
 h2 {
@@ -107,6 +133,100 @@ h2 {
   border-radius: 8px;
   box-shadow: var(--shadow);
   padding: 14px;
+}
+
+.now-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+  gap: 18px;
+  align-items: start;
+  padding: 18px;
+}
+
+.now-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.now-copy p {
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.48;
+}
+
+.now-kicker {
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.now-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.now-action-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 62px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, #f9fbfb);
+}
+
+.now-action-card.is-priority {
+  border-color: rgba(14, 124, 123, 0.28);
+  box-shadow: 0 6px 18px rgba(14, 124, 123, 0.08);
+}
+
+.now-action-icon,
+.section-icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.now-action-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.now-action-card strong,
+.now-action-card span {
+  display: block;
+}
+
+.now-action-card strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.now-action-card span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.now-action-card .now-action-icon {
+  display: inline-grid;
+  margin-top: 0;
+  color: var(--accent);
+}
+
+.now-action-card button {
+  min-height: 34px;
+  padding: 0 10px;
 }
 
 .app-section {
@@ -142,9 +262,39 @@ h2 {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: var(--surface-alt);
-  color: var(--accent-strong);
+  background: var(--accent-soft);
+  color: var(--accent);
   font-weight: 650;
+}
+
+.section-kicker svg,
+.now-action-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.section-kicker.filled-icon svg {
+  stroke: none;
+  fill: currentColor;
+}
+
+.bottom-tabs svg,
+.profile-jump svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.bottom-tabs svg path,
+.profile-jump svg path {
+  vector-effect: non-scaling-stroke;
 }
 
 .section-copy {
@@ -175,7 +325,7 @@ h2 {
 }
 
 .app-section[open] .section-toggle {
-  background: var(--accent-strong);
+  background: var(--accent);
   color: #fff;
 }
 
@@ -433,7 +583,7 @@ h2 {
 .doctor-flow-step.is-active::before {
   border-color: var(--accent);
   background: var(--accent);
-  box-shadow: inset 0 0 0 5px var(--surface), 0 0 0 4px rgba(40, 122, 105, 0.12);
+  box-shadow: inset 0 0 0 5px var(--surface), 0 0 0 4px rgba(14, 124, 123, 0.12);
 }
 
 .doctor-flow-step.is-done::before,
@@ -469,8 +619,8 @@ h2 {
 }
 
 .doctor-status-pill.confirmed {
-  border-color: rgba(40, 122, 105, 0.22);
-  background: #e9f4f1;
+  border-color: rgba(14, 124, 123, 0.22);
+  background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
@@ -533,8 +683,8 @@ h2 {
 }
 
 .doctor-review-item.is-accepted {
-  border-color: rgba(40, 122, 105, 0.32);
-  background: #f4faf8;
+  border-color: rgba(14, 124, 123, 0.32);
+  background: #f3fbfa;
 }
 
 .doctor-review-main {
@@ -639,7 +789,7 @@ h2 {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: #e9f4f1;
+  background: var(--accent-soft);
   color: var(--accent-strong);
   font-size: 12px;
   font-weight: 800;
@@ -682,7 +832,7 @@ h2 {
 }
 
 .diagnosis-tag.feature {
-  background: #edf1ef;
+  background: var(--surface-alt);
   color: var(--muted);
 }
 
@@ -705,7 +855,7 @@ h2 {
   height: 24px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #edf1ef;
+  background: var(--surface-alt);
   color: var(--muted);
   text-align: center;
   font-size: 12px;
@@ -734,7 +884,7 @@ h2 {
 }
 
 .signal-item.low {
-  border-left-color: #6f9d8f;
+  border-left-color: #61a9a5;
 }
 
 .signal-item strong {
@@ -881,7 +1031,7 @@ h2 {
   min-width: 96px;
   padding: 5px 9px;
   border-radius: 999px;
-  background: #edf1ef;
+  background: var(--surface-alt);
   color: var(--muted);
   text-align: center;
   font-size: 12px;
@@ -922,7 +1072,7 @@ input {
 textarea:focus,
 input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(40, 122, 105, 0.16);
+  box-shadow: 0 0 0 3px rgba(14, 124, 123, 0.16);
 }
 
 textarea {
@@ -1078,7 +1228,7 @@ input[type="file"] {
 
 .metric-option:has(input:checked) {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(40, 122, 105, 0.12);
+  box-shadow: 0 0 0 3px rgba(14, 124, 123, 0.12);
 }
 
 .metric-option input {
@@ -1232,16 +1382,18 @@ button {
 
 .primary-button {
   flex: 1;
-  background: var(--accent);
+  background: linear-gradient(180deg, #13908e 0%, var(--accent) 100%);
   color: white;
+  box-shadow: var(--button-shadow);
 }
 
 .primary-button:hover {
-  background: var(--accent-strong);
+  background: linear-gradient(180deg, #0f8583 0%, var(--accent-strong) 100%);
 }
 
 .secondary-button {
-  background: var(--surface-alt);
+  border: 1px solid rgba(9, 103, 102, 0.08);
+  background: linear-gradient(180deg, #f6fbfa 0%, var(--surface-alt) 100%);
   color: var(--ink);
 }
 
@@ -1249,9 +1401,23 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.86);
   border: 1px solid var(--line);
   color: var(--ink);
+  box-shadow: 0 2px 10px rgba(23, 37, 35, 0.05);
+}
+
+.profile-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--accent-strong);
+  box-shadow: 0 2px 10px rgba(23, 37, 35, 0.05);
 }
 
 .summary {
@@ -1299,7 +1465,7 @@ button {
 }
 
 .priority-low .priority-heading {
-  border-left-color: #6f9d8f;
+  border-left-color: #61a9a5;
 }
 
 .priority-heading strong,
@@ -1423,8 +1589,54 @@ button {
   line-height: 1.45;
 }
 
+.bottom-tabs {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(92px, 1fr));
+  gap: 4px;
+  width: min(620px, calc(100% - 32px));
+  padding: 6px;
+  border: 1px solid rgba(216, 227, 224, 0.88);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 38px rgba(23, 37, 35, 0.14);
+  transform: translateX(-50%);
+  backdrop-filter: blur(14px);
+}
+
+.tab-button {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-height: 54px;
+  padding: 7px 8px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tab-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.tab-button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.tab-button:hover {
+  color: var(--accent-strong);
+}
+
 @media (max-width: 900px) {
   .grid,
+  .now-panel,
   .lab-focus,
   .profile-grid,
   .auth-grid,
@@ -1437,8 +1649,7 @@ button {
   }
 
   .topbar {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
   }
 
   textarea {
@@ -1449,7 +1660,42 @@ button {
 @media (max-width: 560px) {
   .app-shell {
     width: min(100% - 20px, 1240px);
-    padding-top: 20px;
+    padding-top: 16px;
+    padding-bottom: 100px;
+  }
+
+  .topbar {
+    gap: 10px;
+  }
+
+  .brand-lockup strong {
+    font-size: 16px;
+  }
+
+  .top-actions {
+    gap: 6px;
+  }
+
+  .icon-button span:last-child,
+  .profile-jump span {
+    display: none;
+  }
+
+  .now-panel {
+    padding: 14px;
+  }
+
+  .now-copy p {
+    font-size: 14px;
+  }
+
+  .now-action-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .now-action-card button {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .app-section-summary {
@@ -1513,5 +1759,23 @@ button {
 
   .doctor-review-actions {
     justify-content: flex-start;
+  }
+
+  .bottom-tabs {
+    bottom: 10px;
+    width: min(100% - 16px, 480px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-radius: 16px;
+  }
+
+  .tab-button {
+    min-height: 52px;
+    padding: 7px 4px;
+    font-size: 11px;
+  }
+
+  .tab-button svg {
+    width: 22px;
+    height: 22px;
   }
 }

@@ -51,6 +51,8 @@ const profileSelect = document.querySelector("#profileSelect");
 const profileName = document.querySelector("#profileName");
 const profileCounter = document.querySelector("#profileCounter");
 const profileStatus = document.querySelector("#profileStatus");
+const profilePanel = document.querySelector(".profile-panel");
+const authPanel = document.querySelector(".auth-panel");
 const authEmail = document.querySelector("#authEmail");
 const authTitle = document.querySelector("#authTitle");
 const authMode = document.querySelector("#authMode");
@@ -67,6 +69,10 @@ const geneticsSection = document.querySelector(".genetics-section");
 const labsSection = document.querySelector(".labs-section");
 const doctorSection = document.querySelector(".doctor-section");
 const medicationsSection = document.querySelector(".medications-section");
+const nowSection = document.querySelector("#nowSection");
+const nowActions = document.querySelector("#nowActions");
+const tabButtons = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll(".tab-button")] : [];
+const tabTargetButtons = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll("[data-tab-target]")] : [];
 const geneticsSectionMeta = document.querySelector("#geneticsSectionMeta");
 const labsSectionMeta = document.querySelector("#labsSectionMeta");
 const doctorSectionMeta = document.querySelector("#doctorSectionMeta");
@@ -189,7 +195,38 @@ labMetricList.addEventListener("change", (event) => {
   drawLabChart(event.target.value);
 });
 toggleLabMetrics.addEventListener("click", toggleLabMetricList);
+bindAppNavigation();
 initSupabaseAuth();
+
+function bindAppNavigation() {
+  tabTargetButtons.forEach((button) => {
+    button.addEventListener("click", () => navigateToTab(button.dataset.tabTarget));
+  });
+}
+
+function navigateToTab(target) {
+  const targetNode = tabTargetNode(target);
+  if (!targetNode) return;
+
+  if (targetNode.matches?.("details")) targetNode.open = true;
+  if (tabButtons.some((button) => button.dataset.tabTarget === target)) {
+    tabButtons.forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.tabTarget === target);
+    });
+  }
+  targetNode.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function tabTargetNode(target) {
+  return {
+    now: nowSection,
+    labs: labsSection,
+    genetics: geneticsSection,
+    medications: medicationsSection,
+    profile: profilePanel && !profilePanel.hidden ? profilePanel : authPanel,
+    doctor: doctorSection
+  }[target] || null;
+}
 
 function normalizeText(value) {
   return value
@@ -2958,6 +2995,142 @@ function renderHealthBlocks() {
   renderSectionDrawers();
   renderDoctorConclusion();
   renderMedicationProfile(medicationSignals);
+  renderNowActions({ medicationSignals, clinicalSignals, pgxSignals });
+}
+
+function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSignals = [] } = {}) {
+  if (!nowActions) return;
+
+  const conclusion = currentDoctorConclusion();
+  const parsed = conclusion.parsed || { diagnoses: [], medications: [] };
+  const medications = currentMedications();
+  const { profile } = parseProfile(patientData.value);
+  const hasGeneticData = Boolean(patientData.value.trim());
+  const hasLabData = Boolean(labRecords.length);
+  const hasDoctorData = Boolean(conclusion.text?.trim());
+  const hasMedicationData = Boolean(medications.length);
+  const pendingConclusion = hasDoctorData && conclusion.reviewStatus !== "confirmed";
+  const unconfirmedMedications = medications.filter((item) => item.needsConfirmation).length;
+  const highMedicationSignals = medicationSignals.filter((item) => item.severity === "high").length;
+  const activeClinicalSignals = clinicalSignals.filter((item) => item.severity !== "low").length;
+  const geneCount = Object.keys(profile).length;
+
+  const actions = [];
+  if (pendingConclusion) {
+    const total = (parsed.diagnoses || []).length + (parsed.medications || []).length;
+    actions.push({
+      icon: "file",
+      title: "Проверьте распознавание",
+      body: `${total} ${plural(total, "пункт", "пункта", "пунктов")} из заключения ждут подтверждения.`,
+      target: "doctor",
+      cta: "Проверить",
+      priority: true
+    });
+  }
+  if (unconfirmedMedications) {
+    actions.push({
+      icon: "pill",
+      title: "Подтвердите препараты",
+      body: `${unconfirmedMedications} ${plural(unconfirmedMedications, "препарат", "препарата", "препаратов")} требуют проверки вещества или режима.`,
+      target: "medications",
+      cta: "Открыть",
+      priority: true
+    });
+  }
+  if (highMedicationSignals) {
+    actions.push({
+      icon: "alert",
+      title: "Есть лекарственные предупреждения",
+      body: `${highMedicationSignals} ${plural(highMedicationSignals, "важный пункт", "важных пункта", "важных пунктов")} стоит обсудить с врачом.`,
+      target: "medications",
+      cta: "Смотреть",
+      priority: true
+    });
+  }
+  if (activeClinicalSignals) {
+    actions.push({
+      icon: "shield",
+      title: "Проверьте важные находки в анализах",
+      body: `${activeClinicalSignals} ${plural(activeClinicalSignals, "сигнал", "сигнала", "сигналов")} по динамике или порогам.`,
+      target: "labs",
+      cta: "К анализам"
+    });
+  }
+  if (!hasDoctorData) {
+    actions.push({
+      icon: "file",
+      title: "Загрузите заключение",
+      body: "Получите черновик диагнозов и назначений для проверки.",
+      target: "doctor",
+      cta: "Загрузить"
+    });
+  }
+  if (!hasLabData) {
+    actions.push({
+      icon: "shield",
+      title: "Добавьте анализы",
+      body: "Появятся графики динамики и лабораторные подсказки.",
+      target: "labs",
+      cta: "Добавить"
+    });
+  }
+  if (!hasGeneticData) {
+    actions.push({
+      icon: "alert",
+      title: "Добавьте генетику",
+      body: "PGx-маркеры помогут проверить лекарства и вопросы врачу.",
+      target: "genetics",
+      cta: "Добавить"
+    });
+  }
+  if (!hasMedicationData) {
+    actions.push({
+      icon: "pill",
+      title: "Заполните лекарства",
+      body: "Профиль проверит действующие вещества, сочетания и справочные флаги.",
+      target: "medications",
+      cta: "Добавить"
+    });
+  }
+
+  if (!actions.length) {
+    actions.push(
+      {
+        icon: "check",
+        title: "Данные собраны",
+        body: `${geneCount} ${plural(geneCount, "генетический маркер", "генетических маркера", "генетических маркеров")}, ${labRecords.length} ${plural(labRecords.length, "отчёт", "отчёта", "отчётов")} и ${medications.length} ${plural(medications.length, "препарат", "препарата", "препаратов")}.`,
+        target: "labs",
+        cta: "Открыть"
+      },
+      {
+        icon: "shield",
+        title: "Смотрите важные находки",
+        body: `${pgxSignals.length + activeClinicalSignals + medicationSignals.length} ${plural(pgxSignals.length + activeClinicalSignals + medicationSignals.length, "подсказка", "подсказки", "подсказок")} по текущим данным.`,
+        target: "genetics",
+        cta: "Смотреть"
+      }
+    );
+  }
+
+  nowActions.innerHTML = actions.slice(0, 4).map(renderNowActionCard).join("");
+  if (typeof nowActions.querySelectorAll === "function") {
+    nowActions.querySelectorAll("[data-now-target]").forEach((button) => {
+      button.addEventListener("click", () => navigateToTab(button.dataset.nowTarget));
+    });
+  }
+}
+
+function renderNowActionCard(action) {
+  return `
+    <article class="now-action-card ${action.priority ? "is-priority" : ""}">
+      <span class="now-action-icon">${doctorIcon(action.icon, "summary-icon")}</span>
+      <div>
+        <strong>${escapeHtml(action.title)}</strong>
+        <span>${escapeHtml(action.body)}</span>
+      </div>
+      <button class="${action.priority ? "primary-button" : "secondary-button"}" type="button" data-now-target="${escapeHtml(action.target)}">${escapeHtml(action.cta)}</button>
+    </article>
+  `;
 }
 
 function renderSectionDrawers() {
@@ -4025,7 +4198,7 @@ function drawLabChart(metricKey) {
   drawYearTicks(context, minTime, maxTime, xFor, plotTop, plotBottom);
   drawReferenceRange(context, metric, yFor, plotLeft, plotRight);
 
-  context.strokeStyle = "#287a69";
+  context.strokeStyle = "#0e7c7b";
   context.lineWidth = 3;
   context.setLineDash([]);
   context.beginPath();
@@ -4041,7 +4214,7 @@ function drawLabChart(metricKey) {
     const x = xFor(point.timestamp);
     const y = yFor(point.value);
     context.fillStyle = "#ffffff";
-    context.strokeStyle = "#155e54";
+    context.strokeStyle = "#096766";
     context.lineWidth = 2;
     context.beginPath();
     context.arc(x, y, 5, 0, Math.PI * 2);
@@ -4083,7 +4256,7 @@ function drawReferenceRange(context, metric, yFor, plotLeft, plotRight) {
   if (min !== null && max !== null) {
     const yMinRef = yFor(min);
     const yMaxRef = yFor(max);
-    context.fillStyle = "rgba(40, 122, 105, 0.08)";
+    context.fillStyle = "rgba(14, 124, 123, 0.08)";
     context.fillRect(plotLeft, Math.min(yMinRef, yMaxRef), plotRight - plotLeft, Math.abs(yMinRef - yMaxRef));
   }
 
@@ -4093,7 +4266,7 @@ function drawReferenceRange(context, metric, yFor, plotLeft, plotRight) {
   ]) {
     if (item.value === null) continue;
     const y = yFor(item.value);
-    context.strokeStyle = item.label === "min" ? "#6f9d8f" : "#b4413c";
+    context.strokeStyle = item.label === "min" ? "#61a9a5" : "#b4413c";
     context.lineWidth = 1.5;
     context.beginPath();
     context.moveTo(plotLeft, y);
