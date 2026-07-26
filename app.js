@@ -47,6 +47,11 @@ const labChart = document.querySelector("#labChart");
 const metricDescription = document.querySelector("#metricDescription");
 const labDiagnostics = document.querySelector("#labDiagnostics");
 const labDiagnosticsBody = document.querySelector("#labDiagnosticsBody");
+const labDeleteDialog = document.querySelector("#labDeleteDialog");
+const labDeleteTitle = document.querySelector("#labDeleteTitle");
+const labDeleteText = document.querySelector("#labDeleteText");
+const cancelLabDelete = document.querySelector("#cancelLabDelete");
+const confirmLabDelete = document.querySelector("#confirmLabDelete");
 const profileSelect = document.querySelector("#profileSelect");
 const profileName = document.querySelector("#profileName");
 const profileCounter = document.querySelector("#profileCounter");
@@ -123,6 +128,7 @@ let profiles = loadProfiles();
 let activeProfileId = loadActiveProfileId();
 ensureActiveProfile();
 let labRecords = getActiveProfile().labRecords || [];
+let pendingLabDelete = null;
 
 if (window.pdfjsLib) {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -167,7 +173,9 @@ document.querySelector("#analyze").addEventListener("click", () => {
 document.querySelector("#loadVcf").addEventListener("click", loadVcfFile);
 document.querySelector("#loadLabs").addEventListener("click", loadLabFiles);
 document.querySelector("#parseLabText").addEventListener("click", addLabText);
-document.querySelector("#clearLabs").addEventListener("click", clearLabHistory);
+document.querySelector("#clearLabs").addEventListener("click", requestClearLabHistory);
+cancelLabDelete?.addEventListener("click", closeLabDeleteDialog);
+confirmLabDelete?.addEventListener("click", confirmPendingLabDelete);
 document.querySelector("#loadDoctorConclusion").addEventListener("click", loadDoctorConclusionFile);
 document.querySelector("#parseDoctorText").addEventListener("click", parseDoctorTextInput);
 document.querySelector("#addDoctorMedications").addEventListener("click", addDoctorMedicationsToProfile);
@@ -470,7 +478,7 @@ async function loadCloudProfileDetails(profileId) {
 
   const { data, error } = await supabaseClient
     .from("lab_observations")
-    .select("id, document_id, analyte_key, analyte_label, observed_on, value, unit, reference_low, reference_high, source_line")
+    .select("id, document_id, analyte_key, analyte_label, observed_on, value, unit, reference_low, reference_high, source_line, source_documents(file_name, status, created_at, updated_at)")
     .eq("profile_id", profileId)
     .order("observed_on", { ascending: true });
 
@@ -1894,6 +1902,7 @@ function parseLabReport(text, sourceName, fallbackTimestamp) {
   const normalized = text.replace(/\u00a0/g, " ");
   const reportDate = findReportDate(normalized, sourceName, fallbackTimestamp);
   const values = [];
+  const now = new Date().toISOString();
 
   for (const analyte of labAnalytes) {
     const found = findAnalyteValue(normalized, analyte);
@@ -1912,6 +1921,9 @@ function parseLabReport(text, sourceName, fallbackTimestamp) {
     id: labRecordId(reportDate, sourceName, values),
     sourceName,
     date: reportDate,
+    uploadedAt: now,
+    updatedAt: now,
+    processingStatus: values.length ? "ready" : "needs_reload",
     values
   };
 }
@@ -1936,13 +1948,18 @@ async function saveCloudLabRecords(records) {
         report_date: record.date,
         parser_version: PARSER_VERSION
       })
-      .select("id")
+      .select("id, status, created_at, updated_at")
       .single();
 
     if (documentError) {
       labStatus.textContent = `Supabase: документ не сохранен (${documentError.message}).`;
       continue;
     }
+
+    record.documentId = documentRow.id;
+    record.uploadedAt = record.uploadedAt || documentRow.created_at || new Date().toISOString();
+    record.updatedAt = documentRow.updated_at || record.updatedAt || record.uploadedAt;
+    record.processingStatus = documentRow.status || "parsed";
 
     const rows = record.values.map((value) => ({
       profile_id: profile.id,
@@ -1959,6 +1976,7 @@ async function saveCloudLabRecords(records) {
     const { error: observationError } = await supabaseClient.from("lab_observations").insert(rows);
     if (observationError) {
       labStatus.textContent = `Supabase: показатели не сохранены (${observationError.message}).`;
+      record.processingStatus = "needs_reload";
     }
   }
 }
@@ -1969,10 +1987,17 @@ function observationsToLabRecords(observations) {
   for (const item of observations) {
     const key = item.document_id || `${item.observed_on}-${item.analyte_key}`;
     if (!byDocument.has(key)) {
+      const sourceDocument = Array.isArray(item.source_documents)
+        ? item.source_documents[0] || {}
+        : item.source_documents || {};
       byDocument.set(key, {
         id: key,
-        sourceName: "Supabase",
+        documentId: item.document_id || "",
+        sourceName: sourceDocument.file_name || "Supabase",
         date: item.observed_on,
+        uploadedAt: sourceDocument.created_at || "",
+        updatedAt: sourceDocument.updated_at || "",
+        processingStatus: sourceDocument.status || "parsed",
         values: []
       });
     }
@@ -2337,6 +2362,132 @@ function dedupeLabRecords(records) {
   return [...byId.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
+function requestClearLabHistory() {
+  if (!labRecords.length) {
+    labStatus.className = "file-status";
+    labStatus.textContent = "История анализов уже пуста.";
+    return;
+  }
+  showLabDeleteConfirmation({
+    mode: "all",
+    count: labRecords.length,
+    title: "Удалить результаты анализа?"
+  });
+}
+
+function requestDeleteLabRecord(recordId) {
+  const record = labRecords.find((item) => item.id === recordId);
+  if (!record) return;
+  showLabDeleteConfirmation({
+    mode: "single",
+    recordId,
+    count: 1,
+    title: "Удалить результаты анализа?",
+    recordLabel: `${formatDate(record.date)} · ${record.sourceName || "анализ"}`
+  });
+}
+
+function showLabDeleteConfirmation(request) {
+  pendingLabDelete = request;
+  const countText = request.count > 1
+    ? `Будут удалены ${request.count} ${plural(request.count, "результат", "результата", "результатов")} анализов.`
+    : request.recordLabel
+      ? `Будет удалён результат: ${request.recordLabel}.`
+      : "Будет удалён 1 результат анализа.";
+  const body = `${countText} После удаления результаты анализа будут безвозвратно удалены из приложения. Восстановить их не получится.`;
+
+  if (!labDeleteDialog?.showModal) {
+    const confirmed = typeof window.confirm === "function" ? window.confirm(`${request.title}\n\n${body}`) : false;
+    if (confirmed) void confirmPendingLabDelete();
+    else pendingLabDelete = null;
+    return;
+  }
+
+  labDeleteTitle.textContent = request.title;
+  labDeleteText.textContent = body;
+  labDeleteDialog.showModal();
+}
+
+function closeLabDeleteDialog() {
+  pendingLabDelete = null;
+  if (labDeleteDialog?.open) labDeleteDialog.close();
+}
+
+async function confirmPendingLabDelete() {
+  const request = pendingLabDelete;
+  if (!request) return;
+  pendingLabDelete = null;
+  if (labDeleteDialog?.open) labDeleteDialog.close();
+
+  if (request.mode === "single") {
+    await deleteLabRecord(request.recordId);
+    return;
+  }
+  await clearLabHistory();
+}
+
+async function deleteLabRecord(recordId) {
+  const record = labRecords.find((item) => item.id === recordId);
+  if (!record) return;
+
+  if (cloudReady) {
+    const deleted = await deleteCloudLabRecord(record);
+    if (!deleted) return;
+  }
+
+  labRecords = labRecords.filter((item) => item.id !== recordId);
+  saveCurrentProfileData();
+  renderLabHistory();
+  labStatus.className = "file-status";
+  labStatus.textContent = "Результат анализа удалён.";
+  renderLabDiagnostics([]);
+}
+
+async function deleteCloudLabRecord(record) {
+  const profile = getActiveProfile();
+  const documentId = record.documentId || record.id;
+
+  if (isUuid(documentId)) {
+    const { error: observationsError } = await supabaseClient
+      .from("lab_observations")
+      .delete()
+      .eq("profile_id", profile.id)
+      .eq("document_id", documentId);
+    const { error: documentsError } = await supabaseClient
+      .from("source_documents")
+      .delete()
+      .eq("profile_id", profile.id)
+      .eq("id", documentId)
+      .in("kind", ["lab_pdf", "lab_text"]);
+
+    if (observationsError || documentsError) {
+      labStatus.className = "file-status error";
+      labStatus.textContent = `Supabase: не удалось удалить анализ (${observationsError?.message || documentsError?.message}).`;
+      return false;
+    }
+    return true;
+  }
+
+  const keys = [...new Set((record.values || []).map((value) => value.key))];
+  const { error } = await supabaseClient
+    .from("lab_observations")
+    .delete()
+    .eq("profile_id", profile.id)
+    .eq("observed_on", record.date)
+    .in("analyte_key", keys);
+
+  if (error) {
+    labStatus.className = "file-status error";
+    labStatus.textContent = `Supabase: не удалось удалить анализ (${error.message}).`;
+    return false;
+  }
+  return true;
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
 async function clearLabHistory() {
   if (cloudReady) {
     const profile = getActiveProfile();
@@ -2404,7 +2555,8 @@ function renderLabHistory() {
   labSummary.className = "summary";
   labSummary.textContent = `В истории ${labRecords.length} ${plural(labRecords.length, "отчет", "отчета", "отчетов")} и ${totalValues} ${plural(totalValues, "показатель", "показателя", "показателей")}. Выберите показатель, чтобы увидеть динамику.`;
   labInsights.innerHTML = renderLabInsights();
-  labResults.innerHTML = labRecords.map(renderLabRecord).join("");
+  labResults.innerHTML = renderLabCollectionSummary() + renderLabRecordGroups();
+  bindLabHistoryActions();
   drawLabChart(labMetric.value);
   renderHealthBlocks();
 }
@@ -2841,12 +2993,95 @@ function setLabMetricListExpanded(expanded) {
   labMetricList.className = expanded ? "metric-list expanded" : "metric-list";
 }
 
+function bindLabHistoryActions() {
+  if (typeof labResults.querySelectorAll !== "function") return;
+  labResults.querySelectorAll("[data-delete-lab-record]").forEach((button) => {
+    button.addEventListener("click", () => requestDeleteLabRecord(button.dataset.deleteLabRecord));
+  });
+}
+
+function renderLabCollectionSummary() {
+  const groups = labMetricCollectionGroups();
+  if (!groups.length) return "";
+
+  return `
+    <section class="lab-collection" aria-label="Коллекция распознанных параметров">
+      <div class="section-title">
+        <div>
+          <h3>Коллекция анализов</h3>
+          <p>Параметры сгруппированы по годам, чтобы быстрее видеть историю.</p>
+        </div>
+        <span class="mini-counter">${groups.length}</span>
+      </div>
+      <div class="lab-collection-grid">
+        ${groups.map((group) => `
+          <article class="lab-collection-item">
+            <strong>${escapeHtml(group.label)}</strong>
+            <span>${escapeHtml(group.years.join(" · "))}</span>
+            <small>${group.count} ${escapeHtml(plural(group.count, "значение", "значения", "значений"))}</small>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function labMetricCollectionGroups() {
+  const byMetric = new Map();
+  for (const record of labRecords) {
+    const year = record.date.slice(0, 4);
+    for (const value of record.values || []) {
+      if (!byMetric.has(value.key)) {
+        byMetric.set(value.key, {
+          key: value.key,
+          label: value.label,
+          years: new Set(),
+          count: 0
+        });
+      }
+      const group = byMetric.get(value.key);
+      group.years.add(year);
+      group.count += 1;
+    }
+  }
+
+  return [...byMetric.values()]
+    .map((group) => ({
+      ...group,
+      years: [...group.years].sort((a, b) => b.localeCompare(a))
+    }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "ru"));
+}
+
+function renderLabRecordGroups() {
+  const byDate = new Map();
+  for (const record of [...labRecords].sort((a, b) => b.date.localeCompare(a.date))) {
+    if (!byDate.has(record.date)) byDate.set(record.date, []);
+    byDate.get(record.date).push(record);
+  }
+
+  return [...byDate.entries()].map(([date, records]) => `
+    <section class="lab-date-group">
+      <div class="lab-date-heading">
+        <strong>${escapeHtml(formatDate(date))}</strong>
+        <span>${records.length} ${escapeHtml(plural(records.length, "результат", "результата", "результатов"))}</span>
+      </div>
+      ${records.map(renderLabRecord).join("")}
+    </section>
+  `).join("");
+}
+
 function renderLabRecord(record) {
   return `
     <article class="lab-record">
       <div class="lab-record-title">
-        <strong>${escapeHtml(formatDate(record.date))}</strong>
-        <span class="badge">${escapeHtml(record.sourceName)}</span>
+        <div>
+          <strong>${escapeHtml(record.sourceName || "Анализ")}</strong>
+          <div class="lab-record-meta">
+            ${renderLabRecordMeta(record).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+          </div>
+        </div>
+        <button class="doctor-icon-button danger-action" type="button" data-delete-lab-record="${escapeHtml(record.id)}" title="Удалить результат анализа" aria-label="Удалить результат анализа">${doctorIcon("trash")}</button>
       </div>
       <div class="lab-values">
         ${record.values.map((value) => `
@@ -2859,6 +3094,21 @@ function renderLabRecord(record) {
       </div>
     </article>
   `;
+}
+
+function renderLabRecordMeta(record) {
+  const items = [`Статус: ${labProcessingStatusLabel(record.processingStatus)}`];
+  if (record.uploadedAt) items.push(`Загружено ${formatDateTime(record.uploadedAt)}`);
+  if (record.updatedAt && record.updatedAt !== record.uploadedAt) items.push(`Обновлено ${formatDateTime(record.updatedAt)}`);
+  return items;
+}
+
+function labProcessingStatusLabel(status) {
+  const normalized = normalizeText(status || "");
+  if (["ready", "parsed", "done", "complete", "completed"].includes(normalized)) return "Готово";
+  if (["uploaded", "processing", "pending"].includes(normalized)) return "Обрабатывается";
+  if (["needs_reload", "failed", "error"].includes(normalized)) return "Требует повторной загрузки";
+  return "Готово";
 }
 
 function labDescription(key) {
@@ -4329,6 +4579,12 @@ function drawEmptyChart(context, width, height, message) {
 function formatDate(value) {
   const [year, month, day] = value.split("-");
   return `${day}.${month}.${year}`;
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 function formatShortDate(value) {

@@ -14,6 +14,7 @@ function createHarness(options = {}) {
   const elements = new Map();
   const store = new Map();
   const prompts = [];
+  const confirms = [];
   const context2d = new Proxy(
     {},
     {
@@ -54,6 +55,10 @@ function createHarness(options = {}) {
       prompt(message, defaultValue) {
         prompts.push({ message, defaultValue });
         return options.promptResponse ?? null;
+      },
+      confirm(message) {
+        confirms.push(message);
+        return options.confirmResponse ?? false;
       }
     },
     document: { querySelector: el },
@@ -73,7 +78,7 @@ function createHarness(options = {}) {
     vm.runInContext(fs.readFileSync(script, "utf8"), context);
   }
   vm.runInContext(fs.readFileSync("app.js", "utf8"), context);
-  return { el, prompts };
+  return { el, prompts, confirms };
 }
 
 function parseManualLab(text) {
@@ -178,7 +183,7 @@ const medsiLipidRows = parseManualLab(`
 `);
 assert.match(medsiLipidRows.html, /Холестерин общий[\s\S]*7,3/, "total cholesterol should be 7.3");
 assert.match(medsiLipidRows.html, /ЛПНП[\s\S]*4,4/, "LDL should be 4.4");
-assert.doesNotMatch(medsiLipidRows.html, /ЛПНП[\s\S]*7,3/, "LDL must not reuse total cholesterol value");
+assert.doesNotMatch(medsiLipidRows.html, /<span>ЛПНП<\/span>[\s\S]*7,3/, "LDL must not reuse total cholesterol value");
 
 const helixRows = parseManualLab(`
 Зарегистрирован: 25.03.2026 09:15:04
@@ -207,8 +212,8 @@ assert.match(helixRows.html, /C-реактивный белок[\s\S]*0,34/, "CR
 assert.match(helixRows.html, /АЛТ[\s\S]*25,7/, "ALT should be 25.7");
 assert.match(helixRows.html, /Ферритин[\s\S]*166,3/, "Ferritin should be 166.3");
 assert.match(helixRows.html, /ЛПВП[\s\S]*1,84/, "HDL should be 1.84");
-assert.doesNotMatch(helixRows.html, /Ферритин[\s\S]*133/, "Ferritin must not reuse CK value");
-assert.doesNotMatch(helixRows.html, /ЛПВП[\s\S]*133/, "HDL must not reuse CK value");
+assert.doesNotMatch(helixRows.html, /<span>Ферритин<\/span>[\s\S]*133/, "Ferritin must not reuse CK value");
+assert.doesNotMatch(helixRows.html, /<span>ЛПВП<\/span>[\s\S]*133/, "HDL must not reuse CK value");
 
 const tshRows = parseManualLab(`
 Зарегистрирован: 04.06.2026 08:48:00
@@ -269,5 +274,23 @@ keepHarness.el("#parseLabText").onclick();
 assert.match(keepHarness.el("#labStatus").textContent, /оставлены рядом: 1/, "keep choice should report parallel values");
 assert.match(keepHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*0,617/, "keep choice should keep old TSH value");
 assert.match(keepHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*2,5/, "keep choice should add new TSH value");
+assert.match(keepHarness.el("#labResults").innerHTML, /Коллекция анализов/, "lab history should render collection grouping");
+assert.match(keepHarness.el("#labResults").innerHTML, /2026/, "lab history grouping should show record years");
+assert.match(keepHarness.el("#labResults").innerHTML, /Статус: Готово/, "lab history should show processing status");
+
+const deleteCancelHarness = createHarness({ confirmResponse: false });
+deleteCancelHarness.el("#labText").value = tshFirstResult;
+deleteCancelHarness.el("#parseLabText").onclick();
+deleteCancelHarness.el("#clearLabs").onclick();
+assert.strictEqual(deleteCancelHarness.confirms.length, 1, "lab deletion should ask for confirmation");
+assert.match(deleteCancelHarness.confirms[0], /Удалить результаты анализа/, "confirmation should explain destructive action");
+assert.match(deleteCancelHarness.el("#labResults").innerHTML, /ТТГ[\s\S]*0,617/, "cancelled deletion should keep lab history");
+
+const deleteConfirmHarness = createHarness({ confirmResponse: true });
+deleteConfirmHarness.el("#labText").value = tshFirstResult;
+deleteConfirmHarness.el("#parseLabText").onclick();
+deleteConfirmHarness.el("#clearLabs").onclick();
+assert.match(deleteConfirmHarness.el("#labStatus").textContent, /История анализов очищена/, "confirmed deletion should clear lab history");
+assert.doesNotMatch(deleteConfirmHarness.el("#labResults").innerHTML, /ТТГ/, "confirmed deletion should remove lab result");
 
 console.log("lab parser tests passed");

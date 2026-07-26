@@ -1321,8 +1321,60 @@ input[type="file"] {
 
 .lab-results {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   margin-top: 12px;
+}
+
+.lab-collection {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.lab-collection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lab-collection-item {
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.lab-collection-item strong {
+  font-size: 13px;
+}
+
+.lab-collection-item span,
+.lab-collection-item small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.lab-date-group {
+  display: grid;
+  gap: 8px;
+}
+
+.lab-date-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lab-date-heading strong {
+  color: var(--ink);
 }
 
 .lab-record {
@@ -1335,12 +1387,23 @@ input[type="file"] {
 .lab-record-title {
   display: flex;
   justify-content: space-between;
+  align-items: start;
   gap: 10px;
   margin-bottom: 8px;
 }
 
 .lab-record-title strong {
   overflow-wrap: anywhere;
+}
+
+.lab-record-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .lab-values {
@@ -1398,6 +1461,7 @@ button {
 
 .primary-button,
 .secondary-button,
+.destructive-button,
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -1424,6 +1488,17 @@ button {
   color: var(--ink);
 }
 
+.destructive-button {
+  border: 1px solid rgba(180, 65, 60, 0.16);
+  background: linear-gradient(180deg, #c94a44 0%, var(--danger) 100%);
+  color: white;
+  box-shadow: 0 6px 16px rgba(180, 65, 60, 0.16);
+}
+
+.destructive-button:hover {
+  background: linear-gradient(180deg, #b4413c 0%, #97302b 100%);
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -1432,6 +1507,45 @@ button {
   border: 1px solid var(--line);
   color: var(--ink);
   box-shadow: 0 2px 10px rgba(23, 37, 35, 0.05);
+}
+
+.confirm-dialog {
+  width: min(460px, calc(100vw - 28px));
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(15, 24, 22, 0.38);
+}
+
+.confirm-card {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 64px rgba(15, 24, 22, 0.18);
+}
+
+.confirm-card h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.confirm-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .profile-jump {
@@ -1755,7 +1869,9 @@ button {
   .chart-toolbar,
   .result-title,
   .fact-grid,
-  .lab-values {
+  .lab-values,
+  .lab-collection-grid,
+  .confirm-actions {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
