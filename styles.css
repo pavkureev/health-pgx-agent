@@ -75,9 +75,74 @@ textarea {
   gap: 2px;
 }
 
+.brand-title {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+}
+
 .brand-lockup strong {
   font-size: 18px;
   line-height: 1.1;
+}
+
+.brand-info {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(14, 124, 123, 0.22);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
+}
+
+.brand-info:focus-visible {
+  outline: 2px solid rgba(14, 124, 123, 0.3);
+  outline-offset: 2px;
+}
+
+.brand-info-tooltip {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 0;
+  z-index: 30;
+  display: block;
+  width: min(340px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(23, 37, 35, 0.14);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.42;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.brand-info-tooltip strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+
+.brand-info:hover .brand-info-tooltip,
+.brand-info:focus .brand-info-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .top-actions {
@@ -109,15 +174,6 @@ h1 {
 h2 {
   font-size: 18px;
   font-weight: 650;
-}
-
-.notice {
-  border: 1px solid var(--warning-line);
-  background: var(--warning);
-  border-radius: 8px;
-  padding: 12px 14px;
-  color: #4a3411;
-  line-height: 1.45;
 }
 
 .grid {

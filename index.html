@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Health PGx Agent</title>
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260727-1" />
-    <link rel="stylesheet" href="./styles.css?v=20260727-1" />
+    <title>Разборчиво</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260727-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260727-2" />
   </head>
   <body>
     <main class="app-shell">
@@ -13,7 +13,17 @@
         <header class="topbar">
           <div class="brand-lockup">
             <p class="eyebrow">Фармакогенетический помощник</p>
-            <strong>Health PGx</strong>
+            <div class="brand-title">
+              <strong>Разборчиво</strong>
+              <button class="brand-info" type="button" aria-label="Ограничения сервиса" aria-describedby="medicalDisclaimerTooltip">
+                <span aria-hidden="true">i</span>
+                <span id="medicalDisclaimerTooltip" class="brand-info-tooltip" role="tooltip">
+                  <strong>Не медицинское назначение.</strong>
+                  Этот помощник помогает собрать важные находки из известных правил и подготовить вопросы врачу.
+                  Не меняйте препараты или дозировки без медицинского специалиста.
+                </span>
+              </button>
+            </div>
           </div>
           <div class="top-actions">
             <button id="loadSample" class="icon-button" type="button" title="Загрузить пример">
@@ -26,12 +36,6 @@
             </button>
           </div>
         </header>
-
-        <section class="notice" aria-label="Важное предупреждение">
-          <strong>Не медицинское назначение.</strong>
-          Этот помощник помогает собрать важные находки из известных правил и подготовить вопросы врачу.
-          Не меняйте препараты или дозировки без медицинского специалиста.
-        </section>
 
         <section id="nowSection" class="panel now-panel" aria-labelledby="nowTitle">
           <div class="now-copy">
@@ -468,13 +472,13 @@ eGFR 82 мл/мин/1.73м2
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./supabase-config.js?v=20260727-1"></script>
-    <script src="./data/pgx-rules.js?v=20260727-1"></script>
-    <script src="./data/lab-analytes.js?v=20260727-1"></script>
-    <script src="./data/medication-knowledge.js?v=20260727-1"></script>
-    <script src="./data/evidence-flags.js?v=20260727-1"></script>
-    <script src="./data.js?v=20260727-1"></script>
-    <script src="./app.js?v=20260727-1"></script>
-    <script src="./js/pgx-extensions.js?v=20260727-1"></script>
+    <script src="./supabase-config.js?v=20260727-2"></script>
+    <script src="./data/pgx-rules.js?v=20260727-2"></script>
+    <script src="./data/lab-analytes.js?v=20260727-2"></script>
+    <script src="./data/medication-knowledge.js?v=20260727-2"></script>
+    <script src="./data/evidence-flags.js?v=20260727-2"></script>
+    <script src="./data.js?v=20260727-2"></script>
+    <script src="./app.js?v=20260727-2"></script>
+    <script src="./js/pgx-extensions.js?v=20260727-2"></script>
   </body>
 </html>
