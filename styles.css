@@ -324,6 +324,146 @@ h2 {
   transform: scale(0.9);
 }
 
+.ui-icon {
+  --icon-size: 24px;
+  --icon-url: none;
+  display: inline-block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-url) center / contain no-repeat;
+  mask: var(--icon-url) center / contain no-repeat;
+}
+
+.ui-icon-now {
+  --icon-url: url("./assets/icons/now.svg");
+}
+
+.ui-icon-labs {
+  --icon-url: url("./assets/icons/labs.svg");
+}
+
+.ui-icon-genetics {
+  --icon-url: url("./assets/icons/genetics.svg");
+}
+
+.ui-icon-medications {
+  --icon-url: url("./assets/icons/medications.svg");
+}
+
+.ui-icon-profile {
+  --icon-url: url("./assets/icons/profile.svg");
+}
+
+.ui-icon-16 {
+  --icon-size: 16px;
+}
+
+.ui-icon-20 {
+  --icon-size: 20px;
+}
+
+.ui-icon-24 {
+  --icon-size: 24px;
+}
+
+.ui-icon-30 {
+  --icon-size: 30px;
+}
+
+.ui-icon-44 {
+  --icon-size: 44px;
+}
+
+.ui-icon-48 {
+  --icon-size: 48px;
+}
+
+.tab-button > svg {
+  display: none;
+}
+
+.tab-button::before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 24px;
+  background-color: currentColor;
+  -webkit-mask: var(--nav-icon-url) center / contain no-repeat;
+  mask: var(--nav-icon-url) center / contain no-repeat;
+}
+
+.genetics-section .section-kicker > svg,
+.labs-section .section-kicker > svg,
+.medications-section .section-kicker > svg,
+.usage-card .section-kicker > svg {
+  display: none;
+}
+
+.genetics-section .section-kicker::before,
+.labs-section .section-kicker::before,
+.medications-section .section-kicker::before,
+.usage-card .section-kicker::before {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 20px;
+  background-color: currentColor;
+  -webkit-mask: var(--nav-icon-url) center / contain no-repeat;
+  mask: var(--nav-icon-url) center / contain no-repeat;
+}
+
+.genetics-section {
+  --nav-icon-url: url("./assets/icons/genetics.svg");
+}
+
+.labs-section {
+  --nav-icon-url: url("./assets/icons/labs.svg");
+}
+
+.medications-section {
+  --nav-icon-url: url("./assets/icons/medications.svg");
+}
+
+.tab-button[data-tab-target="now"] {
+  --nav-icon-url: url("./assets/icons/now.svg");
+}
+
+.tab-button[data-tab-target="labs"] {
+  --nav-icon-url: url("./assets/icons/labs.svg");
+}
+
+.tab-button[data-tab-target="genetics"] {
+  --nav-icon-url: url("./assets/icons/genetics-sm.svg");
+}
+
+.tab-button[data-tab-target="medications"] {
+  --nav-icon-url: url("./assets/icons/medications.svg");
+}
+
+.bottom-tabs .ui-icon,
+.profile-jump .ui-icon {
+  --icon-size: 24px;
+}
+
+.now-action-icon .ui-icon {
+  --icon-size: 18px;
+  display: inline-block;
+  margin-top: 0;
+  color: inherit;
+}
+
+.now-action-icon .ui-icon-genetics {
+  --icon-url: url("./assets/icons/genetics-sm.svg");
+}
+
+.summary-icon.ui-icon {
+  --icon-size: 15px;
+  stroke: none;
+  fill: none;
+}
+
 .section-copy {
   display: grid;
   gap: 5px;
@@ -1955,7 +2095,7 @@ button {
   }
 
   .icon-button span:last-child,
-  .profile-jump span {
+  .profile-jump span:not(.ui-icon) {
     display: none;
   }
 
@@ -2031,6 +2171,11 @@ button {
   }
 
   .tab-button svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .tab-button::before {
     width: 22px;
     height: 22px;
   }

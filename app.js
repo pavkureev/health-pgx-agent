@@ -3467,11 +3467,8 @@ function appNavigationIcon(name, className = "summary-icon") {
     genetics: "genetics",
     medications: "medications"
   }[name];
-  const source = tabName && typeof document.querySelector === "function"
-    ? document.querySelector(`.tab-button[data-tab-target="${tabName}"] svg`)
-    : null;
-  if (!source?.outerHTML) return doctorIcon(name, className);
-  return source.outerHTML.replace("<svg", `<svg class="${escapeHtml(className)} app-nav-icon app-nav-icon-${escapeHtml(tabName)}"`);
+  if (!tabName) return doctorIcon(name, className);
+  return `<span class="${escapeHtml(className)} ui-icon ui-icon-${escapeHtml(tabName)}" aria-hidden="true"></span>`;
 }
 
 function renderSectionDrawers() {

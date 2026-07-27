@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Health PGx Design System</title>
+    <link rel="stylesheet" href="./styles.css?v=20260727-1" />
+    <style>
+      body {
+        padding: 28px 0 48px;
+      }
+
+      .design-system-shell {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        display: grid;
+        gap: 16px;
+      }
+
+      .design-header {
+        display: grid;
+        gap: 6px;
+      }
+
+      .design-header p,
+      .icon-note {
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .icon-matrix {
+        display: grid;
+        gap: 12px;
+      }
+
+      .icon-row {
+        display: grid;
+        grid-template-columns: minmax(120px, 0.7fr) repeat(6, minmax(72px, 1fr));
+        gap: 10px;
+        align-items: center;
+      }
+
+      .icon-row.header {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .icon-name {
+        font-weight: 700;
+      }
+
+      .icon-cell {
+        min-height: 66px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface-soft);
+        color: var(--accent);
+      }
+
+      .usage-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .usage-card {
+        display: grid;
+        gap: 8px;
+        align-content: start;
+        min-height: 120px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface-soft);
+      }
+
+      .usage-card .section-kicker {
+        --nav-icon-url: url("./assets/icons/now.svg");
+      }
+
+      .usage-card strong {
+        font-size: 14px;
+      }
+
+      .usage-card span:last-child {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      @media (max-width: 760px) {
+        .icon-row {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .icon-row.header {
+          display: none;
+        }
+
+        .icon-name {
+          grid-column: 1 / -1;
+        }
+
+        .usage-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="design-system-shell">
+      <header class="design-header">
+        <p class="eyebrow">Design system</p>
+        <h1>Иконки Health PGx</h1>
+        <p>Единый набор SVG для приложения. Цвет задаётся через CSS, размеры проверяются в линейке ниже.</p>
+      </header>
+
+      <section class="panel icon-matrix" aria-label="Линейка размеров иконок">
+        <div class="icon-row header" aria-hidden="true">
+          <span></span>
+          <span>16 px</span>
+          <span>20 px</span>
+          <span>24 px</span>
+          <span>30 px</span>
+          <span>44 px</span>
+          <span>48 px</span>
+        </div>
+
+        <div class="icon-row">
+          <span class="icon-name">Сейчас</span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-now ui-icon-16"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-now ui-icon-20"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-now ui-icon-24"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-now ui-icon-30"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-now ui-icon-44"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-now ui-icon-48"></span></span>
+        </div>
+
+        <div class="icon-row">
+          <span class="icon-name">Анализы</span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-labs ui-icon-16"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-labs ui-icon-20"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-labs ui-icon-24"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-labs ui-icon-30"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-labs ui-icon-44"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-labs ui-icon-48"></span></span>
+        </div>
+
+        <div class="icon-row">
+          <span class="icon-name">Генетика</span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-genetics ui-icon-16"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-genetics ui-icon-20"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-genetics ui-icon-24"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-genetics ui-icon-30"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-genetics ui-icon-44"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-genetics ui-icon-48"></span></span>
+        </div>
+
+        <div class="icon-row">
+          <span class="icon-name">Лекарства</span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-medications ui-icon-16"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-medications ui-icon-20"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-medications ui-icon-24"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-medications ui-icon-30"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-medications ui-icon-44"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-medications ui-icon-48"></span></span>
+        </div>
+
+        <div class="icon-row">
+          <span class="icon-name">Профиль</span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-profile ui-icon-16"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-profile ui-icon-20"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-profile ui-icon-24"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-profile ui-icon-30"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-profile ui-icon-44"></span></span>
+          <span class="icon-cell"><span class="ui-icon ui-icon-profile ui-icon-48"></span></span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Применение</h2>
+        <p class="icon-note">Эти же классы используются в навигации, карточках действий, заголовках разделов и кнопке профиля.</p>
+        <div class="usage-grid">
+          <div class="usage-card">
+            <span class="section-kicker" aria-hidden="true"></span>
+            <strong>Раздел</strong>
+            <span>20 px внутри мягкого контейнера.</span>
+          </div>
+          <div class="usage-card">
+            <span class="now-action-icon"><span class="ui-icon ui-icon-genetics" aria-hidden="true"></span></span>
+            <strong>Карточка действия</strong>
+            <span>18 px, для компактных подсказок.</span>
+          </div>
+          <div class="usage-card">
+            <button class="profile-jump" type="button">
+              <span class="ui-icon ui-icon-profile" aria-hidden="true"></span>
+              <span>Павел</span>
+            </button>
+            <strong>Профиль</strong>
+            <span>24 px рядом с именем.</span>
+          </div>
+          <div class="usage-card">
+            <button class="tab-button is-active" type="button" data-tab-target="labs">Анализы</button>
+            <strong>Таб-бар</strong>
+            <span>24 px на десктопе, 22 px на мобилке.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
