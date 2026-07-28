@@ -77,6 +77,7 @@ const geneticsSection = document.querySelector(".genetics-section");
 const labsSection = document.querySelector(".labs-section");
 const doctorSection = document.querySelector(".doctor-section");
 const medicationsSection = document.querySelector(".medications-section");
+const guestLanding = document.querySelector("#guestLanding");
 const nowSection = document.querySelector("#nowSection");
 const nowActions = document.querySelector("#nowActions");
 const appSectionSummaries = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll(".app-section > .app-section-summary")] : [];
@@ -249,7 +250,7 @@ function navigateToTab(target) {
 
 function tabTargetNode(target) {
   return {
-    now: nowSection,
+    now: currentUser ? nowSection : guestLanding,
     labs: labsSection,
     genetics: geneticsSection,
     medications: medicationsSection,
@@ -265,14 +266,26 @@ function normalizeAppViewTarget(target) {
 
 function applyAppView(target = "now") {
   activeAppView = normalizeAppViewTarget(target);
+  const signedInNowView = activeInlineSection === "doctor" ? [nowSection, doctorSection] : [nowSection];
+  const guestNowView = activeInlineSection === "doctor" ? [guestLanding, doctorSection] : [guestLanding, authPanel];
+  const nowView = currentUser ? signedInNowView : guestNowView.filter(Boolean);
   const viewGroups = {
-    now: activeInlineSection === "doctor" ? [nowSection, doctorSection] : [nowSection],
+    now: nowView,
     labs: [labsSection],
     genetics: [geneticsSection],
     medications: [medicationsSection],
     profile: [authPanel, profilePanel, doctorSection]
   };
-  const viewNodes = Object.values(viewGroups).flat().filter(Boolean);
+  const viewNodes = [
+    guestLanding,
+    nowSection,
+    authPanel,
+    profilePanel,
+    doctorSection,
+    labsSection,
+    geneticsSection,
+    medicationsSection
+  ].filter(Boolean);
 
   viewNodes.forEach((node) => {
     const isVisible = viewGroups[activeAppView].includes(node);
@@ -336,6 +349,7 @@ function renderAuthState() {
     signedInBox.hidden = true;
     signedInBox.innerHTML = "";
     renderWelcome();
+    applyAppView(activeAppView);
     return;
   }
 
@@ -350,6 +364,7 @@ function renderAuthState() {
     signOutButton.hidden = true;
     authStatus.textContent = "Аккаунт подключен. Профили и распознанные данные сохраняются в Supabase.";
     renderWelcome();
+    applyAppView(activeAppView);
     return;
   }
 
@@ -370,6 +385,7 @@ function renderAuthState() {
     authStatus.textContent = "Войдите по email, чтобы сохранять профили и анализы в Supabase. Без входа данные хранятся только в этом браузере.";
   }
   renderWelcome();
+  applyAppView(activeAppView);
 }
 
 function updateSampleButtonVisibility() {
