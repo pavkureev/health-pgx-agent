@@ -155,6 +155,7 @@ loadSampleButton?.addEventListener("click", () => {
   saveCurrentProfileData({ allowEmptyPatientData: true });
   analyze();
   renderGeneticInputState();
+  navigateToTab("genetics");
 });
 
 document.querySelector("#createProfile").addEventListener("click", createProfile);
