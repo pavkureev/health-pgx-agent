@@ -311,6 +311,7 @@ context.document.querySelector("#doctorText").value = conclusion;
 context.document.querySelector("#parseDoctorText").onclick();
 assert.strictEqual(context.currentMedications().length, 0, "parsing should wait for user confirmation before syncing medications");
 assert.match(context.document.querySelector("#doctorSummary").innerHTML, /Ожидает подтверждения/, "doctor summary should mark unconfirmed recognition as pending");
+assert.match(context.document.querySelector("#doctorSignals").innerHTML, /Что понадобится для полной картины/, "unconfirmed conclusion should preview missing context");
 
 context.document.querySelector("#addDoctorMedications").onclick();
 const syncedMedications = context.currentMedications();
@@ -319,6 +320,9 @@ assert.ok(syncedMedications.every((item) => item.doctorConclusionId), "synced do
 assert.ok(syncedMedications.every((item) => !item.needsConfirmation), "confirmed doctor medications should not require a second confirmation");
 assert.ok(syncedMedications.every((item) => item.recognitionStatus === "confirmed"), "confirmed doctor medications should carry confirmed recognition status");
 assert.match(context.document.querySelector("#doctorSummary").innerHTML, /Распознавание подтверждено/, "doctor summary should reflect confirmation");
+assert.match(context.document.querySelector("#doctorSignals").innerHTML, /Что добавить для полной картины/, "confirmed conclusion should guide context gathering");
+assert.match(context.document.querySelector("#doctorSignals").innerHTML, /Свежие анализы/, "context checklist should mention lab context");
+assert.match(context.document.querySelector("#doctorSignals").innerHTML, /Генетика/, "context checklist should mention genetic context");
 
 context.document.querySelector("#parseDoctorText").onclick();
 const dedupedMedications = context.currentMedications();

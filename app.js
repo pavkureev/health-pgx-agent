@@ -2680,6 +2680,7 @@ function renderDoctorConclusion() {
     doctorSignals.innerHTML = "";
     doctorReviewActions.hidden = true;
     doctorCorrectionPanel.hidden = true;
+    bindDoctorContextActions();
     return;
   }
 
@@ -2687,9 +2688,10 @@ function renderDoctorConclusion() {
   doctorSummary.innerHTML = renderDoctorSummary(conclusion, diagnoses, medications, signals);
   doctorParsed.innerHTML = renderDoctorParsed(parsed, conclusion);
   doctorSignals.innerHTML = confirmed
-    ? signals.length ? renderPriorityGroups(signals, renderDoctorSignal) : ""
-    : renderDoctorDraftChecks();
+    ? `${renderDoctorContextPlan(parsed, signals, confirmed)}${signals.length ? renderPriorityGroups(signals, renderDoctorSignal) : ""}`
+    : renderDoctorDraftChecks(parsed, signals);
   bindDoctorReviewActions();
+  bindDoctorContextActions();
 }
 
 function renderDoctorSummary(conclusion, diagnoses, medications, signals) {
@@ -2701,9 +2703,9 @@ function renderDoctorSummary(conclusion, diagnoses, medications, signals) {
         <div class="status-row">
           <span class="doctor-status-pill ${confirmed ? "confirmed" : "pending"}">${doctorIcon(confirmed ? "check" : "clock", "status-icon")}${confirmed ? "Распознавание подтверждено" : "Ожидает подтверждения"}</span>
         </div>
-        <strong>${confirmed ? "Вопросы врачу готовы" : "Сверьте черновик"}</strong>
-        <p>${confirmed ? "Подтверждённые пункты используются для лекарственного профиля, важных находок и вопросов врачу." : "Можно подтвердить все пункты сразу или каждый по отдельности."}</p>
-        ${renderDoctorProgress(confirmed ? "insights" : "review")}
+        <strong>${confirmed ? "Теперь можно собрать полную картину" : "Сверьте черновик"}</strong>
+        <p>${confirmed ? "Мы добавили назначения в лекарственный профиль. Следующий шаг — понять, каких данных не хватает для уверенной проверки." : "Можно подтвердить все пункты сразу или каждый по отдельности."}</p>
+        ${renderDoctorProgress(confirmed ? "context" : "review")}
         <div class="doctor-review-metrics" aria-label="Краткая сводка заключения">
           ${renderDoctorMetric("file", diagnoses.length, "диагнозов")}
           ${renderDoctorMetric("pill", medications.length, "назначения")}
@@ -2723,8 +2725,12 @@ function renderDoctorStartSummary() {
           <span class="doctor-status-pill pending">${doctorIcon("file", "status-icon")}После приёма врача</span>
         </div>
         <strong>Загрузите заключение</strong>
-        <p>Сначала появится черновик. Вы подтвердите, что диагнозы, назначения и режим приёма перенесены верно, и только потом увидите подсказки.</p>
+        <p>Сначала появится черновик. После проверки приложение подскажет, какие данные стоит добавить, чтобы увидеть связи с анализами, генетикой и лекарствами.</p>
         ${renderDoctorProgress("start")}
+        <div class="context-cta-row">
+          <button class="secondary-button" type="button" data-context-target="doctor-input">Загрузить заключение</button>
+          <button class="secondary-button quiet" type="button" data-context-target="labs-input">Добавить анализы</button>
+        </div>
       </div>
     </div>
   `;
@@ -2734,8 +2740,8 @@ function renderDoctorProgress(activeStep = "start") {
   const steps = [
     ["start", "Загрузка", "Заключение"],
     ["review", "Проверка", "Факты"],
-    ["insights", "Выводы", "Вопросы"],
-    ["context", "Контекст", "Данные"]
+    ["context", "Контекст", "Что добавить"],
+    ["insights", "Вопросы", "К врачу"]
   ];
   const activeIndex = Math.max(0, steps.findIndex(([key]) => key === activeStep));
   return `
@@ -2847,24 +2853,179 @@ function renderDoctorItemActions(type, key, accepted) {
   `;
 }
 
-function renderDoctorDraftChecks() {
+function renderDoctorDraftChecks(parsed, signals = []) {
   return `
     <div class="doctor-draft-checks">
       <section class="decision-section">
         <div class="section-title">
           <div>
-            <h3>Что произойдёт после подтверждения</h3>
+            <h3>Что будет после проверки</h3>
             <p>Пока распознавание не подтверждено, подсказки не показываются.</p>
           </div>
         </div>
         <div class="checklist">
           <div class="check-item"><span class="check-mark">1</span><span>Лекарства попадут в профиль с действующими веществами.</span></div>
-          <div class="check-item"><span class="check-mark">2</span><span>Приложение сверит назначения с PGx-маркерами и текущими анализами.</span></div>
-          <div class="check-item"><span class="check-mark">3</span><span>Важные находки по доказательности и сочетаниям появятся в списке вопросов врачу.</span></div>
+          <div class="check-item"><span class="check-mark">2</span><span>Приложение покажет, каких данных не хватает для проверки назначений.</span></div>
+          <div class="check-item"><span class="check-mark">3</span><span>После добавления контекста появятся связи с анализами, генетикой и лекарственным профилем.</span></div>
         </div>
       </section>
+      ${renderDoctorContextPlan(parsed, signals, false)}
     </div>
   `;
+}
+
+function renderDoctorContextPlan(parsed, signals = [], confirmed = false) {
+  const plan = doctorContextPlan(parsed, signals, confirmed);
+  return `
+    <section class="doctor-context-plan" aria-label="Что добавить для полной картины">
+      <div class="section-title">
+        <div>
+          <h3>${confirmed ? "Что добавить для полной картины" : "Что понадобится для полной картины"}</h3>
+          <p>${confirmed ? "Чем больше исходных данных, тем точнее список вопросов врачу." : "Сначала подтвердите черновик. Затем приложение проведёт вас по недостающим данным."}</p>
+        </div>
+        <span class="mini-counter">${plan.readyCount}/${plan.items.length}</span>
+      </div>
+      <div class="context-score" style="--context-progress: ${plan.percent}%">
+        <div>
+          <strong>${confirmed ? "Картина собрана" : "Пока это черновик"}</strong>
+          <span>${confirmed ? `${plan.readyCount} из ${plan.items.length} блоков данных уже есть` : `${plan.readyCount} из ${plan.items.length} блоков уже есть, но проверки ещё не запущены`}</span>
+        </div>
+        <span>${plan.percent}%</span>
+      </div>
+      <div class="context-checklist">
+        ${plan.items.map(renderDoctorContextItem).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function doctorContextPlan(parsed, signals = [], confirmed = false) {
+  const medications = parsed.medications || [];
+  const activeMedicationCount = activeMedications().length;
+  const labCount = labRecords.length;
+  const labMetricCount = Object.keys(labMetricCounts()).length;
+  const labDynamicsCount = Object.values(labMetricCounts()).filter((count) => count > 1).length;
+  const geneticCount = Object.keys(parseProfile(patientData.value || "").profile || {}).length;
+  const highSignalCount = confirmed ? signals.filter((signal) => signal.severity === "high").length : 0;
+  const hasConfirmedMeds = confirmed && medications.length > 0;
+  const items = [
+    {
+      title: "Заключение врача",
+      body: "Загружено. Из него получаем диагнозы, назначения и режим приёма.",
+      status: "ready",
+      priority: "needed",
+      value: "есть"
+    },
+    {
+      title: "Проверенный черновик",
+      body: confirmed ? "Распознавание подтверждено. Можно использовать данные в проверках." : "Проверьте диагнозы, препараты и режим приёма перед подсказками.",
+      status: confirmed ? "ready" : "missing",
+      priority: "needed",
+      value: confirmed ? "готово" : "нужно",
+      action: confirmed ? "" : "Проверить",
+      target: "doctor-review"
+    },
+    {
+      title: "Лекарственный профиль",
+      body: hasConfirmedMeds || activeMedicationCount
+        ? `${activeMedicationCount} ${plural(activeMedicationCount, "препарат", "препарата", "препаратов")} в профиле. Проверяем сочетания и доказательность.`
+        : "Добавьте текущие препараты, БАДы и лекарства, которые уже принимаете.",
+      status: hasConfirmedMeds || activeMedicationCount ? "ready" : "missing",
+      priority: "needed",
+      value: hasConfirmedMeds || activeMedicationCount ? "есть" : "нужно",
+      action: hasConfirmedMeds || activeMedicationCount ? "" : "Добавить",
+      target: "medications-input"
+    },
+    {
+      title: "Свежие анализы",
+      body: labCount
+        ? `${labCount} ${plural(labCount, "результат", "результата", "результатов")} и ${labMetricCount} ${plural(labMetricCount, "параметр", "параметра", "параметров")} уже доступны.`
+        : "Для назначений часто важны креатинин/eGFR, АЛТ/АСТ, калий, липиды, КФК и воспалительные маркеры.",
+      status: labCount ? "ready" : "missing",
+      priority: "needed",
+      value: labCount ? "есть" : "нужно",
+      action: labCount ? "" : "Загрузить",
+      target: "labs-input"
+    },
+    {
+      title: "Генетика",
+      body: geneticCount
+        ? `${geneticCount} ${plural(geneticCount, "маркер", "маркера", "маркеров")} найдено. Проверяем PGx-связи с препаратами.`
+        : "Если есть файл Genotek или список генотипов, приложение сможет проверить фармакогенетику.",
+      status: geneticCount ? "ready" : "missing",
+      priority: "helps",
+      value: geneticCount ? "есть" : "усилит",
+      action: geneticCount ? "" : "Добавить",
+      target: "genetics-input"
+    },
+    {
+      title: "Динамика анализов",
+      body: labDynamicsCount
+        ? `${labDynamicsCount} ${plural(labDynamicsCount, "показатель", "показателя", "показателей")} можно смотреть в динамике.`
+        : "Старые анализы помогут увидеть, меняется ли показатель на фоне лечения.",
+      status: labDynamicsCount ? "ready" : "missing",
+      priority: "helps",
+      value: labDynamicsCount ? "есть" : "потом",
+      action: labDynamicsCount ? "" : "Добавить",
+      target: "labs-input"
+    },
+    {
+      title: "Вопросы врачу",
+      body: highSignalCount
+        ? `${highSignalCount} ${plural(highSignalCount, "срочный вопрос", "срочных вопроса", "срочных вопросов")} уже найдено.`
+        : "Появятся после подтверждения и добавления контекста.",
+      status: confirmed && signals.length ? "ready" : "missing",
+      priority: "later",
+      value: confirmed && signals.length ? "готово" : "потом"
+    }
+  ];
+  const readyCount = items.filter((item) => item.status === "ready").length;
+  const percent = Math.round((readyCount / items.length) * 100);
+  return { items, readyCount, percent };
+}
+
+function renderDoctorContextItem(item) {
+  return `
+    <article class="context-item ${escapeHtml(item.status)} ${escapeHtml(item.priority)}">
+      <span class="context-state">${item.status === "ready" ? doctorIcon("check") : doctorIcon("plus")}</span>
+      <div>
+        <div class="context-item-title">
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${escapeHtml(item.value)}</span>
+        </div>
+        <p>${escapeHtml(item.body)}</p>
+      </div>
+      ${item.action && item.target ? `<button class="context-item-action" type="button" data-context-target="${escapeHtml(item.target)}">${escapeHtml(item.action)}</button>` : ""}
+    </article>
+  `;
+}
+
+function bindDoctorContextActions() {
+  [doctorSummary, doctorSignals].forEach((root) => {
+    if (!root || typeof root.querySelectorAll !== "function") return;
+    root.querySelectorAll("[data-context-target]").forEach((button) => {
+      button.addEventListener("click", () => openContextTarget(button.dataset.contextTarget));
+    });
+  });
+}
+
+function openContextTarget(target) {
+  const targetConfig = {
+    "doctor-input": { tab: "doctor", drawer: doctorInputDrawer },
+    "doctor-review": { tab: "doctor", node: doctorParsed },
+    "labs-input": { tab: "labs", drawer: labInputDrawer },
+    "genetics-input": { tab: "genetics", drawer: geneticInputDrawer },
+    "medications-input": { tab: "medications", drawer: medicationInputDrawer }
+  }[target];
+  if (!targetConfig) {
+    navigateToTab(target);
+    return;
+  }
+
+  navigateToTab(targetConfig.tab);
+  if (targetConfig.drawer) targetConfig.drawer.open = true;
+  const node = targetConfig.drawer || targetConfig.node;
+  node?.scrollIntoView?.({ behavior: "smooth", block: "start" });
 }
 
 function bindDoctorReviewActions() {
@@ -2980,6 +3141,7 @@ function doctorIcon(name, className = "button-icon") {
     clock: `<circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path>`,
     pencil: `<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>`,
     trash: `<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path>`,
+    plus: `<path d="M12 5v14"></path><path d="M5 12h14"></path>`,
     file: `<path d="M8 3h8l2 3v15H6V6z"></path><path d="M9 11h6"></path><path d="M9 15h6"></path>`,
     pill: `<path d="M10 21 3 14a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z"></path><path d="m8 8 8 8"></path>`,
     shield: `<path d="M12 3 20 7v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"></path><path d="m9 12 2 2 4-5"></path>`,
