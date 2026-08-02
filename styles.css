@@ -226,10 +226,7 @@ h2 {
 }
 
 .guest-landing {
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.72fr);
-  gap: 18px;
-  align-items: stretch;
+  display: block;
   padding: 22px;
 }
 
@@ -255,61 +252,6 @@ h2 {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 4px;
-}
-
-.guest-start-grid {
-  display: grid;
-  gap: 10px;
-  align-content: start;
-}
-
-.guest-start-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 5px 10px;
-  align-items: center;
-  min-height: 96px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: linear-gradient(180deg, #fff, #f9fbfb);
-  color: var(--ink);
-  text-align: left;
-  box-shadow: 0 6px 18px rgba(23, 37, 35, 0.04);
-}
-
-.guest-start-card:hover {
-  border-color: rgba(14, 124, 123, 0.28);
-  box-shadow: 0 10px 22px rgba(14, 124, 123, 0.08);
-}
-
-.guest-start-card strong,
-.guest-start-card span:last-child {
-  display: block;
-}
-
-.guest-start-card strong {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.guest-start-card span:last-child {
-  grid-column: 2;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.38;
-}
-
-.guest-start-card .section-kicker {
-  grid-row: 1 / span 2;
-}
-
-.guest-start-card.labs-card {
-  --nav-icon-url: url("./assets/icons/labs.svg");
-}
-
-.guest-start-card.genetics-card {
-  --nav-icon-url: url("./assets/icons/genetics.svg");
 }
 
 .now-actions {
@@ -540,8 +482,6 @@ h2 {
 .genetics-section .section-kicker > svg,
 .labs-section .section-kicker > svg,
 .medications-section .section-kicker > svg,
-.guest-start-card.labs-card .section-kicker > svg,
-.guest-start-card.genetics-card .section-kicker > svg,
 .usage-card .section-kicker > svg {
   display: none;
 }
@@ -549,8 +489,6 @@ h2 {
 .genetics-section .section-kicker::before,
 .labs-section .section-kicker::before,
 .medications-section .section-kicker::before,
-.guest-start-card.labs-card .section-kicker::before,
-.guest-start-card.genetics-card .section-kicker::before,
 .usage-card .section-kicker::before {
   content: "";
   display: block;
