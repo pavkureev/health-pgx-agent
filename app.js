@@ -439,10 +439,10 @@ function renderWelcome() {
 }
 
 function updateProfileJumpLabel(name) {
-  const label = name || "Профиль";
+  const label = name || "Login";
   if (profileJumpLabel) profileJumpLabel.textContent = label;
   if (profileJump) {
-    profileJump.title = label === "Профиль" ? "Профиль" : `Профиль: ${label}`;
+    profileJump.title = name ? `Профиль: ${label}` : "Login";
     if (typeof profileJump.setAttribute === "function") {
       profileJump.setAttribute("aria-label", profileJump.title);
     }
