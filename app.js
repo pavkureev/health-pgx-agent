@@ -52,6 +52,10 @@ const labDeleteTitle = document.querySelector("#labDeleteTitle");
 const labDeleteText = document.querySelector("#labDeleteText");
 const cancelLabDelete = document.querySelector("#cancelLabDelete");
 const confirmLabDelete = document.querySelector("#confirmLabDelete");
+const medicationDeleteDialog = document.querySelector("#medicationDeleteDialog");
+const medicationDeleteText = document.querySelector("#medicationDeleteText");
+const cancelMedicationDelete = document.querySelector("#cancelMedicationDelete");
+const confirmMedicationDelete = document.querySelector("#confirmMedicationDelete");
 const profileSelect = document.querySelector("#profileSelect");
 const profileName = document.querySelector("#profileName");
 const profileCounter = document.querySelector("#profileCounter");
@@ -135,6 +139,7 @@ let activeProfileId = loadActiveProfileId();
 ensureActiveProfile();
 let labRecords = getActiveProfile().labRecords || [];
 let pendingLabDelete = null;
+let pendingMedicationDeleteId = null;
 let archivedMedicationVisibleCount = 10;
 let medicationArchiveOpen = false;
 let activeAppView = "now";
@@ -187,6 +192,8 @@ document.querySelector("#parseLabText").addEventListener("click", addLabText);
 document.querySelector("#clearLabs").addEventListener("click", requestClearLabHistory);
 cancelLabDelete?.addEventListener("click", closeLabDeleteDialog);
 confirmLabDelete?.addEventListener("click", confirmPendingLabDelete);
+cancelMedicationDelete?.addEventListener("click", closeMedicationDeleteDialog);
+confirmMedicationDelete?.addEventListener("click", confirmPendingMedicationDelete);
 document.querySelector("#loadDoctorConclusion").addEventListener("click", loadDoctorConclusionFile);
 document.querySelector("#parseDoctorText").addEventListener("click", parseDoctorTextInput);
 document.querySelector("#addDoctorMedications").addEventListener("click", addDoctorMedicationsToProfile);
@@ -4188,6 +4195,37 @@ function findShotListMedication(name, substanceLabel = "", group = "") {
 function removeMedication(id) {
   saveCurrentMedications(currentMedications().filter((item) => item.id !== id));
   renderHealthBlocks();
+  medicationLookupStatus.textContent = "Препарат удалён.";
+}
+
+function requestRemoveMedication(id) {
+  const medication = currentMedications().find((item) => item.id === id);
+  if (!medication) return;
+  pendingMedicationDeleteId = id;
+  const body = `Препарат «${medication.name}» будет безвозвратно удалён из профиля. Восстановить запись не получится.`;
+
+  if (!medicationDeleteDialog?.showModal) {
+    const confirmed = typeof window.confirm === "function" ? window.confirm(`Удалить препарат?\n\n${body}`) : false;
+    if (confirmed) confirmPendingMedicationDelete();
+    else pendingMedicationDeleteId = null;
+    return;
+  }
+
+  medicationDeleteText.textContent = body;
+  medicationDeleteDialog.showModal();
+}
+
+function closeMedicationDeleteDialog() {
+  pendingMedicationDeleteId = null;
+  if (medicationDeleteDialog?.open) medicationDeleteDialog.close();
+}
+
+function confirmPendingMedicationDelete() {
+  const id = pendingMedicationDeleteId;
+  if (!id) return;
+  pendingMedicationDeleteId = null;
+  if (medicationDeleteDialog?.open) medicationDeleteDialog.close();
+  removeMedication(id);
 }
 
 function archiveMedication(id) {
@@ -4265,7 +4303,7 @@ function renderMedicationProfile(signals) {
       button.addEventListener("click", () => archiveMedication(button.dataset.archiveMedication));
     });
     medicationList.querySelectorAll("[data-remove-medication]").forEach((button) => {
-      button.addEventListener("click", () => removeMedication(button.dataset.removeMedication));
+      button.addEventListener("click", () => requestRemoveMedication(button.dataset.removeMedication));
     });
     medicationList.querySelectorAll("[data-restore-medication]").forEach((button) => {
       button.addEventListener("click", () => restoreMedication(button.dataset.restoreMedication));
@@ -4283,11 +4321,10 @@ function renderMedicationProfile(signals) {
 
   const identified = medications.filter((item) => item.substanceLabel).length;
   updateMedicationsSectionMeta(medications, signals);
-  medicationSummary.hidden = !medications.length && !archive.length;
-  medicationSummary.innerHTML = medications.length
-    ? `<strong>Действующее вещество:</strong> определено для ${identified} из ${medications.length} ${plural(medications.length, "текущего препарата", "текущих препаратов", "текущих препаратов")}. Если поле не определилось, откройте проверку на ПоискЛекарств или введите международное название вместо торгового.`
-    : archive.length
-      ? `<strong>Архив:</strong> в истории сохранено ${archive.length} ${plural(archive.length, "препарат", "препарата", "препаратов")}. Архивные препараты не участвуют в текущих предупреждениях.`
+  const unidentified = medications.length - identified;
+  medicationSummary.hidden = unidentified === 0;
+  medicationSummary.innerHTML = unidentified
+    ? `<strong>${unidentified} ${plural(unidentified, "препарат требует", "препарата требуют", "препаратов требуют")} уточнения.</strong> Укажите действующее вещество, чтобы проверить сигналы точнее.`
     : "";
   if (!medications.length && !archive.length) medicationLookupStatus.textContent = "";
   medicationChecks.innerHTML = signals.length ? renderPriorityGroups(signals, renderMedicationSignal) : "";

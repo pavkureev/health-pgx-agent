@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Разборчиво</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260802-4" />
-    <link rel="stylesheet" href="./styles.css?v=20260812-6" />
+    <link rel="stylesheet" href="./styles.css?v=20260812-8" />
   </head>
   <body>
     <main class="app-shell">
@@ -403,7 +403,7 @@ eGFR 82 мл/мин/1.73м2
           <div class="app-section-body">
             <section class="panel medication-panel">
               <div id="medicationList" class="medication-list"></div>
-              <div id="medicationSummary" class="metric-description" hidden></div>
+              <div id="medicationSummary" class="medication-summary" hidden></div>
               <p id="medicationLookupStatus" class="file-status"></p>
               <div id="medicationChecks" class="results"></div>
 
@@ -459,6 +459,19 @@ eGFR 82 мл/мин/1.73м2
       </form>
     </dialog>
 
+    <dialog id="medicationDeleteDialog" class="confirm-dialog" aria-labelledby="medicationDeleteTitle">
+      <form method="dialog" class="confirm-card">
+        <div>
+          <h2 id="medicationDeleteTitle">Удалить препарат?</h2>
+          <p id="medicationDeleteText"></p>
+        </div>
+        <div class="confirm-actions">
+          <button id="cancelMedicationDelete" class="primary-button" type="button">Отмена</button>
+          <button id="confirmMedicationDelete" class="destructive-button" type="button">Удалить</button>
+        </div>
+      </form>
+    </dialog>
+
     <nav class="bottom-tabs" aria-label="Основные разделы">
       <button class="tab-button is-active" type="button" data-tab-target="now">
         <svg viewBox="0 0 30 30" aria-hidden="true">
@@ -497,7 +510,7 @@ eGFR 82 мл/мин/1.73м2
     <script src="./data/medication-knowledge.js?v=20260802-4"></script>
     <script src="./data/evidence-flags.js?v=20260802-4"></script>
     <script src="./data.js?v=20260802-4"></script>
-    <script src="./app.js?v=20260812-7"></script>
+    <script src="./app.js?v=20260812-8"></script>
     <script src="./js/pgx-extensions.js?v=20260802-4"></script>
   </body>
 </html>

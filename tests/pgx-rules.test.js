@@ -209,6 +209,18 @@ assert.ok(
   context.renderMedicationRow(context.currentMedications()[0]).includes(">В</span>"),
   "warfarin card cover should render the timing flag"
 );
+context.window.confirm = () => false;
+context.requestRemoveMedication("med-warfarin-card");
+assert.ok(
+  context.currentMedications().some((item) => item.id === "med-warfarin-card"),
+  "cancelled medication deletion should preserve the record"
+);
+context.window.confirm = () => true;
+context.requestRemoveMedication("med-warfarin-card");
+assert.ok(
+  !context.currentMedications().some((item) => item.id === "med-warfarin-card"),
+  "confirmed medication deletion should remove the record"
+);
 
 context.document.querySelector("#patientData").value = "CYP3A5 *1/*3";
 context.saveCurrentMedications([{ id: "manual-substance", name: "неизвестный бренд", manualSubstanceLabel: "такролимус" }]);
