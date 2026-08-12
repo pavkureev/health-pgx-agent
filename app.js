@@ -4394,12 +4394,31 @@ function medicationCardFlags(item) {
   add(medicationSleepinessFlag(haystack), "С", "Сонливость или вождение: стоит проверить");
   add(medicationTimingFlag(haystack), "В", "Время приёма или еда: есть указание");
 
-  const directSignals = medicationRiskSignals([item]);
+  const directSignals = medicationRiskSignals([item])
+    .filter((signal) => !signal.title.startsWith("Расстрельный список:"));
   const interactionSignals = medicationInteractionSignals(activeMedications());
-  const hasInteractionSignal = interactionSignals.some((signal) => normalizeText(signal.medication).includes(normalizeText(item.name)));
-  add(directSignals.length > 0 || hasInteractionSignal, "!", "Есть сочетания, анализы или генетические сигналы");
+  const itemInteractionSignals = interactionSignals
+    .filter((signal) => normalizeText(signal.medication).includes(normalizeText(item.name)));
+  const riskSignals = [...directSignals, ...itemInteractionSignals]
+    .filter((signal, index, signals) => signals.findIndex((candidate) => candidate.title === signal.title) === index);
+  if (riskSignals.length) {
+    flags.push({
+      code: "!",
+      label: "Есть сочетания, анализы или генетические сигналы",
+      explanations: riskSignals.map((signal) => ({ title: signal.title, body: signal.body }))
+    });
+  }
   add(medicationPrescriptionFlag(haystack), "Р", "Рецептурный препарат");
-  add(Boolean(item.shotList), "РС", "Входит в критический справочный список");
+  if (item.shotList) {
+    flags.push({
+      code: "РС",
+      label: "Входит в критический справочный список",
+      explanations: [{
+        title: item.shotList.label,
+        body: `${item.shotList.category}: ${item.shotList.note}`
+      }]
+    });
+  }
   return flags;
 }
 
@@ -4408,7 +4427,17 @@ function renderMedicationFlag(flag) {
 }
 
 function renderMedicationFlagDetail(flag) {
-  return `<div><span class="medication-flag" aria-hidden="true">${escapeHtml(flag.code)}</span><span>${escapeHtml(flag.label)}</span></div>`;
+  return `
+    <div class="medication-flag-detail">
+      <span class="medication-flag" aria-hidden="true">${escapeHtml(flag.code)}</span>
+      <span class="medication-flag-detail-copy">
+        <span>${escapeHtml(flag.label)}</span>
+        ${(flag.explanations || []).map((explanation) => `
+          <small><strong>${escapeHtml(explanation.title)}</strong>${explanation.body ? ` — ${escapeHtml(explanation.body)}` : ""}</small>
+        `).join("")}
+      </span>
+    </div>
+  `;
 }
 
 function medicationAlcoholFlag(haystack) {
