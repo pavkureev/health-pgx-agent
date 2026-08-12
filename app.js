@@ -4296,19 +4296,93 @@ function renderMedicationProfile(signals) {
 }
 
 function renderMedicationRow(item) {
+  const flags = medicationCardFlags(item);
+  const visibleFlags = flags.length > 4 ? [...flags.slice(0, 3), { code: "…", label: "Все метки" }] : flags;
   return `
-    <article class="medication-row">
-      <strong>${escapeHtml(item.name)}${medicationConfirmationHtml(item)}</strong>
-      <span class="medication-substance-cell">${medicationSubstanceHtml(item)}${renderSubstanceEditControl(item)}</span>
-      <span>${escapeHtml(item.dose || "Доза не указана")}</span>
-      <span>${escapeHtml(medicationCourseText(item))}</span>
-      <span>${escapeHtml(medicationRowNote(item))}</span>
-      <div class="medication-row-actions">
-        <button class="secondary-button" type="button" data-archive-medication="${escapeHtml(item.id)}">В архив</button>
-        <button class="secondary-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
+    <details class="medication-card">
+      <summary class="medication-card-cover">
+        <span class="medication-card-copy">
+          <strong>${escapeHtml(item.name)}</strong>
+          <span class="medication-card-substance">${escapeHtml(item.substanceLabel || "Действующее вещество не определено")}</span>
+          <span class="medication-card-dose">${escapeHtml(item.dose || "Доза не указана")}</span>
+        </span>
+        ${visibleFlags.length ? `<span class="medication-flags" aria-label="Важные метки">${visibleFlags.map(renderMedicationFlag).join("")}</span>` : ""}
+        <span class="medication-card-chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <div class="medication-card-body">
+        <dl class="medication-card-details">
+          <div><dt>Действующее вещество</dt><dd>${medicationSubstanceHtml(item)}</dd></div>
+          <div><dt>Дозировка / режим</dt><dd>${escapeHtml(item.dose || "Не указаны")}</dd></div>
+          <div><dt>Курс</dt><dd>${escapeHtml(medicationCourseText(item))}</dd></div>
+          <div><dt>Комментарий</dt><dd>${escapeHtml(medicationRowNote(item))}</dd></div>
+        </dl>
+        ${medicationConfirmationHtml(item)}
+        ${renderSubstanceEditControl(item)}
+        ${flags.length ? `<div class="medication-flag-details">${flags.map(renderMedicationFlagDetail).join("")}</div>` : ""}
+        <div class="medication-card-actions">
+          <button class="secondary-button" type="button" data-archive-medication="${escapeHtml(item.id)}">В архив</button>
+          <button class="secondary-button danger-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
+        </div>
       </div>
-    </article>
+    </details>
   `;
+}
+
+function medicationCardFlags(item) {
+  const haystack = normalizeText([
+    item.name,
+    item.substance,
+    item.substanceLabel,
+    item.group,
+    item.dose,
+    item.note,
+    item.comment
+  ].filter(Boolean).join(" "));
+  const flags = [];
+  const add = (enabled, code, label) => {
+    if (enabled) flags.push({ code, label });
+  };
+
+  add(medicationAlcoholFlag(haystack), "А", "Алкоголь: есть ограничение или стоит уточнить");
+  add(medicationPregnancyFlag(haystack), "Б", "Беременность: есть важные ограничения");
+  add(medicationSleepinessFlag(haystack), "С", "Сонливость или вождение: стоит проверить");
+  add(medicationTimingFlag(haystack), "В", "Время приёма или еда: есть указание");
+
+  const directSignals = medicationRiskSignals([item]);
+  const interactionSignals = medicationInteractionSignals(activeMedications());
+  const hasInteractionSignal = interactionSignals.some((signal) => normalizeText(signal.medication).includes(normalizeText(item.name)));
+  add(directSignals.length > 0 || hasInteractionSignal, "!", "Есть сочетания, анализы или генетические сигналы");
+  add(medicationPrescriptionFlag(haystack), "Р", "Рецептурный препарат");
+  add(Boolean(item.shotList), "РС", "Входит в критический справочный список");
+  return flags;
+}
+
+function renderMedicationFlag(flag) {
+  return `<span class="medication-flag" title="${escapeHtml(flag.label)}" aria-label="${escapeHtml(flag.label)}">${escapeHtml(flag.code)}</span>`;
+}
+
+function renderMedicationFlagDetail(flag) {
+  return `<div><span class="medication-flag" aria-hidden="true">${escapeHtml(flag.code)}</span><span>${escapeHtml(flag.label)}</span></div>`;
+}
+
+function medicationAlcoholFlag(haystack) {
+  return /(метронидазол|тинидазол|дисульфирам|варфарин|антикоагулянт|опиоид|трамадол|кодеин|бензодиазепин|диазепам|алпразолам|снотвор|седатив)/.test(haystack);
+}
+
+function medicationPregnancyFlag(haystack) {
+  return /(варфарин|ретиноид|изотретиноин|метотрексат|вальпроат|микофенолат|ингибитор апф|лозартан|валсартан|статин|талидомид)/.test(haystack);
+}
+
+function medicationSleepinessFlag(haystack) {
+  return /(опиоид|трамадол|кодеин|бензодиазепин|диазепам|алпразолам|антигистамин|цетиризин|лоратадин|снотвор|седатив|прегабалин|габапентин|амитриптилин)/.test(haystack);
+}
+
+function medicationTimingFlag(haystack) {
+  return /(до еды|после еды|во время еды|натощак|за 30|за 15|утром|вечером|перед сном|рабепразол|эзомепразол|омепразол|ганатон|итоприд|де-нол|де нол|висмут|левотироксин)/.test(haystack);
+}
+
+function medicationPrescriptionFlag(haystack) {
+  return /(антибиотик|амоксициллин|азитромицин|кларитромицин|антикоагулянт|варфарин|апиксабан|ривароксабан|статин|антидепрессант|сертралин|эсциталопрам|опиоид|трамадол|кодеин|бензодиазепин|гормон|левотироксин|такролимус|метотрексат)/.test(haystack);
 }
 
 function renderMedicationArchive(archive) {
