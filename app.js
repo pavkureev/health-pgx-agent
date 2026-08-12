@@ -4298,13 +4298,16 @@ function renderMedicationProfile(signals) {
 function renderMedicationRow(item) {
   const flags = medicationCardFlags(item);
   const visibleFlags = flags.length > 4 ? [...flags.slice(0, 3), { code: "…", label: "Все метки" }] : flags;
+  const coverForm = medicationCoverForm(item);
+  const coverSubstance = medicationCoverSubstance(item);
+  const coverDose = medicationCoverDose(item);
   return `
     <details class="medication-card">
       <summary class="medication-card-cover">
         <span class="medication-card-copy">
-          <strong>${escapeHtml(item.name)}</strong>
-          <span class="medication-card-substance">${escapeHtml(item.substanceLabel || "Действующее вещество не определено")}</span>
-          <span class="medication-card-dose">${escapeHtml(item.dose || "Доза не указана")}</span>
+          <strong>${escapeHtml(item.name)}${coverForm ? `, ${escapeHtml(coverForm)}` : ""}</strong>
+          ${coverSubstance ? `<span class="medication-card-substance">${escapeHtml(coverSubstance)}</span>` : ""}
+          <span class="medication-card-dose">${escapeHtml(coverDose)}</span>
         </span>
         ${visibleFlags.length ? `<span class="medication-flags" aria-label="Важные метки">${visibleFlags.map(renderMedicationFlag).join("")}</span>` : ""}
         <span class="medication-card-chevron" aria-hidden="true">⌄</span>
@@ -4326,6 +4329,49 @@ function renderMedicationRow(item) {
       </div>
     </details>
   `;
+}
+
+function medicationCoverForm(item) {
+  const haystack = normalizeText([item.dose, item.name].filter(Boolean).join(" "));
+  const forms = [
+    { pattern: /(табл(?:етка|етки|еток)?|таб)(?:\.|\s|,|$)/, label: "табл" },
+    { pattern: /(капс(?:ула|улы|ул)?)(?:\.|\s|,|$)/, label: "капс" },
+    { pattern: /(гель)(?:\s|,|$)/, label: "гель" },
+    { pattern: /(крем|мазь|спрей|порошок|сироп)(?:\s|,|$)/, label: null },
+    { pattern: /(раствор|р-р)(?:\s|,|$)/, label: "раствор" },
+    { pattern: /(капли|суспензия|аэрозоль|пластырь)(?:\s|,|$)/, label: null },
+    { pattern: /(свечи|суппозитории?)(?:\s|,|$)/, label: "свечи" }
+  ];
+  for (const form of forms) {
+    const match = haystack.match(form.pattern);
+    if (match) return form.label || match[1];
+  }
+  return "";
+}
+
+function medicationCoverSubstance(item) {
+  const substance = (item.substanceLabel || "").trim();
+  if (!substance) return "";
+  const normalizedName = normalizeText(item.name || "").replace(/[^a-zа-я0-9]+/g, " ").trim();
+  const normalizedSubstance = normalizeText(substance).replace(/[^a-zа-я0-9]+/g, " ").trim();
+  return normalizedName === normalizedSubstance ? "" : substance;
+}
+
+function medicationCoverDose(item) {
+  const dose = (item.dose || "").trim();
+  if (!dose) return "Уточнить дозировку";
+
+  const strengths = dose.match(/\d+(?:[.,]\d+)?\s*(?:мкг|мг|г|мл|ме|ед|%)(?:\s*\/\s*\d+(?:[.,]\d+)?\s*(?:мл|г))?/gi);
+  if (strengths?.length) {
+    return [...new Set(strengths.map((value) => value.replace(/\s+/g, "")))].join(" + ");
+  }
+
+  const cleaned = dose
+    .replace(/(табл(?:етка|етки|еток)?|таб|капс(?:ула|улы|ул)?|гель|крем|мазь|спрей|порошок|сироп|раствор|р-р|капли|суспензия|аэрозоль|пластырь|свечи|суппозитории?)\.?/gi, " ")
+    .replace(/(покр(?:ытые|ытая|ыт)?|плен(?:очной|очная)?|оболочк(?:ой|а|е)|для приема внутрь)\.?/gi, " ")
+    .replace(/[,;:\s]+/g, " ")
+    .trim();
+  return cleaned || "Уточнить дозировку";
 }
 
 function medicationCardFlags(item) {
