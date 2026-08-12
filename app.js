@@ -3718,16 +3718,14 @@ function updateMedicationsSectionMeta(medications, signals) {
   }
 
   const identified = medications.filter((item) => item.substanceLabel).length;
+  const unidentified = medications.length - identified;
   const unconfirmed = medications.filter((item) => item.needsConfirmation).length;
   const highCount = signals.filter((signal) => signal.severity === "high").length;
-  const parts = [
-    String(medications.length) + " " + plural(medications.length, "препарат", "препарата", "препаратов"),
-    "вещество определено: " + identified + "/" + medications.length,
-    String(signals.length) + " " + plural(signals.length, "предупреждение", "предупреждения", "предупреждений")
-  ];
-  if (unconfirmed) parts.push("нужно подтвердить: " + unconfirmed);
-  if (highCount) parts.push("высокий приоритет: " + highCount);
-  if (archivedCount) parts.push("архив: " + archivedCount);
+  const parts = [String(medications.length) + " " + plural(medications.length, "препарат", "препарата", "препаратов")];
+  if (highCount) parts.push("важные сигналы: " + highCount);
+  else if (unconfirmed) parts.push("нужно подтвердить: " + unconfirmed);
+  else if (unidentified) parts.push("уточнить вещество: " + unidentified);
+  else if (archivedCount) parts.push("в архиве: " + archivedCount);
   medicationsSectionMeta.textContent = parts.join(" · ");
 }
 
@@ -4327,7 +4325,8 @@ function renderMedicationProfile(signals) {
     ? `<strong>${unidentified} ${plural(unidentified, "препарат требует", "препарата требуют", "препаратов требуют")} уточнения.</strong> Укажите действующее вещество, чтобы проверить сигналы точнее.`
     : "";
   if (!medications.length && !archive.length) medicationLookupStatus.textContent = "";
-  medicationChecks.innerHTML = signals.length ? renderPriorityGroups(signals, renderMedicationSignal) : "";
+  const systemSignals = medicationInteractionSignals(medications);
+  medicationChecks.innerHTML = systemSignals.length ? renderPriorityGroups(systemSignals, renderMedicationSignal) : "";
 }
 
 function renderMedicationRow(item) {
@@ -4356,7 +4355,7 @@ function renderMedicationRow(item) {
         </dl>
         ${medicationConfirmationHtml(item)}
         ${renderSubstanceEditControl(item)}
-        ${flags.length ? `<div class="medication-flag-details">${flags.map(renderMedicationFlagDetail).join("")}</div>` : ""}
+        ${flags.length ? `<div class="medication-flag-details">${flags.map(renderMedicationFlagDetail).join("")}${renderMedicationFlagDisclaimer(flags)}</div>` : ""}
         <div class="medication-card-actions">
           <button class="secondary-button" type="button" data-archive-medication="${escapeHtml(item.id)}">В архив</button>
           <button class="secondary-button danger-button" type="button" data-remove-medication="${escapeHtml(item.id)}">Удалить</button>
@@ -4421,7 +4420,7 @@ function medicationCardFlags(item) {
   ].filter(Boolean).join(" "));
   const flags = [];
   const add = (enabled, code, label) => {
-    if (enabled) flags.push({ code, label });
+    if (enabled) flags.push({ code, label, heuristic: true });
   };
 
   add(medicationAlcoholFlag(haystack), "А", "Алкоголь: есть ограничение или стоит уточнить");
@@ -4458,13 +4457,13 @@ function medicationCardFlags(item) {
 }
 
 function renderMedicationFlag(flag) {
-  return `<span class="medication-flag" title="${escapeHtml(flag.label)}" aria-label="${escapeHtml(flag.label)}">${escapeHtml(flag.code)}</span>`;
+  return `<span class="medication-flag${flag.heuristic ? " heuristic" : ""}" title="${escapeHtml(flag.label)}" aria-label="${escapeHtml(flag.label)}">${escapeHtml(flag.code)}</span>`;
 }
 
 function renderMedicationFlagDetail(flag) {
   return `
     <div class="medication-flag-detail">
-      <span class="medication-flag" aria-hidden="true">${escapeHtml(flag.code)}</span>
+      <span class="medication-flag${flag.heuristic ? " heuristic" : ""}" aria-hidden="true">${escapeHtml(flag.code)}</span>
       <span class="medication-flag-detail-copy">
         <span>${escapeHtml(flag.label)}</span>
         ${(flag.explanations || []).map((explanation) => `
@@ -4473,6 +4472,11 @@ function renderMedicationFlagDetail(flag) {
       </span>
     </div>
   `;
+}
+
+function renderMedicationFlagDisclaimer(flags) {
+  if (!flags.some((flag) => flag.heuristic)) return "";
+  return `<p class="medication-flag-disclaimer">Буквенные метки — справочные подсказки по названию, группе или режиму. Проверьте инструкцию и назначения врача.</p>`;
 }
 
 function medicationAlcoholFlag(haystack) {

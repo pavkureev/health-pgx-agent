@@ -582,6 +582,10 @@ h2 {
   background: transparent;
 }
 
+.medication-panel > .editor-drawer {
+  margin: 0 0 10px;
+}
+
 .editor-drawer {
   margin-top: 14px;
   border: 1px solid var(--line);
@@ -1453,6 +1457,12 @@ h2 {
   line-height: 1;
 }
 
+.medication-flag.heuristic {
+  border-color: rgba(99, 112, 107, 0.22);
+  background: var(--surface-alt);
+  color: var(--muted);
+}
+
 .medication-card-chevron {
   position: absolute;
   right: 10px;
@@ -1525,6 +1535,13 @@ h2 {
 
 .medication-flag-detail-copy small {
   color: var(--ink);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.medication-flag-disclaimer {
+  margin: 3px 0 0 34px;
+  color: var(--muted-soft);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -2491,6 +2508,20 @@ button {
     width: 24px;
     height: 24px;
     font-size: 10px;
+  }
+
+  .medication-card-cover {
+    min-height: 100px;
+    padding: 42px 32px 24px 8px;
+  }
+
+  .medication-card-copy strong {
+    font-size: 14px;
+  }
+
+  .medication-card-substance,
+  .medication-card-dose {
+    font-size: 13px;
   }
 
   .medication-card-details {
