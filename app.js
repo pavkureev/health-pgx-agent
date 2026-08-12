@@ -107,7 +107,6 @@ const medicationDose = document.querySelector("#medicationDose");
 const medicationStart = document.querySelector("#medicationStart");
 const medicationEnd = document.querySelector("#medicationEnd");
 const medicationNote = document.querySelector("#medicationNote");
-const medicationCounter = document.querySelector("#medicationCounter");
 const medicationList = document.querySelector("#medicationList");
 const medicationSummary = document.querySelector("#medicationSummary");
 const medicationLookupStatus = document.querySelector("#medicationLookupStatus");
@@ -4249,7 +4248,6 @@ function updateMedicationSubstance(id) {
 function renderMedicationProfile(signals) {
   const medications = activeMedications();
   const archive = archivedMedications();
-  medicationCounter.textContent = `${medications.length} ${plural(medications.length, "текущий препарат", "текущих препарата", "текущих препаратов")}`;
   medicationList.innerHTML = [
     medications.length
       ? medications.map((item) => renderMedicationRow(item)).join("")

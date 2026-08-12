@@ -194,6 +194,22 @@ assert.ok(
 context.restoreMedication("med-tamoxifen-only");
 assert.strictEqual(context.activeMedications().length, 1, "restored medication should return to active list");
 
+context.document.querySelector("#patientData").value = "";
+context.saveCurrentMedications([
+  { id: "med-warfarin-card", name: "Варфарин", dose: "5 мг вечером" },
+  { id: "med-ibuprofen-card", name: "Ибупрофен", dose: "400 мг после еды" }
+]);
+const warfarinCardFlags = context.medicationCardFlags(context.currentMedications()[0]);
+assert.deepStrictEqual(
+  Array.from(warfarinCardFlags, (flag) => flag.code),
+  ["А", "Б", "В", "!", "Р"],
+  "warfarin evening regimen with ibuprofen should produce five card flags"
+);
+assert.ok(
+  context.renderMedicationRow(context.currentMedications()[0]).includes(">В</span>"),
+  "warfarin card cover should render the timing flag"
+);
+
 context.document.querySelector("#patientData").value = "CYP3A5 *1/*3";
 context.saveCurrentMedications([{ id: "manual-substance", name: "неизвестный бренд", manualSubstanceLabel: "такролимус" }]);
 const manualMedication = context.currentMedications()[0];
