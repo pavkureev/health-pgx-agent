@@ -583,7 +583,7 @@ h2 {
 }
 
 .medication-panel > .editor-drawer {
-  margin: 0 0 10px;
+  margin: 14px 0 0;
 }
 
 .editor-drawer {
@@ -1398,8 +1398,9 @@ h2 {
 .medication-card-cover {
   position: relative;
   display: block;
-  min-height: 82px;
+  height: 82px;
   padding: 10px 132px 24px 10px;
+  box-sizing: border-box;
   cursor: pointer;
   list-style: none;
 }
@@ -1421,7 +1422,9 @@ h2 {
 
 .medication-card-copy > * {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .medication-card-substance,
@@ -2511,8 +2514,8 @@ button {
   }
 
   .medication-card-cover {
-    min-height: 100px;
-    padding: 42px 32px 24px 8px;
+    height: 82px;
+    padding: 9px 124px 22px 8px;
   }
 
   .medication-card-copy strong {

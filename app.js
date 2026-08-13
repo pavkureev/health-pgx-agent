@@ -112,6 +112,7 @@ const medicationStart = document.querySelector("#medicationStart");
 const medicationEnd = document.querySelector("#medicationEnd");
 const medicationNote = document.querySelector("#medicationNote");
 const medicationList = document.querySelector("#medicationList");
+const medicationArchive = document.querySelector("#medicationArchive");
 const medicationSummary = document.querySelector("#medicationSummary");
 const medicationLookupStatus = document.querySelector("#medicationLookupStatus");
 const medicationChecks = document.querySelector("#medicationChecks");
@@ -4284,15 +4285,13 @@ function updateMedicationSubstance(id) {
 function renderMedicationProfile(signals) {
   const medications = activeMedications();
   const archive = archivedMedications();
-  medicationList.innerHTML = [
-    medications.length
-      ? medications.map((item) => renderMedicationRow(item)).join("")
-      : `<p class="file-status">Добавьте текущие препараты, чтобы сопоставить их с генетикой и анализами.</p>`,
-    renderMedicationArchive(archive)
-  ].filter(Boolean).join("");
+  medicationList.innerHTML = medications.length
+    ? medications.map((item) => renderMedicationRow(item)).join("")
+    : `<p class="file-status">Добавьте текущие препараты, чтобы сопоставить их с генетикой и анализами.</p>`;
+  medicationArchive.innerHTML = renderMedicationArchive(archive);
 
-  if (typeof medicationList.querySelectorAll === "function") {
-    medicationList.querySelectorAll("[data-medication-archive]").forEach((drawer) => {
+  if (typeof medicationList.querySelectorAll === "function" && typeof medicationArchive.querySelectorAll === "function") {
+    medicationArchive.querySelectorAll("[data-medication-archive]").forEach((drawer) => {
       drawer.addEventListener("toggle", () => {
         medicationArchiveOpen = drawer.open;
       });
@@ -4300,13 +4299,13 @@ function renderMedicationProfile(signals) {
     medicationList.querySelectorAll("[data-archive-medication]").forEach((button) => {
       button.addEventListener("click", () => archiveMedication(button.dataset.archiveMedication));
     });
-    medicationList.querySelectorAll("[data-remove-medication]").forEach((button) => {
+    [...medicationList.querySelectorAll("[data-remove-medication]"), ...medicationArchive.querySelectorAll("[data-remove-medication]")].forEach((button) => {
       button.addEventListener("click", () => requestRemoveMedication(button.dataset.removeMedication));
     });
-    medicationList.querySelectorAll("[data-restore-medication]").forEach((button) => {
+    medicationArchive.querySelectorAll("[data-restore-medication]").forEach((button) => {
       button.addEventListener("click", () => restoreMedication(button.dataset.restoreMedication));
     });
-    medicationList.querySelectorAll("[data-show-more-archived-medications]").forEach((button) => {
+    medicationArchive.querySelectorAll("[data-show-more-archived-medications]").forEach((button) => {
       button.addEventListener("click", showMoreArchivedMedications);
     });
     medicationList.querySelectorAll("[data-save-substance]").forEach((button) => {
@@ -4348,6 +4347,7 @@ function renderMedicationRow(item) {
       </summary>
       <div class="medication-card-body">
         <dl class="medication-card-details">
+          <div><dt>Препарат</dt><dd>${escapeHtml(item.name)}${coverForm ? `, ${escapeHtml(coverForm)}` : ""}</dd></div>
           <div><dt>Действующее вещество</dt><dd>${medicationSubstanceHtml(item)}</dd></div>
           <div><dt>Дозировка / режим</dt><dd>${escapeHtml(item.dose || "Не указаны")}</dd></div>
           <div><dt>Курс</dt><dd>${escapeHtml(medicationCourseText(item))}</dd></div>
