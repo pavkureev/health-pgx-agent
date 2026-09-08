@@ -124,4 +124,22 @@ const restoredFromMisclassifiedDocuments = context.geneticDocumentsToPatientData
 assert.match(restoredFromMisclassifiedDocuments, /genetics-as-text\.txt/, "genetic-looking text should restore even if document kind is wrong");
 assert.doesNotMatch(restoredFromMisclassifiedDocuments, /ЛПНП/, "non-genetic lab text should not be copied into genetic input");
 
+context.logActivity({
+  type: "doctor",
+  title: "Загружено заключение врача",
+  body: "2 диагноза, 4 назначения.",
+  target: "doctor"
+});
+assert.strictEqual(
+  context.currentActivityLog()[0].title,
+  "Загружено заключение врача",
+  "activity log should keep recent profile events"
+);
+context.renderNowActions();
+assert.match(
+  el("#nowActions").innerHTML,
+  /Добавить протокол посещения врача/,
+  "now tab should always expose doctor protocol upload"
+);
+
 console.log("profile storage tests passed");

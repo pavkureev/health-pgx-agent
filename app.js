@@ -158,6 +158,12 @@ loadSampleButton?.addEventListener("click", () => {
   fileStatus.textContent = "Загружен встроенный пример.";
   geneticInputOpen = false;
   saveCurrentProfileData({ allowEmptyPatientData: true });
+  logActivity({
+    type: "genetics",
+    title: "Загружен пример генетики",
+    body: "Демо-данные добавлены в генетический раздел.",
+    target: "genetics"
+  });
   analyze();
   renderGeneticInputState();
   navigateToTab("genetics");
@@ -729,6 +735,28 @@ function saveCurrentProfileData(options = {}) {
   queueCloudProfileMetadataSave(profile);
 }
 
+function currentActivityLog(profile = getActiveProfile()) {
+  return Array.isArray(profile?.metadata?.activityLog) ? profile.metadata.activityLog : [];
+}
+
+function logActivity(entry, options = {}) {
+  const profile = getActiveProfile();
+  if (!profile) return;
+  const activity = {
+    id: `act-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    type: entry.type || "update",
+    title: entry.title || "Обновление",
+    body: entry.body || "",
+    target: entry.target || "now",
+    createdAt: entry.createdAt || new Date().toISOString()
+  };
+  profile.metadata = {
+    ...(profile.metadata || {}),
+    activityLog: [activity, ...currentActivityLog(profile)].slice(0, 80)
+  };
+  if (options.save !== false) saveCurrentProfileData({ allowEmptyPatientData: true });
+}
+
 function queueCloudProfileMetadataSave(profile = getActiveProfile()) {
   if (!cloudReady || !profile?.id) return;
   pendingCloudProfileSaves.set(profile.id, {
@@ -975,6 +1003,12 @@ async function loadVcfFile() {
     fileStatus.className = "file-status";
     fileStatus.textContent = `VCF загружен: найдено ${found} ${plural(found, "маркер", "маркера", "маркеров")}${skipped ? `, пропущено без genotype call: ${skipped}` : ""}.`;
     saveCurrentProfileData({ allowEmptyPatientData: true });
+    logActivity({
+      type: "genetics",
+      title: "Загружена генетика",
+      body: `${file.name}: найдено ${found} ${plural(found, "маркер", "маркера", "маркеров")}.`,
+      target: "genetics"
+    });
     analyze();
     renderGeneticInputState();
   } catch (error) {
@@ -1204,6 +1238,15 @@ function addLabRecordsWithConflictResolution(incomingRecords) {
   const commit = () => {
     labRecords = nextLabRecords;
     saveCurrentProfileData();
+    if (result.addedCount) {
+      const valueCount = incomingRecords.reduce((sum, record) => sum + (record.values?.length || 0), 0);
+      logActivity({
+        type: "labs",
+        title: "Загружены анализы",
+        body: `${result.addedCount} ${plural(result.addedCount, "отчёт", "отчёта", "отчётов")} и ${valueCount} ${plural(valueCount, "показатель", "показателя", "показателей")}.`,
+        target: "labs"
+      });
+    }
     renderLabHistory();
     return result;
   };
@@ -1352,6 +1395,12 @@ async function loadDoctorConclusionFile() {
     const parsed = parseDoctorConclusion(text);
     saveDoctorConclusion(text, parsed, { reviewStatus: "pending", newId: true });
     reconcileDraftDoctorMedications(parsed, { doctorConclusionId: currentDoctorConclusion().id });
+    logActivity({
+      type: "doctor",
+      title: "Загружено заключение врача",
+      body: `${file.name}: ${(parsed.diagnoses || []).length} ${plural((parsed.diagnoses || []).length, "диагноз", "диагноза", "диагнозов")}, ${(parsed.medications || []).length} ${plural((parsed.medications || []).length, "назначение", "назначения", "назначений")}.`,
+      target: "doctor"
+    });
     doctorStatus.className = "file-status";
     doctorStatus.textContent = `Данные перенесены из файла: ${file.name}. Сверьте черновик и подтвердите перед добавлением лекарств в профиль.`;
     renderDoctorConclusion();
@@ -1375,6 +1424,12 @@ function parseDoctorTextInput() {
     newId: normalizeText(previous.text || "") !== normalizeText(doctorText.value)
   });
   reconcileDraftDoctorMedications(parsed, { doctorConclusionId: currentDoctorConclusion().id });
+  logActivity({
+    type: "doctor",
+    title: "Добавлен текст заключения",
+    body: `${(parsed.diagnoses || []).length} ${plural((parsed.diagnoses || []).length, "диагноз", "диагноза", "диагнозов")}, ${(parsed.medications || []).length} ${plural((parsed.medications || []).length, "назначение", "назначения", "назначений")} ждут проверки.`,
+    target: "doctor"
+  });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = "Данные перенесены в черновик. Сверьте распознавание и подтвердите перед добавлением лекарств в профиль.";
   renderDoctorConclusion();
@@ -1397,6 +1452,12 @@ function deleteDoctorConclusion() {
   delete metadata.doctorConclusion;
   profile.metadata = metadata;
   saveCurrentProfileData();
+  logActivity({
+    type: "doctor",
+    title: "Удалено заключение врача",
+    body: "Подтверждённые лекарства в лекарственном профиле сохранены.",
+    target: "doctor"
+  });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = "Заключение удалено. Подтвержденные лекарства в лекарственном профиле сохранены.";
   renderDoctorConclusion();
@@ -1837,6 +1898,14 @@ function addDoctorMedicationsToProfile() {
     needsConfirmation: false
   });
   saveDoctorConclusion(conclusion.text || doctorText.value, parsed, { reviewStatus: "confirmed", correctionOpen: false });
+  logActivity({
+    type: "doctor",
+    title: "Подтверждён разбор заключения",
+    body: sync.added
+      ? `${sync.added} ${plural(sync.added, "назначение добавлено", "назначения добавлены", "назначений добавлены")} в лекарственный профиль.`
+      : "Все распознанные назначения уже были в лекарственном профиле.",
+    target: "doctor"
+  });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = sync.added
     ? `Распознавание подтверждено. Назначения добавлены в лекарственный профиль: ${sync.added}.`
@@ -1873,6 +1942,12 @@ function applyDoctorCorrections() {
     correctionOpen: false
   });
   reconcileDraftDoctorMedications({ diagnoses, medications }, { doctorConclusionId: currentDoctorConclusion().id });
+  logActivity({
+    type: "doctor",
+    title: "Исправлен черновик заключения",
+    body: `${diagnoses.length} ${plural(diagnoses.length, "диагноз", "диагноза", "диагнозов")}, ${medications.length} ${plural(medications.length, "назначение", "назначения", "назначений")} после ручной правки.`,
+    target: "doctor"
+  });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = "Исправления сохранены. Сверьте результат и подтвердите распознавание.";
   renderDoctorConclusion();
@@ -2538,6 +2613,12 @@ async function deleteLabRecord(recordId) {
 
   labRecords = labRecords.filter((item) => item.id !== recordId);
   saveCurrentProfileData();
+  logActivity({
+    type: "labs",
+    title: "Удалён результат анализа",
+    body: `${formatDate(record.date)} · ${record.sourceName || "анализ"}.`,
+    target: "labs"
+  });
   renderLabHistory();
   labStatus.className = "file-status";
   labStatus.textContent = "Результат анализа удалён.";
@@ -2613,6 +2694,12 @@ async function clearLabHistory() {
   labFiles.value = "";
   labText.value = "";
   saveCurrentProfileData();
+  logActivity({
+    type: "labs",
+    title: "Очищена история анализов",
+    body: "Все загруженные результаты анализов удалены.",
+    target: "labs"
+  });
   renderLabHistory();
   labStatus.className = "file-status";
   labStatus.textContent = "История анализов очищена.";
@@ -3528,6 +3615,14 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
   const activeClinicalSignals = clinicalSignals.filter((item) => item.severity !== "low").length;
   const geneCount = Object.keys(profile).length;
 
+  const primaryAction = {
+    icon: "file",
+    title: "Добавить протокол посещения врача",
+    body: "Загрузите новое заключение, чтобы начать следующий эпизод и дополнить картину анализами, генетикой и лекарствами.",
+    target: "doctor-input",
+    cta: "Добавить",
+    priority: true
+  };
   const actions = [];
   if (pendingConclusion) {
     const total = (parsed.diagnoses || []).length + (parsed.medications || []).length;
@@ -3567,15 +3662,6 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
       body: `${activeClinicalSignals} ${plural(activeClinicalSignals, "сигнал", "сигнала", "сигналов")} по динамике или порогам.`,
       target: "labs",
       cta: "К анализам"
-    });
-  }
-  if (!hasDoctorData) {
-    actions.push({
-      icon: "file",
-      title: "Загрузите заключение",
-      body: "Получите черновик диагнозов и назначений для проверки.",
-      target: "doctor",
-      cta: "Загрузить"
     });
   }
   if (!hasLabData) {
@@ -3625,10 +3711,17 @@ function renderNowActions({ medicationSignals = [], clinicalSignals = [], pgxSig
     );
   }
 
-  nowActions.innerHTML = actions.slice(0, 4).map(renderNowActionCard).join("");
+  const visibleActions = actions.slice(0, 3);
+  nowActions.innerHTML = `
+    <div class="now-actions-stack">
+      ${renderNowActionCard(primaryAction)}
+      ${visibleActions.map(renderNowActionCard).join("")}
+      ${renderNowActivityLog()}
+    </div>
+  `;
   if (typeof nowActions.querySelectorAll === "function") {
     nowActions.querySelectorAll("[data-now-target]").forEach((button) => {
-      button.addEventListener("click", () => navigateToTab(button.dataset.nowTarget));
+      button.addEventListener("click", () => openNowTarget(button.dataset.nowTarget));
     });
   }
 }
@@ -3644,6 +3737,60 @@ function renderNowActionCard(action) {
       <button class="${action.priority ? "primary-button" : "secondary-button"}" type="button" data-now-target="${escapeHtml(action.target)}">${escapeHtml(action.cta)}</button>
     </article>
   `;
+}
+
+function openNowTarget(target) {
+  if (target && target.endsWith("-input") && typeof openContextTarget === "function") {
+    openContextTarget(target);
+    return;
+  }
+  navigateToTab(target);
+}
+
+function renderNowActivityLog() {
+  const activities = currentActivityLog().slice(0, 7);
+  return `
+    <section class="now-history-card" aria-label="История загрузок">
+      <div class="section-title">
+        <div>
+          <h3>История загрузок</h3>
+          <p>Последние действия, чтобы быстро восстановить контекст после паузы.</p>
+        </div>
+        <span class="mini-counter">${activities.length}</span>
+      </div>
+      ${activities.length
+        ? `<div class="now-history-list">${activities.map(renderNowActivityItem).join("")}</div>`
+        : `<p class="file-status">История появится после загрузки заключений, анализов, генетики или лекарств.</p>`}
+    </section>
+  `;
+}
+
+function renderNowActivityItem(item) {
+  return `
+    <button class="now-history-item" type="button" data-now-target="${escapeHtml(item.target || "now")}">
+      <span class="now-history-icon">${appNavigationIcon(activityIconName(item.type), "summary-icon")}</span>
+      <span>
+        <strong>${escapeHtml(item.title || "Обновление")}</strong>
+        ${item.body ? `<small>${escapeHtml(item.body)}</small>` : ""}
+      </span>
+      <time datetime="${escapeHtml(item.createdAt || "")}">${escapeHtml(formatActivityDate(item.createdAt))}</time>
+    </button>
+  `;
+}
+
+function activityIconName(type) {
+  return {
+    doctor: "file",
+    genetics: "genetics",
+    labs: "labs",
+    medications: "medications"
+  }[type] || "now";
+}
+
+function formatActivityDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
 }
 
 function appNavigationIcon(name, className = "summary-icon") {
@@ -4126,6 +4273,7 @@ function saveCurrentMedications(medications) {
 async function addMedication() {
   const name = medicationName.value.trim();
   if (!name) return;
+  const dose = medicationDose.value.trim();
 
   const id = `med-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const medications = [
@@ -4133,7 +4281,7 @@ async function addMedication() {
     {
       id,
       name,
-      dose: medicationDose.value.trim(),
+      dose,
       startedAt: medicationStart?.value || "",
       endedAt: medicationEnd?.value || "",
       note: medicationNote.value.trim()
@@ -4147,6 +4295,12 @@ async function addMedication() {
   updateDateInputTone(medicationEnd);
   medicationNote.value = "";
   saveCurrentMedications(medications);
+  logActivity({
+    type: "medications",
+    title: "Добавлен препарат",
+    body: `${name}${dose ? `, ${dose}` : ""}.`,
+    target: "medications"
+  });
   renderHealthBlocks();
   await lookupMedicationById(id, { silent: true });
 }
@@ -4192,7 +4346,16 @@ function findShotListMedication(name, substanceLabel = "", group = "") {
 }
 
 function removeMedication(id) {
+  const medication = currentMedications().find((item) => item.id === id);
   saveCurrentMedications(currentMedications().filter((item) => item.id !== id));
+  if (medication) {
+    logActivity({
+      type: "medications",
+      title: "Удалён препарат",
+      body: medication.name,
+      target: "medications"
+    });
+  }
   renderHealthBlocks();
   medicationLookupStatus.textContent = "Препарат удалён.";
 }
@@ -4229,6 +4392,7 @@ function confirmPendingMedicationDelete() {
 
 function archiveMedication(id) {
   const today = todayIsoDate();
+  const medication = currentMedications().find((item) => item.id === id);
   const medications = currentMedications().map((item) => item.id === id
     ? enrichMedication({
         ...item,
@@ -4238,11 +4402,20 @@ function archiveMedication(id) {
       })
     : item);
   saveCurrentMedications(medications);
+  if (medication) {
+    logActivity({
+      type: "medications",
+      title: "Препарат перенесён в архив",
+      body: `${medication.name}: курс завершён ${formatDate(medication.endedAt || today)}.`,
+      target: "medications"
+    });
+  }
   medicationLookupStatus.textContent = "Препарат перенесён в архив.";
   renderHealthBlocks();
 }
 
 function restoreMedication(id) {
+  const medication = currentMedications().find((item) => item.id === id);
   const medications = currentMedications().map((item) => item.id === id
     ? enrichMedication({
         ...item,
@@ -4251,6 +4424,14 @@ function restoreMedication(id) {
       })
     : item);
   saveCurrentMedications(medications);
+  if (medication) {
+    logActivity({
+      type: "medications",
+      title: "Препарат возвращён в текущий список",
+      body: medication.name,
+      target: "medications"
+    });
+  }
   medicationLookupStatus.textContent = "Препарат возвращён в текущий список.";
   renderHealthBlocks();
 }
