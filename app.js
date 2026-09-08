@@ -1893,7 +1893,7 @@ function findSourceLine(text, patterns) {
 function addDoctorMedicationsToProfile() {
   const conclusion = currentDoctorConclusion();
   const parsed = conclusion.parsed || { medications: [] };
-  const sync = syncDoctorMedicationsWithDuplicatePrompt(parsed, {
+  const sync = syncDoctorMedicationsToProfile(parsed, {
     doctorConclusionId: conclusion.id,
     recognitionStatus: "confirmed",
     needsConfirmation: false
@@ -1902,15 +1902,11 @@ function addDoctorMedicationsToProfile() {
   logActivity({
     type: "doctor",
     title: "Подтверждён разбор заключения",
-    body: sync.added
-      ? `${sync.added} ${plural(sync.added, "назначение добавлено", "назначения добавлены", "назначений добавлены")} в лекарственный профиль.`
-      : "Все распознанные назначения уже были в лекарственном профиле или пропущены как дубли.",
+    body: medicationSyncSummaryText(sync),
     target: "doctor"
   });
   doctorStatus.className = "file-status";
-  doctorStatus.textContent = sync.added
-    ? `Распознавание подтверждено. Назначения добавлены в лекарственный профиль: ${sync.added}.`
-    : "Распознавание подтверждено. Новых назначений для добавления не найдено.";
+  doctorStatus.textContent = medicationSyncStatusText(sync);
   renderDoctorConclusion();
   renderHealthBlocks();
 }
@@ -1974,6 +1970,7 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
   const doctorConclusionId = options.doctorConclusionId || conclusion.id || createDoctorConclusionId();
   const needsConfirmation = options.needsConfirmation ?? false;
   const recognitionStatus = options.recognitionStatus || (needsConfirmation ? "pending" : "confirmed");
+  const loadedAt = options.loadedAt || new Date().toISOString();
   const additions = (parsed.medications || []).map((item) => enrichMedication({
     id: `med-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name: item.name,
@@ -1984,19 +1981,37 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
     group: item.group,
     sourceName: "doctor conclusion",
     doctorConclusionId,
+    lastLoadedAt: loadedAt,
+    lastDoctorConclusionId: doctorConclusionId,
     recognitionStatus,
     sourceLine: item.sourceLine,
     needsConfirmation
   }));
-  if (!additions.length) return { added: 0, skipped: 0 };
+  if (!additions.length) return { added: 0, updated: 0, skipped: 0, duplicates: [] };
 
   const existing = currentMedications();
   const additionsByKey = new Map(additions.map((item) => [medicationUniqueKey(item), item]));
-  const duplicateKeys = new Set(options.duplicateKeys || []);
   let updated = 0;
+  const duplicateNames = [];
+  const seenKeys = new Set();
   const syncedExisting = existing.map((item) => {
-    const replacement = additionsByKey.get(medicationUniqueKey(item));
-    if (!replacement || !isDoctorConclusionMedication(item, doctorConclusionId)) return item;
+    if (item.archived) return item;
+    const key = medicationUniqueKey(item);
+    const replacement = additionsByKey.get(key);
+    if (!replacement) return item;
+    if (!isDoctorConclusionMedication(item, doctorConclusionId)) {
+      seenKeys.add(key);
+      duplicateNames.push(replacement.name || replacement.substanceLabel || item.name);
+      updated += 1;
+      return enrichMedication({
+        ...item,
+        lastLoadedAt: loadedAt,
+        lastDoctorConclusionId: doctorConclusionId,
+        lastSourceName: "doctor conclusion",
+        lastSourceLine: replacement.sourceLine || item.lastSourceLine || ""
+      });
+    }
+    seenKeys.add(key);
     updated += 1;
     return enrichMedication({
       ...item,
@@ -2008,6 +2023,9 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
       group: replacement.group,
       sourceName: "doctor conclusion",
       doctorConclusionId,
+      lastLoadedAt: loadedAt,
+      lastDoctorConclusionId: doctorConclusionId,
+      lastSourceName: "doctor conclusion",
       recognitionStatus,
       sourceLine: replacement.sourceLine,
       needsConfirmation
@@ -2016,57 +2034,39 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
   const existingKeys = new Set(syncedExisting.filter((item) => !item.archived).map(medicationUniqueKey));
   const fresh = additions.filter((item) => {
     const key = medicationUniqueKey(item);
-    if (existingKeys.has(key) && !options.force && !duplicateKeys.has(key)) return false;
+    if (seenKeys.has(key)) return false;
+    if (existingKeys.has(key) && !options.force) return false;
     existingKeys.add(key);
     return true;
   });
   const merged = [...syncedExisting, ...fresh];
   saveCurrentMedications(merged);
-  return { added: fresh.length, updated, skipped: additions.length - fresh.length };
+  return {
+    added: fresh.length,
+    updated,
+    skipped: additions.length - fresh.length,
+    duplicates: [...new Set(duplicateNames)]
+  };
 }
 
 function medicationUniqueKey(item) {
   return normalizeText(item.substance || item.substanceLabel || item.name || "");
 }
 
-function syncDoctorMedicationsWithDuplicatePrompt(parsed, options = {}) {
-  const doctorConclusionId = options.doctorConclusionId || currentDoctorConclusion().id || "";
-  const duplicateKeys = duplicateDoctorMedicationKeys(parsed, doctorConclusionId);
-  const approvedDuplicateKeys = duplicateKeys.length && confirmDuplicateDoctorMedications(parsed, duplicateKeys)
-    ? duplicateKeys
-    : [];
-  return syncDoctorMedicationsToProfile(parsed, {
-    ...options,
-    duplicateKeys: approvedDuplicateKeys
-  });
+function medicationSyncSummaryText(sync) {
+  const parts = [];
+  if (sync.added) parts.push(`${sync.added} ${plural(sync.added, "назначение добавлено", "назначения добавлены", "назначений добавлены")}`);
+  if (sync.duplicates?.length) parts.push(`${sync.duplicates.length} ${plural(sync.duplicates.length, "дубль отмечен", "дубля отмечены", "дублей отмечены")} как уже загруженные`);
+  return parts.length ? `${parts.join(", ")} в лекарственном профиле.` : "Новых назначений для лекарственного профиля не найдено.";
 }
 
-function duplicateDoctorMedicationKeys(parsed, doctorConclusionId = "") {
-  const incomingKeys = new Set((parsed.medications || []).map(medicationUniqueKey).filter(Boolean));
-  if (!incomingKeys.size) return [];
-  const duplicates = new Set();
-
-  currentMedications().forEach((item) => {
-    const key = medicationUniqueKey(item);
-    if (!key || !incomingKeys.has(key)) return;
-    if (isDoctorConclusionMedication(item, doctorConclusionId)) return;
-    duplicates.add(key);
-  });
-
-  return [...duplicates];
-}
-
-function confirmDuplicateDoctorMedications(parsed, duplicateKeys = []) {
-  const names = (parsed.medications || [])
-    .filter((item) => duplicateKeys.includes(medicationUniqueKey(item)))
-    .map((item) => item.name || item.substanceLabel || item.substance)
-    .filter(Boolean);
-  const list = [...new Set(names)].slice(0, 6).join(", ");
-  const message = list
-    ? `Некоторые назначения уже есть в лекарственном профиле: ${list}. Добавить их повторно как новый курс из этого протокола?`
-    : "Некоторые назначения уже есть в лекарственном профиле. Добавить их повторно как новый курс из этого протокола?";
-  if (typeof window === "undefined" || typeof window.confirm !== "function") return false;
-  return window.confirm(message);
+function medicationSyncStatusText(sync) {
+  if (sync.added && sync.duplicates?.length) {
+    return `Распознавание подтверждено. Добавлено: ${sync.added}. Уже были в профиле и не продублированы: ${sync.duplicates.join(", ")}.`;
+  }
+  if (sync.added) return `Распознавание подтверждено. Назначения добавлены в лекарственный профиль: ${sync.added}.`;
+  if (sync.duplicates?.length) return `Распознавание подтверждено. Эти назначения уже были в профиле и не продублированы: ${sync.duplicates.join(", ")}. Обновлена дата последней загрузки.`;
+  return "Распознавание подтверждено. Новых назначений для добавления не найдено.";
 }
 
 function reconcileDraftDoctorMedications(parsed, options = {}) {
@@ -3211,7 +3211,7 @@ function confirmDoctorReviewItem(type, key) {
     medicationKeys.add(key);
     const medication = (parsed.medications || []).find((item) => doctorMedicationReviewKey(item) === key);
     if (medication) {
-      syncDoctorMedicationsWithDuplicatePrompt({ medications: [medication] }, {
+      syncDoctorMedicationsToProfile({ medications: [medication] }, {
         doctorConclusionId: conclusion.id,
         recognitionStatus: "confirmed",
         needsConfirmation: false
@@ -3224,7 +3224,7 @@ function confirmDoctorReviewItem(type, key) {
   const allAccepted = allDiagnosesAccepted && allMedicationsAccepted && ((parsed.diagnoses || []).length + (parsed.medications || []).length > 0);
 
   if (allAccepted) {
-    syncDoctorMedicationsWithDuplicatePrompt(parsed, {
+    syncDoctorMedicationsToProfile(parsed, {
       doctorConclusionId: conclusion.id,
       recognitionStatus: "confirmed",
       needsConfirmation: false
@@ -4314,23 +4314,73 @@ function saveCurrentMedications(medications) {
   saveCurrentProfileData();
 }
 
+function dedupeCurrentMedicationProfile() {
+  const medications = currentMedications();
+  const activeByKey = new Map();
+  const merged = [];
+  let changed = false;
+
+  for (const item of medications) {
+    const key = medicationUniqueKey(item);
+    if (!key || item.archived || !activeByKey.has(key)) {
+      merged.push(item);
+      if (key && !item.archived) activeByKey.set(key, item.id);
+      continue;
+    }
+
+    changed = true;
+    const primaryId = activeByKey.get(key);
+    const primaryIndex = merged.findIndex((candidate) => candidate.id === primaryId);
+    if (primaryIndex >= 0) merged[primaryIndex] = mergeMedicationDuplicate(merged[primaryIndex], item);
+  }
+
+  if (changed) saveCurrentMedications(merged);
+  return { changed, removed: medications.length - merged.length };
+}
+
+function mergeMedicationDuplicate(primary, duplicate) {
+  const lastLoadedAt = latestMedicationTimestamp(
+    primary.lastLoadedAt,
+    duplicate.lastLoadedAt,
+    primary.archivedAt,
+    duplicate.archivedAt
+  );
+  return enrichMedication({
+    ...primary,
+    dose: primary.dose || duplicate.dose || "",
+    note: primary.note || duplicate.note || "",
+    startedAt: primary.startedAt || duplicate.startedAt || "",
+    endedAt: primary.endedAt || duplicate.endedAt || "",
+    lastLoadedAt,
+    lastDoctorConclusionId: duplicate.lastDoctorConclusionId || duplicate.doctorConclusionId || primary.lastDoctorConclusionId || primary.doctorConclusionId || "",
+    lastSourceName: duplicate.lastSourceName || duplicate.sourceName || primary.lastSourceName || primary.sourceName || "",
+    lastSourceLine: duplicate.lastSourceLine || duplicate.sourceLine || primary.lastSourceLine || primary.sourceLine || ""
+  });
+}
+
+function latestMedicationTimestamp(...values) {
+  return values.filter(Boolean).sort().at(-1) || "";
+}
+
 async function addMedication() {
   const name = medicationName.value.trim();
   if (!name) return;
   const dose = medicationDose.value.trim();
 
   const id = `med-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const medications = [
-    ...currentMedications(),
-    {
-      id,
-      name,
-      dose,
-      startedAt: medicationStart?.value || "",
-      endedAt: medicationEnd?.value || "",
-      note: medicationNote.value.trim()
-    }
-  ];
+  const loadedAt = new Date().toISOString();
+  const candidate = enrichMedication({
+    id,
+    name,
+    dose,
+    startedAt: medicationStart?.value || "",
+    endedAt: medicationEnd?.value || "",
+    note: medicationNote.value.trim(),
+    lastLoadedAt: loadedAt,
+    lastSourceName: "manual"
+  });
+  const existing = currentMedications();
+  const duplicate = existing.find((item) => !item.archived && medicationUniqueKey(item) === medicationUniqueKey(candidate));
   medicationName.value = "";
   medicationDose.value = "";
   if (medicationStart) medicationStart.value = "";
@@ -4338,7 +4388,25 @@ async function addMedication() {
   updateDateInputTone(medicationStart);
   updateDateInputTone(medicationEnd);
   medicationNote.value = "";
-  saveCurrentMedications(medications);
+  if (duplicate) {
+    saveCurrentMedications(existing.map((item) => item.id === duplicate.id
+      ? enrichMedication({
+          ...item,
+          lastLoadedAt: loadedAt,
+          lastSourceName: "manual"
+        })
+      : item));
+    logActivity({
+      type: "medications",
+      title: "Препарат уже был в профиле",
+      body: `${name}: дубль не добавлен, обновлена дата последней загрузки.`,
+      target: "medications"
+    });
+    medicationLookupStatus.textContent = `«${name}» уже есть в лекарственном профиле. Дубль не добавлен, обновлена дата последней загрузки.`;
+    renderHealthBlocks();
+    return;
+  }
+  saveCurrentMedications([...existing, candidate]);
   logActivity({
     type: "medications",
     title: "Добавлен препарат",
@@ -4364,6 +4432,10 @@ function enrichMedication(medication) {
     startedAt: medication.startedAt || medication.startDate || "",
     endedAt: medication.endedAt || medication.endDate || "",
     archivedAt: medication.archivedAt || "",
+    lastLoadedAt: medication.lastLoadedAt || medication.loadedAt || "",
+    lastDoctorConclusionId: medication.lastDoctorConclusionId || "",
+    lastSourceName: medication.lastSourceName || "",
+    lastSourceLine: medication.lastSourceLine || "",
     substance: manualSubstanceLabel || known?.substance || cleanMedicationSubstanceLabel(medication.substance || "") || "",
     substanceLabel,
     manualSubstanceLabel,
@@ -4508,6 +4580,7 @@ function updateMedicationSubstance(id) {
 }
 
 function renderMedicationProfile(signals) {
+  dedupeCurrentMedicationProfile();
   const medications = activeMedications();
   const archive = archivedMedications();
   medicationList.innerHTML = medications.length
@@ -4576,6 +4649,7 @@ function renderMedicationRow(item) {
           <div><dt>Действующее вещество</dt><dd>${medicationSubstanceHtml(item)}</dd></div>
           <div><dt>Дозировка / режим</dt><dd>${escapeHtml(item.dose || "Не указаны")}</dd></div>
           <div><dt>Курс</dt><dd>${escapeHtml(medicationCourseText(item))}</dd></div>
+          ${medicationLastLoadedText(item) ? `<div><dt>Последняя загрузка</dt><dd>${escapeHtml(medicationLastLoadedText(item))}</dd></div>` : ""}
           <div><dt>Комментарий</dt><dd>${escapeHtml(medicationRowNote(item))}</dd></div>
         </dl>
         ${medicationConfirmationHtml(item)}
@@ -4960,6 +5034,15 @@ function medicationCourseText(item) {
   if (item.startedAt) return `С ${formatDate(item.startedAt)}`;
   if (item.endedAt) return `До ${formatDate(item.endedAt)}`;
   return "Сроки не указаны";
+}
+
+function medicationLastLoadedText(item) {
+  if (!item.lastLoadedAt) return "";
+  const source = {
+    "doctor conclusion": "из заключения врача",
+    manual: "вручную"
+  }[item.lastSourceName] || "";
+  return [formatDateTime(item.lastLoadedAt), source].filter(Boolean).join(" · ");
 }
 
 function renderMedicationSignal(signal) {

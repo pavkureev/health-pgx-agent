@@ -316,46 +316,68 @@ context.saveCurrentMedications([
     recognitionStatus: "confirmed"
   }
 ]);
-let duplicatePrompt = "";
-context.window.confirm = (message) => {
-  duplicatePrompt = message;
-  return false;
-};
-const dermatologistSyncSkippedDuplicate = context.syncDoctorMedicationsWithDuplicatePrompt(dermatologistParsed, {
+const dermatologistSyncSkippedDuplicate = context.syncDoctorMedicationsToProfile(dermatologistParsed, {
   doctorConclusionId: "doctor-current",
   recognitionStatus: "confirmed",
-  needsConfirmation: false
+  needsConfirmation: false,
+  loadedAt: "2026-09-09T10:00:00.000Z"
 });
-assert.match(duplicatePrompt, /Плаквенил/, "duplicate prompt should name the existing medication");
-assert.strictEqual(dermatologistSyncSkippedDuplicate.added, 3, "duplicate medication should be skipped when user declines");
+assert.strictEqual(dermatologistSyncSkippedDuplicate.added, 3, "duplicate medication should be skipped on protocol load");
+assert.strictEqual(dermatologistSyncSkippedDuplicate.duplicates.join("|"), "Плаквенил", "duplicate medication should be reported");
 assert.strictEqual(
   context.currentMedications().filter((item) => item.substance === "hydroxychloroquine").length,
   1,
-  "declined duplicate should not create a second course"
+  "duplicate should not create a second course"
 );
+assert.strictEqual(
+  context.currentMedications().find((item) => item.substance === "hydroxychloroquine").lastLoadedAt,
+  "2026-09-09T10:00:00.000Z",
+  "duplicate should update the last loaded timestamp"
+);
+context.saveCurrentMedications([]);
+
 context.saveCurrentMedications([
   {
-    id: "previous-plaquenil",
+    id: "duplicate-plaquenil-a",
     name: "Плаквенил",
     substance: "hydroxychloroquine",
     substanceLabel: "Гидроксихлорохин",
-    sourceName: "doctor conclusion",
-    doctorConclusionId: "doctor-previous",
-    needsConfirmation: false,
-    recognitionStatus: "confirmed"
+    dose: "200 мг",
+    lastLoadedAt: "2026-09-01T10:00:00.000Z"
+  },
+  {
+    id: "duplicate-plaquenil-b",
+    name: "Плаквенил",
+    substance: "hydroxychloroquine",
+    substanceLabel: "Гидроксихлорохин",
+    dose: "200 мг 2 раза в день",
+    lastLoadedAt: "2026-09-09T10:00:00.000Z"
+  },
+  {
+    id: "archived-plaquenil",
+    name: "Плаквенил",
+    substance: "hydroxychloroquine",
+    substanceLabel: "Гидроксихлорохин",
+    archived: true,
+    archivedAt: "2026-08-01T10:00:00.000Z"
   }
 ]);
-context.window.confirm = () => true;
-const dermatologistSyncApprovedDuplicate = context.syncDoctorMedicationsWithDuplicatePrompt(dermatologistParsed, {
-  doctorConclusionId: "doctor-current-2",
-  recognitionStatus: "confirmed",
-  needsConfirmation: false
-});
-assert.strictEqual(dermatologistSyncApprovedDuplicate.added, 4, "approved duplicate should add the whole protocol as a new course set");
+const medicationDedupe = context.dedupeCurrentMedicationProfile();
+assert.strictEqual(medicationDedupe.removed, 1, "active medication duplicates should be collapsed");
 assert.strictEqual(
-  context.currentMedications().filter((item) => item.substance === "hydroxychloroquine").length,
-  2,
-  "approved duplicate should keep both courses"
+  context.currentMedications().filter((item) => item.substance === "hydroxychloroquine" && !item.archived).length,
+  1,
+  "only one active duplicate should remain"
+);
+assert.strictEqual(
+  context.currentMedications().find((item) => item.substance === "hydroxychloroquine" && !item.archived).lastLoadedAt,
+  "2026-09-09T10:00:00.000Z",
+  "collapsed duplicate should keep the latest loaded timestamp"
+);
+assert.strictEqual(
+  context.currentMedications().filter((item) => item.substance === "hydroxychloroquine" && item.archived).length,
+  1,
+  "archived medication courses should not be collapsed with active medications"
 );
 context.saveCurrentMedications([]);
 
