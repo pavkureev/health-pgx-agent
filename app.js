@@ -1731,7 +1731,7 @@ function mergeDoctorMedicationContinuations(lines) {
       current = line;
       continue;
     }
-    if (current && /(\d|раз\/дн|р\/д|внутрь|per os|завтрака|обеда|ужина|длительность|пак|таб|кап)/i.test(line)) {
+    if (current && /(\d|раз\/дн|р\/д|внутрь|per os|завтрака|обеда|ужина|длительность|пак|таб|кап|принимать|во время еды|до еды|после еды|на ночь|утром|вечером)/i.test(line)) {
       current = `${current} ${line}`;
       continue;
     }
@@ -1856,6 +1856,7 @@ function cleanDoctorMedicationLine(line) {
 }
 
 function medicationNameFromSegment(segment, alias, fallback) {
+  if (/^фотозащита\s*:/i.test(segment)) return "Фотозащита";
   const match = segment.match(new RegExp(escapeRegExp(alias), "i"));
   return match?.[0]?.trim() || fallback;
 }
@@ -1868,7 +1869,7 @@ function extractMedicationDose(line, alias) {
     .replace(/^[\s,;:()\-–—]+/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (/\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап|пак)|\b\d+\s*(?:р\/д|раз\/дн|раза?\s+в\s+день)/i.test(doseSource)) {
+  if (/\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап|пак)|\b\d+\s*(?:р\/д|раз\/дн|раза?\s+в\s+день|раза?\s+в\s+неделю)/i.test(doseSource)) {
     return normalizeDoctorRegimen(doseSource);
   }
   const doseMatch = doseSource.match(/(\d+(?:[,.]\d+)?\s*(?:мг|мкг|г|ед|ме|мл|таб|кап)(?:\s*[-–—:]?\s*[^.;,\n]{0,90})?)/i);
@@ -1892,7 +1893,7 @@ function findSourceLine(text, patterns) {
 function addDoctorMedicationsToProfile() {
   const conclusion = currentDoctorConclusion();
   const parsed = conclusion.parsed || { medications: [] };
-  const sync = syncDoctorMedicationsToProfile(parsed, {
+  const sync = syncDoctorMedicationsWithDuplicatePrompt(parsed, {
     doctorConclusionId: conclusion.id,
     recognitionStatus: "confirmed",
     needsConfirmation: false
@@ -1903,13 +1904,13 @@ function addDoctorMedicationsToProfile() {
     title: "Подтверждён разбор заключения",
     body: sync.added
       ? `${sync.added} ${plural(sync.added, "назначение добавлено", "назначения добавлены", "назначений добавлены")} в лекарственный профиль.`
-      : "Все распознанные назначения уже были в лекарственном профиле.",
+      : "Все распознанные назначения уже были в лекарственном профиле или пропущены как дубли.",
     target: "doctor"
   });
   doctorStatus.className = "file-status";
   doctorStatus.textContent = sync.added
     ? `Распознавание подтверждено. Назначения добавлены в лекарственный профиль: ${sync.added}.`
-    : "Распознавание подтверждено. Все распознанные назначения уже есть в лекарственном профиле.";
+    : "Распознавание подтверждено. Новых назначений для добавления не найдено.";
   renderDoctorConclusion();
   renderHealthBlocks();
 }
@@ -1991,6 +1992,7 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
 
   const existing = currentMedications();
   const additionsByKey = new Map(additions.map((item) => [medicationUniqueKey(item), item]));
+  const duplicateKeys = new Set(options.duplicateKeys || []);
   let updated = 0;
   const syncedExisting = existing.map((item) => {
     const replacement = additionsByKey.get(medicationUniqueKey(item));
@@ -2014,7 +2016,7 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
   const existingKeys = new Set(syncedExisting.filter((item) => !item.archived).map(medicationUniqueKey));
   const fresh = additions.filter((item) => {
     const key = medicationUniqueKey(item);
-    if (existingKeys.has(key) && !options.force) return false;
+    if (existingKeys.has(key) && !options.force && !duplicateKeys.has(key)) return false;
     existingKeys.add(key);
     return true;
   });
@@ -2025,6 +2027,46 @@ function syncDoctorMedicationsToProfile(parsed, options = {}) {
 
 function medicationUniqueKey(item) {
   return normalizeText(item.substance || item.substanceLabel || item.name || "");
+}
+
+function syncDoctorMedicationsWithDuplicatePrompt(parsed, options = {}) {
+  const doctorConclusionId = options.doctorConclusionId || currentDoctorConclusion().id || "";
+  const duplicateKeys = duplicateDoctorMedicationKeys(parsed, doctorConclusionId);
+  const approvedDuplicateKeys = duplicateKeys.length && confirmDuplicateDoctorMedications(parsed, duplicateKeys)
+    ? duplicateKeys
+    : [];
+  return syncDoctorMedicationsToProfile(parsed, {
+    ...options,
+    duplicateKeys: approvedDuplicateKeys
+  });
+}
+
+function duplicateDoctorMedicationKeys(parsed, doctorConclusionId = "") {
+  const incomingKeys = new Set((parsed.medications || []).map(medicationUniqueKey).filter(Boolean));
+  if (!incomingKeys.size) return [];
+  const duplicates = new Set();
+
+  currentMedications().forEach((item) => {
+    const key = medicationUniqueKey(item);
+    if (!key || !incomingKeys.has(key)) return;
+    if (isDoctorConclusionMedication(item, doctorConclusionId)) return;
+    duplicates.add(key);
+  });
+
+  return [...duplicates];
+}
+
+function confirmDuplicateDoctorMedications(parsed, duplicateKeys = []) {
+  const names = (parsed.medications || [])
+    .filter((item) => duplicateKeys.includes(medicationUniqueKey(item)))
+    .map((item) => item.name || item.substanceLabel || item.substance)
+    .filter(Boolean);
+  const list = [...new Set(names)].slice(0, 6).join(", ");
+  const message = list
+    ? `Некоторые назначения уже есть в лекарственном профиле: ${list}. Добавить их повторно как новый курс из этого протокола?`
+    : "Некоторые назначения уже есть в лекарственном профиле. Добавить их повторно как новый курс из этого протокола?";
+  if (typeof window === "undefined" || typeof window.confirm !== "function") return false;
+  return window.confirm(message);
 }
 
 function reconcileDraftDoctorMedications(parsed, options = {}) {
@@ -3169,7 +3211,7 @@ function confirmDoctorReviewItem(type, key) {
     medicationKeys.add(key);
     const medication = (parsed.medications || []).find((item) => doctorMedicationReviewKey(item) === key);
     if (medication) {
-      syncDoctorMedicationsToProfile({ medications: [medication] }, {
+      syncDoctorMedicationsWithDuplicatePrompt({ medications: [medication] }, {
         doctorConclusionId: conclusion.id,
         recognitionStatus: "confirmed",
         needsConfirmation: false
@@ -3182,7 +3224,7 @@ function confirmDoctorReviewItem(type, key) {
   const allAccepted = allDiagnosesAccepted && allMedicationsAccepted && ((parsed.diagnoses || []).length + (parsed.medications || []).length > 0);
 
   if (allAccepted) {
-    syncDoctorMedicationsToProfile(parsed, {
+    syncDoctorMedicationsWithDuplicatePrompt(parsed, {
       doctorConclusionId: conclusion.id,
       recognitionStatus: "confirmed",
       needsConfirmation: false

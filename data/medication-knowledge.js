@@ -96,6 +96,30 @@ window.PGX_MEDICATION_KNOWLEDGE = [
       group: "mucosal_protective"
     },
     {
+      substance: "tacrolimus-topical",
+      label: "Такролимус местный",
+      aliases: ["протопик", "protopic", "такролимус мазь", "такролимус местно", "tacrolimus topical"],
+      group: "topical_immunomodulator"
+    },
+    {
+      substance: "hydroxychloroquine",
+      label: "Гидроксихлорохин",
+      aliases: ["плаквенил", "plaquenil", "гидроксихлорохин", "hydroxychloroquine"],
+      group: "dmard"
+    },
+    {
+      substance: "photoprotection-spf",
+      label: "Фотозащита SPF",
+      aliases: ["фотозащита", "антгелиос", "anthelios", "фотодерм", "photoderm", "виши невесомый флюид", "vichy sunscreen"],
+      group: "photoprotection"
+    },
+    {
+      substance: "ketoconazole-shampoo",
+      label: "Кетоконазол шампунь",
+      aliases: ["кето+", "кето плюс", "кетоконазол шампунь", "ketoconazole shampoo"],
+      group: "antifungal_shampoo"
+    },
+    {
       substance: "ibuprofen",
       label: "Ибупрофен",
       aliases: ["ибупрофен", "ibuprofen", "нурофен", "эврофаст", "миг", "ибуклин"],

@@ -264,6 +264,101 @@ assert.ok(
   "real extracted esomeprazole regimen should stay attached"
 );
 
+const dermatologistProtocol = `
+Пациент отмечает, что ранее использовал другие наружные средства, сейчас они не назначены.
+Заключение:
+Дерматит, требуется очное наблюдение у дерматовенеролога.
+
+Рекомендации:
+-Протопик 0,1 % мазь 2 раза в день, 30 дней.
+-Плаквенил 200 мг, по 1 таб 2 раза в день, 30 дней.
+Принимать во время еды.
+-Фотозащита: Антгелиос невесомый флюид или Фотодерм аквафлюид или Виши невесомый флюид солнцезащитный
+Себорейный дерматит: Кето+ шампунь 3 раза в неделю на кожу вч головы (нанести, вспенить, смыть через 3-5 минут) в течение месяца.
+`;
+const dermatologistParsed = context.parseDoctorConclusion(dermatologistProtocol);
+assert.strictEqual(
+  dermatologistParsed.medications.map((item) => item.name).join("|"),
+  ["Протопик", "Плаквенил", "Фотозащита", "Кето+"].join("|"),
+  "dermatologist protocol should detect new active prescriptions"
+);
+assert.ok(
+  dermatologistParsed.medications.find((item) => item.name === "Протопик").dose.includes("0,1 % мазь 2 раза в день"),
+  "Protopic regimen should stay attached"
+);
+assert.ok(
+  dermatologistParsed.medications.find((item) => item.name === "Плаквенил").dose.includes("200мг, по 1 таб 2 раза в день"),
+  "Plaquenil regimen should stay attached"
+);
+assert.ok(
+  dermatologistParsed.medications.find((item) => item.name === "Плаквенил").dose.includes("Принимать во время еды"),
+  "separate Plaquenil food instruction should stay attached"
+);
+assert.ok(
+  dermatologistParsed.medications.find((item) => item.name === "Кето+").dose.includes("3 раза в неделю"),
+  "Keto+ shampoo regimen should stay attached"
+);
+assert.strictEqual(
+  dermatologistParsed.medications.find((item) => item.name === "Фотозащита").substanceLabel,
+  "Фотозащита SPF",
+  "photoprotection should stay grouped as a care recommendation"
+);
+
+context.saveCurrentMedications([
+  {
+    id: "previous-plaquenil",
+    name: "Плаквенил",
+    substance: "hydroxychloroquine",
+    substanceLabel: "Гидроксихлорохин",
+    sourceName: "doctor conclusion",
+    doctorConclusionId: "doctor-previous",
+    needsConfirmation: false,
+    recognitionStatus: "confirmed"
+  }
+]);
+let duplicatePrompt = "";
+context.window.confirm = (message) => {
+  duplicatePrompt = message;
+  return false;
+};
+const dermatologistSyncSkippedDuplicate = context.syncDoctorMedicationsWithDuplicatePrompt(dermatologistParsed, {
+  doctorConclusionId: "doctor-current",
+  recognitionStatus: "confirmed",
+  needsConfirmation: false
+});
+assert.match(duplicatePrompt, /Плаквенил/, "duplicate prompt should name the existing medication");
+assert.strictEqual(dermatologistSyncSkippedDuplicate.added, 3, "duplicate medication should be skipped when user declines");
+assert.strictEqual(
+  context.currentMedications().filter((item) => item.substance === "hydroxychloroquine").length,
+  1,
+  "declined duplicate should not create a second course"
+);
+context.saveCurrentMedications([
+  {
+    id: "previous-plaquenil",
+    name: "Плаквенил",
+    substance: "hydroxychloroquine",
+    substanceLabel: "Гидроксихлорохин",
+    sourceName: "doctor conclusion",
+    doctorConclusionId: "doctor-previous",
+    needsConfirmation: false,
+    recognitionStatus: "confirmed"
+  }
+]);
+context.window.confirm = () => true;
+const dermatologistSyncApprovedDuplicate = context.syncDoctorMedicationsWithDuplicatePrompt(dermatologistParsed, {
+  doctorConclusionId: "doctor-current-2",
+  recognitionStatus: "confirmed",
+  needsConfirmation: false
+});
+assert.strictEqual(dermatologistSyncApprovedDuplicate.added, 4, "approved duplicate should add the whole protocol as a new course set");
+assert.strictEqual(
+  context.currentMedications().filter((item) => item.substance === "hydroxychloroquine").length,
+  2,
+  "approved duplicate should keep both courses"
+);
+context.saveCurrentMedications([]);
+
 context.saveCurrentMedications([
   {
     id: "old-doctor-omeprazole",
