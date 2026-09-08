@@ -3776,7 +3776,7 @@ function renderNowActionCard(action) {
         <strong>${escapeHtml(action.title)}</strong>
         <span>${escapeHtml(action.body)}</span>
       </div>
-      <button class="${action.priority ? "primary-button" : "secondary-button"}" type="button" data-now-target="${escapeHtml(action.target)}">${escapeHtml(action.cta)}</button>
+      <button class="secondary-button now-action-button" type="button" data-now-target="${escapeHtml(action.target)}">${escapeHtml(action.cta)}</button>
     </article>
   `;
 }
@@ -3838,6 +3838,8 @@ function formatActivityDate(value) {
 function appNavigationIcon(name, className = "summary-icon") {
   const tabName = {
     now: "now",
+    file: "doctor",
+    doctor: "doctor",
     labs: "labs",
     genetics: "genetics",
     medications: "medications"

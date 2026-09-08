@@ -517,6 +517,10 @@ h2 {
   --icon-url: url("./assets/icons/genetics.svg");
 }
 
+.ui-icon-doctor {
+  --icon-url: url("./assets/icons/doctor.svg");
+}
+
 .ui-icon-medications {
   --icon-url: url("./assets/icons/medications.svg");
 }
@@ -621,6 +625,11 @@ h2 {
   display: inline-block;
   margin-top: 0;
   color: inherit;
+}
+
+.now-action-card .now-action-button {
+  flex: 0 0 auto;
+  min-width: 86px;
 }
 
 .now-action-icon .ui-icon-genetics {
