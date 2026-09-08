@@ -26,6 +26,8 @@
 - `supabase/functions/sync-shot-list/index.ts` — Edge Function для обновления `medication_evidence_flags`.
 - `supabase/functions/sync-shot-list/parser.ts` — parser v2 для raw wikitext страницы “расстрельного списка”.
 - `supabase/migrations/` — SQL схема.
+- `tests/smoke-prod.mjs` — production smoke monitoring для доступности, assets, auth config и основных сценариев.
+- `scripts/send-daily-smoke-report.sh` — отправка ежедневного smoke-отчёта на email с сервера.
 - `.github/workflows/deploy.yml` — CI/CD деплой статики и функций.
 - `.github/workflows/sync-shot-list.yml` — ручной запуск синхронизации evidence flags.
 
@@ -75,7 +77,12 @@ GitHub → Actions → `Sync shot list` → `Run workflow`.
 
 ```bash
 npm test
+npm run smoke:prod
 ```
+
+На сервере можно поставить cron: запускать `npm run smoke:prod` два раза в
+сутки, а `npm run smoke:prod:email` один раз в сутки для письма на
+`pkureev@gmail.com`.
 
 ## Важные правила
 

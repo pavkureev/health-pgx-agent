@@ -4,6 +4,7 @@
 
 ```bash
 npm test
+npm run smoke:prod
 ```
 
 Open `index.html` directly or use the deployed URL.
@@ -66,6 +67,38 @@ Expected successful response:
 
 ```json
 {"synced":257,"parsed":269,"groupRules":4,"seedRules":12,"parserVersion":"v2"}
+```
+
+## Production smoke monitoring
+
+MVP monitoring lives in `tests/smoke-prod.mjs` and checks:
+
+- production page availability;
+- static JS/CSS/SVG assets;
+- Supabase email auth settings for registration/login;
+- core local scenarios: doctor protocol upload, lab upload, medication add,
+  Genotek VCF upload.
+
+Run manually:
+
+```bash
+npm run smoke:prod
+```
+
+Send one daily email report to `pkureev@gmail.com`:
+
+```bash
+npm run smoke:prod:email
+```
+
+The email script uses `mail`, `mailx`, or `sendmail`, so the server must have
+one of them configured for outbound email.
+
+Suggested server cron: run checks twice a day and email the daily report once:
+
+```cron
+0 9 * * * cd /var/www/health-pgx-agent && npm run smoke:prod >> var/smoke/smoke-$(date +\%F).log 2>&1
+0 21 * * * cd /var/www/health-pgx-agent && SMOKE_REPORT_EMAIL=pkureev@gmail.com npm run smoke:prod:email >> var/smoke/cron-$(date +\%F).log 2>&1
 ```
 
 ## Server fallback

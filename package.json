@@ -1,5 +1,7 @@
 {
   "scripts": {
-    "test": "node tests/lab-parser.test.js && node tests/profile-storage.test.js && node tests/shot-list-parser.test.js && node tests/doctor-conclusion.test.js && node tests/pgx-rules.test.js"
+    "test": "node tests/lab-parser.test.js && node tests/profile-storage.test.js && node tests/shot-list-parser.test.js && node tests/doctor-conclusion.test.js && node tests/pgx-rules.test.js",
+    "smoke:prod": "node tests/smoke-prod.mjs",
+    "smoke:prod:email": "bash scripts/send-daily-smoke-report.sh"
   }
 }
