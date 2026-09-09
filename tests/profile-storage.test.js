@@ -147,6 +147,11 @@ assert.strictEqual(
   "Загружено заключение врача",
   "activity log should keep recent profile events"
 );
+context.logActivity({
+  type: "update",
+  title: "Фоновое обновление",
+  body: "Без точного места назначения."
+});
 context.renderNowActions();
 assert.match(
   el("#nowActions").innerHTML,
@@ -177,6 +182,16 @@ assert.match(
   el("#nowActions").innerHTML,
   /Генетический профиль/,
   "activity history should group genetic uploads"
+);
+assert.match(
+  el("#nowActions").innerHTML,
+  /class="now-history-item is-static"/,
+  "activity entries without a reliable target should render as plain history rows"
+);
+assert.doesNotMatch(
+  el("#nowActions").innerHTML,
+  /data-now-target="now"/,
+  "history entries should not fall back to a vague now-tab click target"
 );
 
 console.log("profile storage tests passed");

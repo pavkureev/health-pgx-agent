@@ -3827,16 +3827,24 @@ function renderNowActivityGroups(activities) {
 }
 
 function renderNowActivityItem(item) {
-  return `
-    <button class="now-history-item" type="button" data-now-target="${escapeHtml(item.target || "now")}">
-      <span class="now-history-icon">${appNavigationIcon(activityIconName(item.type), "summary-icon")}</span>
-      <span>
-        <strong>${escapeHtml(item.title || "Обновление")}</strong>
-        ${item.body ? `<small>${escapeHtml(item.body)}</small>` : ""}
-      </span>
-      <time datetime="${escapeHtml(item.createdAt || "")}">${escapeHtml(formatActivityDate(item.createdAt))}</time>
-    </button>
+  const target = actionableActivityTarget(item.target);
+  const content = `
+    <span class="now-history-icon">${appNavigationIcon(activityIconName(item.type), "summary-icon")}</span>
+    <span>
+      <strong>${escapeHtml(item.title || "Обновление")}</strong>
+      ${item.body ? `<small>${escapeHtml(item.body)}</small>` : ""}
+    </span>
+    <time datetime="${escapeHtml(item.createdAt || "")}">${escapeHtml(formatActivityDate(item.createdAt))}</time>
   `;
+  if (!target) return `<div class="now-history-item is-static">${content}</div>`;
+  return `
+    <button class="now-history-item is-clickable" type="button" data-now-target="${escapeHtml(target)}">${content}</button>
+  `;
+}
+
+function actionableActivityTarget(target) {
+  const normalized = String(target || "").trim();
+  return ["doctor", "labs", "genetics", "medications"].includes(normalized) ? normalized : "";
 }
 
 function activityTypeOrder() {

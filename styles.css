@@ -423,7 +423,11 @@ h2 {
   text-align: left;
 }
 
-.now-history-item:hover {
+.now-history-item.is-clickable {
+  cursor: pointer;
+}
+
+.now-history-item.is-clickable:hover {
   color: var(--accent-strong);
 }
 
