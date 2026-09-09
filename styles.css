@@ -333,50 +333,116 @@ h2 {
   background: #fff;
 }
 
-.now-history-card .section-title {
-  margin-bottom: 0;
+.now-history-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
 }
 
-.now-history-card .section-title p {
+.now-history-summary::-webkit-details-marker {
+  display: none;
+}
+
+.now-history-card[open] .archive-toggle {
+  border-color: rgba(14, 124, 123, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.now-history-card[open] .archive-chevron {
+  transform: rotate(180deg);
+}
+
+.now-history-summary h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.now-history-summary p {
   margin-top: 3px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
 }
 
-.now-history-list {
+.now-history-groups {
   display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.now-history-group {
+  display: grid;
+  gap: 5px;
+}
+
+.now-history-group h4 {
+  display: inline-flex;
   gap: 6px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.now-history-list {
+  position: relative;
+  display: grid;
+  gap: 0;
+  padding-left: 9px;
+}
+
+.now-history-list::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 13px;
+  width: 1px;
+  background: var(--line);
 }
 
 .now-history-item {
+  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   width: 100%;
-  min-height: 44px;
-  padding: 7px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
+  min-height: 34px;
+  padding: 4px 0 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
   text-align: left;
 }
 
 .now-history-item:hover {
-  border-color: rgba(14, 124, 123, 0.24);
-  background: #fff;
+  color: var(--accent-strong);
 }
 
 .now-history-icon {
+  position: relative;
+  z-index: 1;
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--accent-soft);
+  width: 10px;
+  height: 10px;
+  margin-left: 0;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  background: #fff;
   color: var(--accent);
+}
+
+.now-history-icon .ui-icon {
+  display: none;
 }
 
 .now-history-item strong,

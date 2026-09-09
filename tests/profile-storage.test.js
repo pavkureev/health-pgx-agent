@@ -130,8 +130,20 @@ context.logActivity({
   body: "2 диагноза, 4 назначения.",
   target: "doctor"
 });
+context.logActivity({
+  type: "labs",
+  title: "Загружены анализы",
+  body: "3 показателя.",
+  target: "labs"
+});
+context.logActivity({
+  type: "genetics",
+  title: "Загружен генетический профиль",
+  body: "2 маркера.",
+  target: "genetics"
+});
 assert.strictEqual(
-  context.currentActivityLog()[0].title,
+  context.currentActivityLog()[2].title,
   "Загружено заключение врача",
   "activity log should keep recent profile events"
 );
@@ -140,6 +152,31 @@ assert.match(
   el("#nowActions").innerHTML,
   /Добавить протокол посещения врача/,
   "now tab should always expose doctor protocol upload"
+);
+assert.match(
+  el("#nowActions").innerHTML,
+  /<details class="now-history-card"/,
+  "activity history should be collapsed by default"
+);
+assert.doesNotMatch(
+  el("#nowActions").innerHTML,
+  /<details class="now-history-card"[^>]*open/,
+  "activity history should not render open by default"
+);
+assert.match(
+  el("#nowActions").innerHTML,
+  /Протоколы посещений/,
+  "activity history should group doctor protocols"
+);
+assert.match(
+  el("#nowActions").innerHTML,
+  /Результаты анализов/,
+  "activity history should group lab uploads"
+);
+assert.match(
+  el("#nowActions").innerHTML,
+  /Генетический профиль/,
+  "activity history should group genetic uploads"
 );
 
 console.log("profile storage tests passed");

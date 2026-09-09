@@ -3792,19 +3792,38 @@ function openNowTarget(target) {
 function renderNowActivityLog() {
   const activities = currentActivityLog().slice(0, 7);
   return `
-    <section class="now-history-card" aria-label="История загрузок">
-      <div class="section-title">
+    <details class="now-history-card" aria-label="История загрузок">
+      <summary class="now-history-summary">
         <div>
           <h3>История загрузок</h3>
           <p>Последние действия, чтобы быстро восстановить контекст после паузы.</p>
         </div>
-        <span class="mini-counter">${activities.length}</span>
-      </div>
+        <span class="archive-toggle" aria-hidden="true">
+          <span class="archive-count">${activities.length}</span>
+          <span class="archive-chevron">⌄</span>
+        </span>
+      </summary>
       ${activities.length
-        ? `<div class="now-history-list">${activities.map(renderNowActivityItem).join("")}</div>`
+        ? `<div class="now-history-groups">${renderNowActivityGroups(activities)}</div>`
         : `<p class="file-status">История появится после загрузки заключений, анализов, генетики или лекарств.</p>`}
-    </section>
+    </details>
   `;
+}
+
+function renderNowActivityGroups(activities) {
+  return activityTypeOrder()
+    .map((type) => {
+      const items = activities.filter((item) => activityGroupType(item.type) === type);
+      if (!items.length) return "";
+      const meta = activityTypeMeta(type);
+      return `
+        <section class="now-history-group" aria-label="${escapeHtml(meta.label)}">
+          <h4>${appNavigationIcon(meta.icon, "summary-icon")}${escapeHtml(meta.label)}</h4>
+          <div class="now-history-list">${items.map(renderNowActivityItem).join("")}</div>
+        </section>
+      `;
+    })
+    .join("");
 }
 
 function renderNowActivityItem(item) {
@@ -3820,9 +3839,27 @@ function renderNowActivityItem(item) {
   `;
 }
 
+function activityTypeOrder() {
+  return ["doctor", "labs", "genetics", "medications", "other"];
+}
+
+function activityGroupType(type) {
+  return activityTypeOrder().includes(type) ? type : "other";
+}
+
+function activityTypeMeta(type) {
+  return {
+    doctor: { label: "Протоколы посещений", icon: "doctor" },
+    labs: { label: "Результаты анализов", icon: "labs" },
+    genetics: { label: "Генетический профиль", icon: "genetics" },
+    medications: { label: "Лекарственный профиль", icon: "medications" },
+    other: { label: "Другие действия", icon: "now" }
+  }[type] || { label: "Другие действия", icon: "now" };
+}
+
 function activityIconName(type) {
   return {
-    doctor: "file",
+    doctor: "doctor",
     genetics: "genetics",
     labs: "labs",
     medications: "medications"
