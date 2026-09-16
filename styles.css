@@ -2440,6 +2440,35 @@ button {
   padding: 0 14px;
 }
 
+.button-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  opacity: 0.82;
+  animation: button-spin 760ms linear infinite;
+}
+
+button[aria-busy="true"] {
+  cursor: progress;
+}
+
+button:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+button[aria-busy="true"]:disabled {
+  cursor: progress;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .primary-button {
   flex: 1;
   background: linear-gradient(180deg, #13908e 0%, var(--accent) 100%);

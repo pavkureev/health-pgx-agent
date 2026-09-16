@@ -33,8 +33,10 @@ const geneCounter = document.querySelector("#geneCounter");
 const vcfFile = document.querySelector("#vcfFile");
 const fileStatus = document.querySelector("#fileStatus");
 const labFiles = document.querySelector("#labFiles");
+const loadLabsButton = document.querySelector("#loadLabs");
 const labStatus = document.querySelector("#labStatus");
 const labText = document.querySelector("#labText");
+const parseLabTextButton = document.querySelector("#parseLabText");
 const labCounter = document.querySelector("#labCounter");
 const labSummary = document.querySelector("#labSummary");
 const labInsights = document.querySelector("#labInsights");
@@ -1058,39 +1060,47 @@ async function loadLabFiles() {
     return;
   }
 
-  const added = [];
-  const failed = [];
-  const diagnostics = [];
+  setButtonLoading(loadLabsButton, true, "Разбираем");
+  labStatus.className = "file-status";
+  labStatus.textContent = `Взято в обработку: ${files.length} ${plural(files.length, "файл", "файла", "файлов")}.`;
 
-  for (const file of files) {
-    try {
-      const text = await extractTextFromFile(file);
-      const record = parseLabReport(text, file.name, file.lastModified);
-      if (record.values.length) {
-        added.push(record);
-      } else {
+  try {
+    const added = [];
+    const failed = [];
+    const diagnostics = [];
+
+    for (const file of files) {
+      try {
+        const text = await extractTextFromFile(file);
+        const record = parseLabReport(text, file.name, file.lastModified);
+        if (record.values.length) {
+          added.push(record);
+        } else {
+          failed.push(file.name);
+          diagnostics.push(buildLabDiagnostic(file.name, text));
+        }
+      } catch (error) {
         failed.push(file.name);
-        diagnostics.push(buildLabDiagnostic(file.name, text));
+        diagnostics.push({
+          fileName: file.name,
+          status: "Не удалось прочитать PDF/текст",
+          details: error.message || "unknown error",
+          preview: ""
+        });
       }
-    } catch (error) {
-      failed.push(file.name);
-      diagnostics.push({
-        fileName: file.name,
-        status: "Не удалось прочитать PDF/текст",
-        details: error.message || "unknown error",
-        preview: ""
-      });
     }
+
+    const resolution = added.length ? await addLabRecordsWithConflictResolution(added) : { addedCount: 0 };
+
+    labStatus.className = failed.length && !added.length ? "file-status error" : "file-status";
+    labStatus.textContent = [
+      formatLabUploadStatus(resolution, "отчет"),
+      failed.length ? `Не разобрано: ${failed.join(", ")}.` : ""
+    ].filter(Boolean).join(" ");
+    renderLabDiagnostics(diagnostics);
+  } finally {
+    setButtonLoading(loadLabsButton, false);
   }
-
-  const resolution = added.length ? await addLabRecordsWithConflictResolution(added) : { addedCount: 0 };
-
-  labStatus.className = failed.length && !added.length ? "file-status error" : "file-status";
-  labStatus.textContent = [
-    formatLabUploadStatus(resolution, "отчет"),
-    failed.length ? `Не разобрано: ${failed.join(", ")}.` : ""
-  ].filter(Boolean).join(" ");
-  renderLabDiagnostics(diagnostics);
 }
 
 async function extractTextFromFile(file) {
@@ -1205,17 +1215,41 @@ async function addLabText() {
     return;
   }
 
-  const record = parseLabReport(labText.value, "Ручная вставка", Date.now());
-  if (!record.values.length) {
-    labStatus.className = "file-status error";
-    labStatus.textContent = "Не удалось найти поддерживаемые показатели в тексте.";
+  setButtonLoading(parseLabTextButton, true, "Добавляем");
+  labStatus.className = "file-status";
+  labStatus.textContent = "Текст анализа взят в обработку.";
+
+  try {
+    const record = parseLabReport(labText.value, "Ручная вставка", Date.now());
+    if (!record.values.length) {
+      labStatus.className = "file-status error";
+      labStatus.textContent = "Не удалось найти поддерживаемые показатели в тексте.";
+      return;
+    }
+
+    const resolutionResult = addLabRecordsWithConflictResolution([record]);
+    const resolution = resolutionResult instanceof Promise ? await resolutionResult : resolutionResult;
+    labStatus.className = "file-status";
+    labStatus.textContent = formatLabUploadStatus(resolution, "показатель", record.values.length);
+  } finally {
+    setButtonLoading(parseLabTextButton, false);
+  }
+}
+
+function setButtonLoading(button, loading, label = "Обрабатываем") {
+  if (!button) return;
+  if (loading) {
+    button.__idleHtml = button.__idleHtml || button.innerHTML;
+    button.disabled = true;
+    button.setAttribute?.("aria-busy", "true");
+    button.innerHTML = `<span class="button-spinner" aria-hidden="true"></span><span>${escapeHtml(label)}</span>`;
     return;
   }
 
-  const resolutionResult = addLabRecordsWithConflictResolution([record]);
-  const resolution = resolutionResult instanceof Promise ? await resolutionResult : resolutionResult;
-  labStatus.className = "file-status";
-  labStatus.textContent = formatLabUploadStatus(resolution, "показатель", record.values.length);
+  button.disabled = false;
+  button.removeAttribute?.("aria-busy");
+  if (button.__idleHtml) button.innerHTML = button.__idleHtml;
+  button.__idleHtml = "";
 }
 
 function addLabRecordsWithConflictResolution(incomingRecords) {
