@@ -62,6 +62,7 @@ const profileSelect = document.querySelector("#profileSelect");
 const profileName = document.querySelector("#profileName");
 const profileCounter = document.querySelector("#profileCounter");
 const profileStatus = document.querySelector("#profileStatus");
+const refreshCloudProfileButton = document.querySelector("#refreshCloudProfile");
 const profileJump = document.querySelector(".profile-jump");
 const profileJumpLabel = document.querySelector("#profileJumpLabel");
 const loadSampleButton = document.querySelector("#loadSample");
@@ -173,6 +174,7 @@ loadSampleButton?.addEventListener("click", () => {
 
 document.querySelector("#createProfile").addEventListener("click", createProfile);
 document.querySelector("#deleteProfile").addEventListener("click", deleteActiveProfile);
+refreshCloudProfileButton.addEventListener("click", refreshCloudProfile);
 document.querySelector("#signIn").addEventListener("click", signIn);
 document.querySelector("#signOut").addEventListener("click", signOut);
 document.querySelector("#anotherEmail").addEventListener("click", resetMagicLinkForm);
@@ -576,7 +578,7 @@ async function loadCloudProfiles() {
   if (!profiles.some((profile) => profile.id === activeProfileId)) {
     activeProfileId = profiles[0].id;
   }
-  await loadCloudProfileDetails(activeProfileId);
+  await Promise.all(profiles.map((profile) => loadCloudProfileDetails(profile.id)));
   saveProfiles();
   applyActiveProfile();
 }
@@ -798,7 +800,7 @@ async function saveCloudProfileMetadata() {
 
 function renderProfiles() {
   profileSelect.innerHTML = profiles
-    .map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name)}</option>`)
+    .map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profileOptionLabel(profile))}</option>`)
     .join("");
   profileSelect.value = activeProfileId;
   profileCounter.textContent = `${profiles.length} ${plural(profiles.length, "профиль", "профиля", "профилей")}`;
@@ -806,6 +808,12 @@ function renderProfiles() {
     ? `Активен: ${getActiveProfile().name}. Данные сохраняются в Supabase.`
     : `Активен: ${getActiveProfile().name}. Данные сохраняются локально в этом профиле.`;
   renderWelcome();
+}
+
+function profileOptionLabel(profile) {
+  const labCount = Array.isArray(profile?.labRecords) ? profile.labRecords.length : 0;
+  if (!cloudReady || !labCount) return profile.name;
+  return `${profile.name} · ${labCount} ${plural(labCount, "отчет", "отчета", "отчетов")}`;
 }
 
 function applyActiveProfile() {
@@ -909,6 +917,29 @@ async function switchProfile() {
   if (cloudReady) await loadCloudProfileDetails(activeProfileId);
   saveProfiles();
   applyActiveProfile();
+}
+
+async function refreshCloudProfile() {
+  if (!cloudReady) {
+    profileStatus.textContent = "Сначала войдите в аккаунт, чтобы подтянуть данные из Supabase.";
+    return;
+  }
+
+  refreshCloudProfileButton.disabled = true;
+  refreshCloudProfileButton.textContent = "Обновляем...";
+  profileStatus.textContent = "Заново загружаю профили, анализы и генетику из Supabase.";
+
+  try {
+    await loadCloudProfiles();
+    const profile = getActiveProfile();
+    const valueCount = (profile.labRecords || []).reduce((sum, record) => sum + (record.values || []).length, 0);
+    profileStatus.textContent = `Данные обновлены из Supabase: ${profile.labRecords?.length || 0} ${plural(profile.labRecords?.length || 0, "отчет", "отчета", "отчетов")} и ${valueCount} ${plural(valueCount, "показатель", "показателя", "показателей")}.`;
+  } catch (error) {
+    profileStatus.textContent = `Не удалось обновить данные из Supabase: ${error.message || "неизвестная ошибка"}.`;
+  } finally {
+    refreshCloudProfileButton.disabled = false;
+    refreshCloudProfileButton.textContent = "Обновить из Supabase";
+  }
 }
 
 function createId() {
