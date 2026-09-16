@@ -278,7 +278,9 @@ assert.match(helixCbcRows.options, /value="platelets"/, "platelets should be ava
 assert.match(helixCbcRows.options, /value="esr"/, "ESR should be available in metric dropdown");
 assert.match(helixCbcRows.metricList, /Клинический анализ крови/, "CBC metrics should be grouped");
 assert.match(helixCbcRows.metricList, /Лейкоцитарная формула/, "white blood cell formula metrics should be grouped");
-assert.match(helixCbcRows.metricList, /последняя загрузка/, "latest upload metrics should be marked");
+assert.match(helixCbcRows.metricList, /<details class="metric-group"/, "metric groups should be collapsible");
+assert.match(helixCbcRows.metricList, /latest-upload-dot/, "latest upload metrics should be marked with a dot");
+assert.doesNotMatch(helixCbcRows.metricList, /последняя загрузка/, "latest upload marker should not add noisy text");
 
 const tshFirstResult = `
 Зарегистрирован: 04.06.2026 08:48:00

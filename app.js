@@ -3369,15 +3369,19 @@ function renderLabMetricList(metrics, selectedKey) {
   const latest = latestLabValues();
   const updatedKeys = lastLabUploadKeys();
   const groups = groupLabMetrics(metrics);
-  return groups.map((group) => `
-    <section class="metric-group" aria-label="${escapeHtml(group.label)}">
-      <div class="metric-group-heading">
-        <strong>${escapeHtml(group.label)}</strong>
+  return groups.map((group) => {
+    const updated = groupContainsUpdatedLabMetric(group, updatedKeys);
+    const open = updated || group.metrics.some((metric) => metric.key === selectedKey);
+    return `
+    <details class="metric-group" ${open ? "open" : ""}>
+      <summary class="metric-group-heading">
+        <strong>${escapeHtml(group.label)}${updated ? renderLatestUploadDot() : ""}</strong>
         <span>${group.metrics.length}</span>
-      </div>
+      </summary>
       ${group.metrics.map((metric) => renderLabMetricOption(metric, selectedKey, counts, latest, updatedKeys)).join("")}
-    </section>
-  `).join("");
+    </details>
+  `;
+  }).join("");
 }
 
 function renderLabMetricOption(metric, selectedKey, counts, latest, updatedKeys) {
@@ -3391,7 +3395,7 @@ function renderLabMetricOption(metric, selectedKey, counts, latest, updatedKeys)
       <label class="metric-option ${updated ? "is-updated" : ""}">
         <input type="radio" name="labMetricRadio" value="${escapeHtml(metric.key)}" data-lab-metric ${metric.key === selectedKey ? "checked" : ""} />
         <span>
-          <strong>${escapeHtml(metric.label)}${updated ? `<mark>последняя загрузка</mark>` : ""}</strong>
+          <strong>${escapeHtml(metric.label)}${updated ? renderLatestUploadDot() : ""}</strong>
           <small>${escapeHtml(details)}</small>
         </span>
       </label>
@@ -3451,6 +3455,15 @@ function labMetricGroupDefinitions() {
       keys: ["crp", "ferritin", "b12", "vitamin_d"]
     }
   ];
+}
+
+function groupContainsUpdatedLabMetric(group, updatedKeys = new Set()) {
+  const metrics = group.metrics || group.values || [];
+  return metrics.some((item) => updatedKeys.has(item.key));
+}
+
+function renderLatestUploadDot() {
+  return `<span class="latest-upload-dot" aria-label="Есть изменения из последней загрузки" title="Есть изменения из последней загрузки"></span>`;
 }
 
 function lastLabUploadKeys() {
@@ -3582,12 +3595,15 @@ function renderLabRecord(record) {
         <button class="doctor-icon-button danger-action" type="button" data-delete-lab-record="${escapeHtml(record.id)}" title="Удалить результат анализа" aria-label="Удалить результат анализа">${doctorIcon("trash")}</button>
       </div>
       <div class="lab-values">
-        ${groups.map((group) => `
-          <section class="lab-value-group" aria-label="${escapeHtml(group.label)}">
-            <div class="lab-value-group-heading">${escapeHtml(group.label)}</div>
+        ${groups.map((group) => {
+          const updated = groupContainsUpdatedLabMetric(group, updatedKeys);
+          return `
+          <details class="lab-value-group" ${updated ? "open" : ""}>
+            <summary class="lab-value-group-heading">${escapeHtml(group.label)}${updated ? renderLatestUploadDot() : ""}</summary>
             ${group.values.map((value) => renderLabValue(value, updatedKeys)).join("")}
-          </section>
-        `).join("")}
+          </details>
+        `;
+        }).join("")}
       </div>
     </article>
   `;
@@ -3597,7 +3613,7 @@ function renderLabValue(value, updatedKeys = new Set()) {
   const updated = updatedKeys.has(value.key);
   return `
     <div class="lab-value ${updated ? "is-updated" : ""}">
-      <span>${escapeHtml(value.label)}${updated ? `<mark>последняя загрузка</mark>` : ""}</span>
+      <span>${escapeHtml(value.label)}${updated ? renderLatestUploadDot() : ""}</span>
       <strong>${escapeHtml(formatNumber(value.value))} ${escapeHtml(value.unit)}</strong>
       <small>${escapeHtml(value.raw)}</small>
     </div>

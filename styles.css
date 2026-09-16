@@ -2072,14 +2072,34 @@ input[type="file"] {
 }
 
 .metric-group-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   padding: 2px 2px 0;
   color: var(--muted);
   font-size: 12px;
   font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+
+.metric-group-heading::-webkit-details-marker,
+.lab-value-group-heading::-webkit-details-marker {
+  display: none;
+}
+
+.metric-group-heading::after,
+.lab-value-group-heading::after {
+  content: "⌄";
+  color: var(--muted-soft);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.metric-group[open] > .metric-group-heading::after,
+.lab-value-group[open] > .lab-value-group-heading::after {
+  content: "⌃";
 }
 
 .metric-group-heading span {
@@ -2124,18 +2144,18 @@ input[type="file"] {
 .metric-option strong {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
 }
 
-.metric-option mark {
+.latest-upload-dot {
+  display: inline-block;
   flex: 0 0 auto;
-  padding: 2px 7px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-size: 11px;
-  font-weight: 650;
+  background: var(--accent-strong);
+  box-shadow: 0 0 0 3px rgba(14, 124, 123, 0.12);
 }
 
 .compact-link-button {
@@ -2324,10 +2344,16 @@ input[type="file"] {
 }
 
 .lab-value-group-heading {
+  display: grid;
   grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 650;
+  cursor: pointer;
+  list-style: none;
 }
 
 .lab-value {
@@ -2344,21 +2370,11 @@ input[type="file"] {
 .lab-value span {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
-}
-
-.lab-value mark {
-  flex: 0 0 auto;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-size: 11px;
-  font-weight: 650;
 }
 
 .lab-value strong {
