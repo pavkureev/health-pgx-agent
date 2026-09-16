@@ -2107,6 +2107,16 @@ input[type="file"] {
   font-weight: 650;
 }
 
+.metric-group-heading strong,
+.lab-value-group-heading {
+  column-gap: 8px;
+}
+
+.metric-group-heading strong {
+  display: inline-flex;
+  align-items: center;
+}
+
 .metric-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -2151,11 +2161,13 @@ input[type="file"] {
 .latest-upload-dot {
   display: inline-block;
   flex: 0 0 auto;
-  width: 9px;
-  height: 9px;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
   border-radius: 999px;
   background: var(--accent-strong);
-  box-shadow: 0 0 0 3px rgba(14, 124, 123, 0.12);
+  opacity: 0.74;
+  box-shadow: 0 0 0 2px rgba(14, 124, 123, 0.08);
 }
 
 .compact-link-button {
