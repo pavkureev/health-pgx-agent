@@ -3706,65 +3706,72 @@ function renderLabInsightCard(signal) {
 }
 
 function labClinicalSignals() {
-  const latest = latestLabValues();
   const signals = [];
 
-  addThresholdSignal(signals, latest.egfr, (item) => item.value < 60, {
+  addChronologicalLabSignal(signals, "egfr", (item) => item.value < 60, {
     title: "Проверить почечную коррекцию доз",
     metric: "eGFR",
     severity: "high",
-    body: "Сниженная расчетная СКФ может менять выбор и дозирование препаратов, особенно НПВС, антикоагулянтов, антибиотиков, метформина и ряда психотропных средств."
+    body: "Сниженная расчетная СКФ может менять выбор и дозирование препаратов, особенно НПВС, антикоагулянтов, антибиотиков, метформина и ряда психотропных средств.",
+    recoveryBody: "eGFR вернулась в допустимые границы. Полезно обсудить, что дало положительный эффект, и наблюдать показатель в динамике."
   });
 
   for (const key of ["alt", "ast"]) {
-    addThresholdSignal(signals, latest[key], (item) => item.value >= 80, {
+    addChronologicalLabSignal(signals, key, (item) => item.value >= 80, {
       title: "Учесть печеночный контекст",
       metric: key.toUpperCase(),
       severity: "moderate",
-      body: "Повышенные трансаминазы стоит учитывать при препаратах с гепатотоксичностью или активным печеночным метаболизмом. Нужна клиническая интерпретация причины повышения."
+      body: "Повышенные трансаминазы стоит учитывать при препаратах с гепатотоксичностью или активным печеночным метаболизмом. Нужна клиническая интерпретация причины повышения.",
+      recoveryBody: `${key.toUpperCase()} вернулся в допустимые границы. Полезно обсудить, что изменилось, и продолжить наблюдение по плану врача.`
     });
   }
 
-  addThresholdSignal(signals, latest.ck, (item) => item.value >= 300, {
+  addChronologicalLabSignal(signals, "ck", (item) => item.value >= 300, {
     title: "Оценить мышечный риск",
     metric: "КФК",
     severity: "moderate",
-    body: "Повышенная КФК важна при обсуждении статинов и жалоб на мышечные симптомы, особенно вместе с фармакогенетической находкой SLCO1B1."
+    body: "Повышенная КФК важна при обсуждении статинов и жалоб на мышечные симптомы, особенно вместе с фармакогенетической находкой SLCO1B1.",
+    recoveryBody: "КФК вернулась в допустимые границы. Полезно обсудить связь с нагрузкой, симптомами и текущей терапией."
   });
 
-  addThresholdSignal(signals, latest.potassium, (item) => item.value > 5.2 || item.value < 3.5, {
+  addChronologicalLabSignal(signals, "potassium", (item) => item.value > 5.2 || item.value < 3.5, {
     title: "Проверить калий-зависимые риски",
     metric: "Калий",
     severity: "moderate",
-    body: "Отклонение калия может влиять на безопасность диуретиков, ИАПФ/БРА, антагонистов минералокортикоидных рецепторов и препаратов с риском аритмий."
+    body: "Отклонение калия может влиять на безопасность диуретиков, ИАПФ/БРА, антагонистов минералокортикоидных рецепторов и препаратов с риском аритмий.",
+    recoveryBody: "Калий вернулся в допустимые границы. Полезно обсудить, что повлияло на нормализацию, особенно если менялась терапия."
   });
 
-  addThresholdSignal(signals, latest.hba1c, (item) => item.value >= 6.5, {
+  addChronologicalLabSignal(signals, "hba1c", (item) => item.value >= 6.5, {
     title: "Учесть гликемический профиль",
     metric: "HbA1c",
     severity: "moderate",
-    body: "Повышенный HbA1c полезно учитывать при выборе препаратов, влияющих на вес, аппетит, липиды и глюкозу."
+    body: "Повышенный HbA1c полезно учитывать при выборе препаратов, влияющих на вес, аппетит, липиды и глюкозу.",
+    recoveryBody: "HbA1c вернулся в допустимые границы. Полезно обсудить, что дало положительный эффект, и план наблюдения."
   });
 
-  addThresholdSignal(signals, latest.ldl, (item) => item.value > 1.8, {
+  addChronologicalLabSignal(signals, "ldl", (item) => item.value > 1.8, {
     title: "Обсудить липидный риск",
     metric: "ЛПНП",
     severity: "moderate",
-    body: "ЛПНП выше персональной цели 1.8 ммоль/л для группы риска. Полезно обсудить сердечно-сосудистый риск, переносимость терапии и целевой уровень."
+    body: "ЛПНП выше персональной цели 1.8 ммоль/л для группы риска. Полезно обсудить сердечно-сосудистый риск, переносимость терапии и целевой уровень.",
+    recoveryBody: "ЛПНП вернулся в допустимые границы. Полезно обсудить с врачом, что дало положительный эффект, и наблюдать за динамикой показателя в дальнейшем."
   });
 
-  addThresholdSignal(signals, latest.triglycerides, (item) => item.value >= 1.7, {
+  addChronologicalLabSignal(signals, "triglycerides", (item) => item.value >= 1.7, {
     title: "Проверить триглицериды",
     metric: "Триглицериды",
     severity: "moderate",
-    body: "Повышенные триглицериды стоит интерпретировать с учетом питания перед анализом, глюкозы, HbA1c, ТТГ и текущих препаратов."
+    body: "Повышенные триглицериды стоит интерпретировать с учетом питания перед анализом, глюкозы, HbA1c, ТТГ и текущих препаратов.",
+    recoveryBody: "Триглицериды вернулись в допустимые границы. Полезно обсудить, что повлияло на динамику: питание, вес, глюкоза, ТТГ или терапия."
   });
 
-  addThresholdSignal(signals, latest.crp, (item) => item.value > 5, {
+  addChronologicalLabSignal(signals, "crp", (item) => item.value > 5, {
     title: "Учесть воспалительный маркер",
     metric: "C-реактивный белок",
     severity: "moderate",
-    body: "Повышенный C-реактивный белок не указывает причину сам по себе, но важен как контекст при симптомах, инфекциях, воспалении и оценке сердечно-сосудистого риска."
+    body: "Повышенный C-реактивный белок не указывает причину сам по себе, но важен как контекст при симптомах, инфекциях, воспалении и оценке сердечно-сосудистого риска.",
+    recoveryBody: "C-реактивный белок вернулся в допустимые границы. Полезно сопоставить динамику с симптомами и лечением."
   });
 
   return signals;
@@ -3772,7 +3779,7 @@ function labClinicalSignals() {
 
 function latestLabValues() {
   const latest = {};
-  for (const record of [...labRecords].sort((a, b) => a.date.localeCompare(b.date))) {
+  for (const record of [...labRecords].sort(compareLabRecordsChronologically)) {
     for (const value of record.values) {
       latest[value.key] = { ...value, date: record.date };
     }
@@ -3780,13 +3787,72 @@ function latestLabValues() {
   return latest;
 }
 
-function addThresholdSignal(signals, item, predicate, template) {
-  if (!item || !predicate(item)) return;
+function addChronologicalLabSignal(signals, metricKey, predicate, template) {
+  const history = labMetricHistory(metricKey);
+  const latest = history.at(-1);
+  if (!latest) return;
+
+  if (predicate(latest)) {
+    const repeatCount = countTrailingLabMatches(history, predicate);
+    signals.push({
+      ...template,
+      body: repeatCount > 1
+        ? `${template.body} Отклонение сохраняется ${repeatCount} ${plural(repeatCount, "измерение", "измерения", "измерений")} подряд.`
+        : template.body,
+      value: `${formatNumber(latest.value)} ${latest.unit}`,
+      date: latest.date
+    });
+    return;
+  }
+
+  const previous = history.at(-2);
+  if (!previous || !predicate(previous)) return;
   signals.push({
     ...template,
-    value: `${formatNumber(item.value)} ${item.unit}`,
-    date: item.date
+    severity: "low",
+    body: template.recoveryBody || `${template.metric} вернулся в допустимые границы. Полезно обсудить с врачом, что дало положительный эффект, и наблюдать динамику дальше.`,
+    value: `${formatNumber(latest.value)} ${latest.unit}`,
+    date: latest.date
   });
+}
+
+function labMetricHistory(metricKey) {
+  return labRecords
+    .flatMap((record) => (record.values || [])
+      .filter((value) => value.key === metricKey)
+      .map((value) => ({
+        ...value,
+        date: record.date,
+        uploadedAt: record.uploadedAt || "",
+        updatedAt: record.updatedAt || ""
+      })))
+    .sort(compareLabValuesChronologically);
+}
+
+function countTrailingLabMatches(history, predicate) {
+  let count = 0;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (!predicate(history[index])) break;
+    count += 1;
+  }
+  return count;
+}
+
+function compareLabValuesChronologically(a = {}, b = {}) {
+  const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));
+  if (dateCompare) return dateCompare;
+  return labValueTimestamp(a) - labValueTimestamp(b);
+}
+
+function compareLabRecordsChronologically(a = {}, b = {}) {
+  const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));
+  if (dateCompare) return dateCompare;
+  return labRecordTimestamp(a) - labRecordTimestamp(b);
+}
+
+function labValueTimestamp(value = {}) {
+  const time = new Date(value.uploadedAt || value.updatedAt || "").getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function renderHealthBlocks() {
@@ -4222,16 +4288,14 @@ function duplicateLabValues() {
 
 function suspiciousLabValues() {
   const suspicious = [];
-  for (const record of labRecords) {
-    for (const value of record.values) {
-      const analyte = labAnalytes.find((item) => item.key === value.key);
-      const reference = analyte?.reference || {};
-      const high = reference.max;
-      const low = reference.min;
-      if (value.value < 0) suspicious.push(value);
-      else if (high && value.value > high * 6) suspicious.push(value);
-      else if (low && value.value < low / 6) suspicious.push(value);
-    }
+  for (const item of Object.values(latestLabValues())) {
+    const analyte = labAnalytes.find((value) => value.key === item.key);
+    const reference = analyte?.reference || {};
+    const high = reference.max;
+    const low = reference.min;
+    if (item.value < 0) suspicious.push(item);
+    else if (high && item.value > high * 6) suspicious.push(item);
+    else if (low && item.value < low / 6) suspicious.push(item);
   }
   return suspicious;
 }

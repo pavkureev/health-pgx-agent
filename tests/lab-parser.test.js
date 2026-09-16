@@ -326,6 +326,46 @@ assert.match(keepHarness.el("#labResults").innerHTML, /Коллекция ана
 assert.match(keepHarness.el("#labResults").innerHTML, /2026/, "lab history grouping should show record years");
 assert.match(keepHarness.el("#labResults").innerHTML, /Статус: Готово/, "lab history should show processing status");
 
+const lipidRiskHarness = createHarness();
+lipidRiskHarness.el("#labText").value = "Дата анализа: 01.01.2026\nЛПНП 2.6 ммоль/л";
+lipidRiskHarness.el("#parseLabText").onclick();
+lipidRiskHarness.el("#labText").value = "Дата анализа: 15.01.2026\nТТГ 1.2 мМЕ/л";
+lipidRiskHarness.el("#parseLabText").onclick();
+assert.match(
+  lipidRiskHarness.el("#labInsights").innerHTML,
+  /ЛПНП выше персональной цели/,
+  "older abnormal LDL should remain visible when a later upload does not include LDL"
+);
+
+const lipidRecoveryHarness = createHarness();
+lipidRecoveryHarness.el("#labText").value = "Дата анализа: 01.01.2026\nЛПНП 2.6 ммоль/л";
+lipidRecoveryHarness.el("#parseLabText").onclick();
+lipidRecoveryHarness.el("#labText").value = "Дата анализа: 01.02.2026\nЛПНП 1.6 ммоль/л";
+lipidRecoveryHarness.el("#parseLabText").onclick();
+assert.match(
+  lipidRecoveryHarness.el("#labInsights").innerHTML,
+  /ЛПНП вернулся в допустимые границы/,
+  "LDL recovery should be shown when the latest chronological LDL is normal after abnormal"
+);
+lipidRecoveryHarness.el("#labText").value = "Дата анализа: 01.03.2026\nЛПНП 1.5 ммоль/л";
+lipidRecoveryHarness.el("#parseLabText").onclick();
+assert.doesNotMatch(
+  lipidRecoveryHarness.el("#labInsights").innerHTML,
+  /ЛПНП вернулся в допустимые границы|ЛПНП выше персональной цели/,
+  "stable normal LDL after recovery should not keep showing LDL warning"
+);
+
+const persistentLdlHarness = createHarness();
+persistentLdlHarness.el("#labText").value = "Дата анализа: 01.01.2026\nЛПНП 2.6 ммоль/л";
+persistentLdlHarness.el("#parseLabText").onclick();
+persistentLdlHarness.el("#labText").value = "Дата анализа: 01.02.2026\nЛПНП 2.4 ммоль/л";
+persistentLdlHarness.el("#parseLabText").onclick();
+assert.match(
+  persistentLdlHarness.el("#labInsights").innerHTML,
+  /Отклонение сохраняется 2 измерения подряд/,
+  "persistent abnormal LDL should mention repeated abnormal measurements"
+);
+
 const deleteCancelHarness = createHarness({ confirmResponse: false });
 deleteCancelHarness.el("#labText").value = tshFirstResult;
 deleteCancelHarness.el("#parseLabText").onclick();
