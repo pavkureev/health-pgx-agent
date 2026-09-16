@@ -2408,7 +2408,7 @@ function collectAnalyteBlock(lines, startIndex) {
     if (isPersonOrAdminLine(line) || isBirthDateLine(line)) continue;
     if (collected.length && isLikelyAnalyteStart(line) && !isContinuationLine(line)) break;
     collected.push(line);
-    if (/\d+(?:[.,]\d+)?\s*(ммоль\/л|mmol\/l|мг\/л|mg\/l|мг\/дл|mg\/dl|г\/л|g\/l)/i.test(collected.join(" "))) break;
+    if (/\d+(?:[.,]\d+)?\s*(ммоль\/л|mmol\/l|мг\/л|mg\/l|мг\/дл|mg\/dl|г\/л|g\/l|\*?\s*10\^9\/л|\*?\s*10\^12\/л|fl|фл|пг|pg|мм\/ч|mm\/h)/i.test(collected.join(" "))) break;
   }
 
   return collected;
@@ -2436,7 +2436,7 @@ function isLikelyAnalyteStart(line) {
 }
 
 function isContinuationLine(line) {
-  return /^(общий|низкой плотности|высокой плотности|\(липопротеины|липопротеины|венозной крови|\(натощак\)|↑|↓|\d+(?:[.,]\d+)?|ммоль\/л|мг\/л|мкг\/л|нг\/мл|г\/л|см\.)/i.test(line.trim());
+  return /^(общий|низкой плотности|высокой плотности|\(липопротеины|липопротеины|венозной крови|\(натощак\)|↑|↓|▼|\d+(?:[.,]\d+)?|ммоль\/л|мг\/л|мкг\/л|нг\/мл|г\/л|\*?\s*10\^9\/л|\*?\s*10\^12\/л|fl|фл|пг|pg|мм\/ч|см\.)/i.test(line.trim());
 }
 
 function extractValueFromFollowingLines(lines, currentLine, analyte) {
@@ -2467,7 +2467,7 @@ function collectFollowingResultBlock(lines, startIndex) {
     if (/(название\/показатель|наименование исследования|нормальные значения|референсные значения|предыдущий результат|метод и оборудование|образец|sample|номер документа|document|штрихкод|barcode)/i.test(line)) continue;
     if (isPersonOrAdminLine(line) || isBirthDateLine(line)) continue;
     collected.push(line);
-    if (/\d+(?:[.,]\d+)?\s*(ммоль\/л|mmol\/l|мг\/л|mg\/l|мг\/дл|mg\/dl|г\/л|g\/l)/i.test(collected.join(" "))) break;
+    if (/\d+(?:[.,]\d+)?\s*(ммоль\/л|mmol\/l|мг\/л|mg\/l|мг\/дл|mg\/dl|г\/л|g\/l|\*?\s*10\^9\/л|\*?\s*10\^12\/л|fl|фл|пг|pg|мм\/ч|mm\/h)/i.test(collected.join(" "))) break;
   }
 
   return collected;
@@ -2527,10 +2527,15 @@ function unitPatternForAnalyte(analyte = {}) {
     "ед/л": "ед\\/л|u\\/l|ме\\/л|iu\\/l",
     "мкмоль/л": "мкмоль\\/л|umol\\/l|µmol\\/l",
     "г/л": "г\\/л|g\\/l",
+    "*10^9/л": "\\*?\\s*10\\^9\\/л|x\\s*10\\^9\\/л|10\\^9\\/l|10\\*9\\/л",
+    "*10^12/л": "\\*?\\s*10\\^12\\/л|x\\s*10\\^12\\/л|10\\^12\\/l|10\\*12\\/л",
+    "fl": "fl|фл",
+    "пг": "пг|pg",
+    "мм/ч": "мм\\/ч|mm\\/h|mm\\/hr|mm\\/hour",
     "мед/л": "мед\\/л|ме\\/л|мме\\/л|miu\\/l|uIU\\/ml|uIU\\/mL|mIU\\/l|mIU\\/L",
     "%": "%"
   };
-  return patterns[unit] || "ммоль\\/л|mmol\\/l|мг\\/л|mg\\/l|мг\\/дл|mg\\/dl|%|ед\\/л|u\\/l|мкмоль\\/л|umol\\/l|нг\\/мл|ng\\/ml|пг\\/мл|pg\\/ml|г\\/л|g\\/l|мкг\\/л|ug\\/l";
+  return patterns[unit] || "ммоль\\/л|mmol\\/l|мг\\/л|mg\\/l|мг\\/дл|mg\\/dl|%|ед\\/л|u\\/l|мкмоль\\/л|umol\\/l|нг\\/мл|ng\\/ml|пг\\/мл|pg\\/ml|г\\/л|g\\/l|мкг\\/л|ug\\/l|\\*?\\s*10\\^9\\/л|\\*?\\s*10\\^12\\/л|fl|фл|пг|pg|мм\\/ч|mm\\/h";
 }
 
 function normalizeUnit(unit) {

@@ -234,6 +234,48 @@ assert.match(tshRows.html, /ТТГ[\s\S]*0,617/, "TSH should be parsed as 0.617 
 assert.doesNotMatch(tshRows.html, /ТТГ[\s\S]*4<\/span>/, "TSH must not use the reference range as result");
 assert.match(tshRows.options, /value="tsh"/, "TSH should be available in metric dropdown");
 
+const helixCbcRows = parseManualLab(`
+КУРЕЕВ ПАВЕЛ АЛЕКСЕЕВИЧ (Муж., 06.06.1981, 45 лет)
+Зарегистрирован: 14.09.2026 09:38:56
+Общеклинический анализ крови с лейкоцитарной формулой
+Название/показатель          Результат          Референсные значения
+Лейкоциты (WBC)          ▼ 3.91 *10^9/л          4.0 - 10.0
+Эритроциты (RBC)          4.52 *10^12/л          4.2 - 5.6
+Гемоглобин (HGB)          141 г/л          131 - 172
+Гематокрит (HCT)          42.5 %          39 - 50
+Средний объем эритроцита (MCV)          94.0 fL          81 - 101
+Средн. сод. гемоглобина в эр-те (MCH)          31.2 пг          27 - 35
+Средн. конц. гемоглобина в эр-те (MCHC)          332 г/л          300 - 380
+Расп. эрит. по V - станд отклон(RDW-SD)          38.8 fL          37 - 54
+Расп. эрит. по V - коэф. вариац(RDW-CV)          11.8 %          11.6 - 14.8
+Тромбоциты (PLT)          255 *10^9/л          150 - 400
+Расп. тромбоцитов по объему (PDW)          16.2 fL          10 - 20
+Средний объем тромбоцита (MPV)          9.60 fL          9.4 - 12.4
+Коэффициент больших тромбоцитов (P-LCR)          22.8 %          13 - 43
+Нейтрофилы (NE)          2.32 *10^9/л          1.8 - 7.7
+Лимфоциты (LY)          1.15 *10^9/л          1.0 - 4.8
+Моноциты (MO)          0.36 *10^9/л          0.05 - 0.82
+Эозинофилы (EO)          0.07 *10^9/л          0.02 - 0.5
+Базофилы (BA)          0.01 *10^9/л          0 - 0.08
+Нейтрофилы, % (NE%)          59.6 %          47 - 72
+Лимфоциты, % (LY%)          29.3 %          19 - 37
+Моноциты, % (MO%)          9.1 %          3 - 12
+Эозинофилы, % (EO%)          1.8 %          1 - 5
+Базофилы, % (BA%)          0.2 %          0 - 1.2
+Скорость оседания эритроцитов (СОЭ)
+Скорость оседания          6 мм/ч          2 - 15
+`);
+assert.match(helixCbcRows.html, /Лейкоциты[\s\S]*3,91/, "WBC should be parsed from CBC");
+assert.match(helixCbcRows.html, /Эритроциты[\s\S]*4,52/, "RBC should be parsed from CBC");
+assert.match(helixCbcRows.html, /Гемоглобин[\s\S]*141/, "hemoglobin should be parsed from CBC");
+assert.match(helixCbcRows.html, /Тромбоциты[\s\S]*255/, "platelets should be parsed from CBC");
+assert.match(helixCbcRows.html, /Нейтрофилы[\s\S]*2,32/, "absolute neutrophils should be parsed from CBC");
+assert.match(helixCbcRows.html, /Нейтрофилы, %[\s\S]*59,6/, "neutrophil percent should be parsed from CBC");
+assert.match(helixCbcRows.html, /СОЭ[\s\S]*6/, "ESR should be parsed from CBC");
+assert.match(helixCbcRows.options, /value="wbc"/, "WBC should be available in metric dropdown");
+assert.match(helixCbcRows.options, /value="platelets"/, "platelets should be available in metric dropdown");
+assert.match(helixCbcRows.options, /value="esr"/, "ESR should be available in metric dropdown");
+
 const tshFirstResult = `
 Зарегистрирован: 04.06.2026 08:48:00
 ТТГ
