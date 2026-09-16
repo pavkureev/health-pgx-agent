@@ -2258,11 +2258,12 @@ function observationsToLabRecords(observations) {
       const sourceDocument = Array.isArray(item.source_documents)
         ? item.source_documents[0] || {}
         : item.source_documents || {};
+      const sourceName = sourceDocument.file_name || "Supabase";
       byDocument.set(key, {
         id: key,
         documentId: item.document_id || "",
-        sourceName: sourceDocument.file_name || "Supabase",
-        date: item.observed_on,
+        sourceName,
+        date: reportDateFromSourceName(sourceName) || item.observed_on,
         uploadedAt: sourceDocument.created_at || "",
         updatedAt: sourceDocument.updated_at || "",
         processingStatus: sourceDocument.status || "parsed",
@@ -2349,8 +2350,8 @@ function geneticFindingToProfileLine(finding = {}) {
 }
 
 function findReportDate(text, sourceName, fallbackTimestamp) {
-  const filenameDate = sourceName.match(/\b(20\d{2})[_ .-](\d{1,2})[_ .-](\d{1,2})\b/);
-  if (filenameDate) return `${filenameDate[1]}-${filenameDate[2].padStart(2, "0")}-${filenameDate[3].padStart(2, "0")}`;
+  const filenameReportDate = reportDateFromSourceName(sourceName);
+  if (filenameReportDate) return filenameReportDate;
 
   const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
   const labelledDate = findLabelledReportDate(lines);
@@ -2364,6 +2365,14 @@ function findReportDate(text, sourceName, fallbackTimestamp) {
   if (genericDate) return genericDate;
 
   return new Date(fallbackTimestamp || Date.now()).toISOString().slice(0, 10);
+}
+
+function reportDateFromSourceName(sourceName = "") {
+  const filenameDate = String(sourceName).match(/(^|\D)(20\d{2})[_ .-](\d{1,2})[_ .-](\d{1,2})(\D|$)/);
+  if (filenameDate) return `${filenameDate[2]}-${filenameDate[3].padStart(2, "0")}-${filenameDate[4].padStart(2, "0")}`;
+  const filenameDmyDate = String(sourceName).match(/(^|\D)(\d{1,2})[_ .-](\d{1,2})[_ .-](20\d{2})(\D|$)/);
+  if (filenameDmyDate) return `${filenameDmyDate[4]}-${filenameDmyDate[3].padStart(2, "0")}-${filenameDmyDate[2].padStart(2, "0")}`;
+  return null;
 }
 
 function findLabelledReportDate(lines) {
@@ -2632,7 +2641,7 @@ function loadLegacyLabRecords() {
 function dedupeLabRecords(records) {
   const byId = new Map();
   for (const record of records) byId.set(record.id, record);
-  return [...byId.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return [...byId.values()].sort(compareLabRecordsChronologically);
 }
 
 function requestClearLabHistory() {

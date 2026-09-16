@@ -78,7 +78,7 @@ function createHarness(options = {}) {
     vm.runInContext(fs.readFileSync(script, "utf8"), context);
   }
   vm.runInContext(fs.readFileSync("app.js", "utf8"), context);
-  return { el, prompts, confirms };
+  return { el, prompts, confirms, context };
 }
 
 function parseManualLab(text) {
@@ -364,6 +364,54 @@ assert.match(
   persistentLdlHarness.el("#labInsights").innerHTML,
   /Отклонение сохраняется 2 измерения подряд/,
   "persistent abnormal LDL should mention repeated abnormal measurements"
+);
+
+const olderUploadHarness = createHarness();
+olderUploadHarness.el("#labText").value = "Дата анализа: 01.09.2026\nЛПНП 1.5 ммоль/л";
+olderUploadHarness.el("#parseLabText").onclick();
+const olderUploadedLater = olderUploadHarness.context.parseLabReport(
+  "ЛПНП 2.9 ммоль/л",
+  "анализы_01.01.2026_куреев-павел.pdf",
+  new Date("2026-09-16T10:00:00Z").getTime()
+);
+olderUploadHarness.context.addLabRecordsWithConflictResolution([olderUploadedLater]);
+assert.strictEqual(
+  olderUploadHarness.context.latestLabValues().ldl.date,
+  "2026-09-01",
+  "older reports uploaded later must not replace the latest chronological LDL value"
+);
+assert.doesNotMatch(
+  olderUploadHarness.el("#labInsights").innerHTML,
+  /ЛПНП выше персональной цели/,
+  "older abnormal LDL uploaded later should not create an active warning when newer LDL is normal"
+);
+assert.match(
+  olderUploadHarness.el("#labResults").innerHTML,
+  /01\.01\.2026[\s\S]*ЛПНП[\s\S]*2,9/,
+  "older reports should still be added to the chronological lab history"
+);
+const repairedCloudRecords = olderUploadHarness.context.observationsToLabRecords([
+  {
+    id: "observation-1",
+    document_id: "document-1",
+    analyte_key: "ldl",
+    analyte_label: "ЛПНП",
+    observed_on: "2026-09-16",
+    value: 2.9,
+    unit: "ммоль/л",
+    source_line: "ЛПНП 2.9 ммоль/л",
+    source_documents: {
+      file_name: "анализы_01.01.2026_куреев-павел.pdf",
+      status: "parsed",
+      created_at: "2026-09-16T10:00:00Z",
+      updated_at: "2026-09-16T10:00:00Z"
+    }
+  }
+]);
+assert.strictEqual(
+  repairedCloudRecords[0].date,
+  "2026-01-01",
+  "cloud lab rows with upload-date observed_on should recover report date from filename"
 );
 
 const deleteCancelHarness = createHarness({ confirmResponse: false });
