@@ -87,7 +87,8 @@ function parseManualLab(text) {
   el("#parseLabText").onclick();
   return {
     html: el("#labResults").innerHTML,
-    options: el("#labMetric").innerHTML
+    options: el("#labMetric").innerHTML,
+    metricList: el("#labMetricList").innerHTML
   };
 }
 
@@ -275,6 +276,9 @@ assert.match(helixCbcRows.html, /СОЭ[\s\S]*6/, "ESR should be parsed from CBC
 assert.match(helixCbcRows.options, /value="wbc"/, "WBC should be available in metric dropdown");
 assert.match(helixCbcRows.options, /value="platelets"/, "platelets should be available in metric dropdown");
 assert.match(helixCbcRows.options, /value="esr"/, "ESR should be available in metric dropdown");
+assert.match(helixCbcRows.metricList, /Клинический анализ крови/, "CBC metrics should be grouped");
+assert.match(helixCbcRows.metricList, /Лейкоцитарная формула/, "white blood cell formula metrics should be grouped");
+assert.match(helixCbcRows.metricList, /последняя загрузка/, "latest upload metrics should be marked");
 
 const tshFirstResult = `
 Зарегистрирован: 04.06.2026 08:48:00

@@ -1237,6 +1237,7 @@ function addLabRecordsWithConflictResolution(incomingRecords) {
 
   const commit = () => {
     labRecords = nextLabRecords;
+    rememberLastLabUpload(incomingRecords, result);
     saveCurrentProfileData();
     if (result.addedCount) {
       const valueCount = incomingRecords.reduce((sum, record) => sum + (record.values?.length || 0), 0);
@@ -1258,6 +1259,21 @@ function addLabRecordsWithConflictResolution(incomingRecords) {
     await saveCloudLabRecords(incomingRecords);
     return commit();
   })();
+}
+
+function rememberLastLabUpload(records, result = {}) {
+  const profile = getActiveProfile();
+  if (!profile || !records?.length) return;
+  const keys = [...new Set(records.flatMap((record) => (record.values || []).map((value) => value.key)))];
+  profile.metadata = {
+    ...(profile.metadata || {}),
+    lastLabUpload: {
+      createdAt: new Date().toISOString(),
+      action: result.action || "keep",
+      recordIds: records.map((record) => record.id).filter(Boolean),
+      keys
+    }
+  };
 }
 
 function findLabValueConflicts(existingRecords, incomingRecords) {
@@ -3351,22 +3367,105 @@ function availableLabMetrics() {
 function renderLabMetricList(metrics, selectedKey) {
   const counts = labMetricCounts();
   const latest = latestLabValues();
-  return metrics.map((metric) => {
+  const updatedKeys = lastLabUploadKeys();
+  const groups = groupLabMetrics(metrics);
+  return groups.map((group) => `
+    <section class="metric-group" aria-label="${escapeHtml(group.label)}">
+      <div class="metric-group-heading">
+        <strong>${escapeHtml(group.label)}</strong>
+        <span>${group.metrics.length}</span>
+      </div>
+      ${group.metrics.map((metric) => renderLabMetricOption(metric, selectedKey, counts, latest, updatedKeys)).join("")}
+    </section>
+  `).join("");
+}
+
+function renderLabMetricOption(metric, selectedKey, counts, latest, updatedKeys) {
     const latestValue = latest[metric.key];
     const valueText = latestValue ? formatNumber(latestValue.value) + " " + latestValue.unit : "Нет значения";
     const dateText = latestValue ? formatDate(latestValue.date) : "";
     const count = counts[metric.key] || 0;
     const details = String(count) + " " + plural(count, "значение", "значения", "значений") + (dateText ? " · последнее: " + valueText + " от " + dateText : "");
+    const updated = updatedKeys.has(metric.key);
     return `
-      <label class="metric-option">
+      <label class="metric-option ${updated ? "is-updated" : ""}">
         <input type="radio" name="labMetricRadio" value="${escapeHtml(metric.key)}" data-lab-metric ${metric.key === selectedKey ? "checked" : ""} />
         <span>
-          <strong>${escapeHtml(metric.label)}</strong>
+          <strong>${escapeHtml(metric.label)}${updated ? `<mark>последняя загрузка</mark>` : ""}</strong>
           <small>${escapeHtml(details)}</small>
         </span>
       </label>
     `;
-  }).join("");
+}
+
+function groupLabMetrics(metrics) {
+  const metricByKey = new Map(metrics.map((metric) => [metric.key, metric]));
+  const used = new Set();
+  const groups = labMetricGroupDefinitions()
+    .map((group) => {
+      const groupMetrics = group.keys
+        .map((key) => metricByKey.get(key))
+        .filter(Boolean);
+      groupMetrics.forEach((metric) => used.add(metric.key));
+      return { label: group.label, metrics: groupMetrics };
+    })
+    .filter((group) => group.metrics.length);
+
+  const otherMetrics = metrics.filter((metric) => !used.has(metric.key));
+  if (otherMetrics.length) groups.push({ label: "Прочее", metrics: otherMetrics });
+  return groups;
+}
+
+function labMetricGroupDefinitions() {
+  return [
+    {
+      label: "Клинический анализ крови",
+      keys: ["wbc", "rbc", "hemoglobin", "hematocrit", "mcv", "mch", "mchc", "rdw_sd", "rdw_cv", "platelets", "pdw", "mpv", "p_lcr", "esr"]
+    },
+    {
+      label: "Лейкоцитарная формула",
+      keys: ["neutrophils_abs", "lymphocytes_abs", "monocytes_abs", "eosinophils_abs", "basophils_abs", "neutrophils_pct", "lymphocytes_pct", "monocytes_pct", "eosinophils_pct", "basophils_pct"]
+    },
+    {
+      label: "Липиды",
+      keys: ["total_cholesterol", "ldl", "hdl", "triglycerides", "non_hdl", "atherogenic_index"]
+    },
+    {
+      label: "Печень",
+      keys: ["alt", "ast", "bilirubin"]
+    },
+    {
+      label: "Почки",
+      keys: ["egfr", "creatinine"]
+    },
+    {
+      label: "Глюкоза и обмен",
+      keys: ["glucose", "hba1c", "tsh"]
+    },
+    {
+      label: "Электролиты и мышцы",
+      keys: ["potassium", "sodium", "ck"]
+    },
+    {
+      label: "Воспаление и дефициты",
+      keys: ["crp", "ferritin", "b12", "vitamin_d"]
+    }
+  ];
+}
+
+function lastLabUploadKeys() {
+  const keys = getActiveProfile()?.metadata?.lastLabUpload?.keys;
+  if (Array.isArray(keys) && keys.length) return new Set(keys);
+  const latestRecord = [...labRecords]
+    .filter((record) => record.uploadedAt || record.updatedAt)
+    .sort((a, b) => labRecordTimestamp(b) - labRecordTimestamp(a))[0];
+  return new Set((latestRecord?.values || []).map((value) => value.key));
+}
+
+function labRecordTimestamp(record = {}) {
+  const value = record.uploadedAt || record.updatedAt || "";
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function labMetricCounts() {
@@ -3469,6 +3568,8 @@ function renderLabRecordGroups() {
 }
 
 function renderLabRecord(record) {
+  const updatedKeys = lastLabUploadKeys();
+  const groups = groupLabValues(record.values || []);
   return `
     <article class="lab-record">
       <div class="lab-record-title">
@@ -3481,16 +3582,38 @@ function renderLabRecord(record) {
         <button class="doctor-icon-button danger-action" type="button" data-delete-lab-record="${escapeHtml(record.id)}" title="Удалить результат анализа" aria-label="Удалить результат анализа">${doctorIcon("trash")}</button>
       </div>
       <div class="lab-values">
-        ${record.values.map((value) => `
-          <div class="lab-value">
-            <span>${escapeHtml(value.label)}</span>
-            <strong>${escapeHtml(formatNumber(value.value))} ${escapeHtml(value.unit)}</strong>
-            <small>${escapeHtml(value.raw)}</small>
-          </div>
+        ${groups.map((group) => `
+          <section class="lab-value-group" aria-label="${escapeHtml(group.label)}">
+            <div class="lab-value-group-heading">${escapeHtml(group.label)}</div>
+            ${group.values.map((value) => renderLabValue(value, updatedKeys)).join("")}
+          </section>
         `).join("")}
       </div>
     </article>
   `;
+}
+
+function renderLabValue(value, updatedKeys = new Set()) {
+  const updated = updatedKeys.has(value.key);
+  return `
+    <div class="lab-value ${updated ? "is-updated" : ""}">
+      <span>${escapeHtml(value.label)}${updated ? `<mark>последняя загрузка</mark>` : ""}</span>
+      <strong>${escapeHtml(formatNumber(value.value))} ${escapeHtml(value.unit)}</strong>
+      <small>${escapeHtml(value.raw)}</small>
+    </div>
+  `;
+}
+
+function groupLabValues(values = []) {
+  const analyteByKey = new Map(labAnalytes.map((item) => [item.key, item]));
+  const metricLikeValues = values.map((value) => ({
+    ...analyteByKey.get(value.key),
+    ...value
+  }));
+  return groupLabMetrics(metricLikeValues).map((group) => ({
+    label: group.label,
+    values: group.metrics
+  }));
 }
 
 function renderLabRecordMeta(record) {

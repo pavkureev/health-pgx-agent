@@ -2061,6 +2061,32 @@ input[type="file"] {
   overflow: visible;
 }
 
+.metric-group {
+  display: grid;
+  gap: 6px;
+}
+
+.metric-group + .metric-group {
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.metric-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.metric-group-heading span {
+  color: var(--muted-soft);
+  font-weight: 650;
+}
+
 .metric-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -2080,6 +2106,11 @@ input[type="file"] {
   box-shadow: 0 0 0 3px rgba(14, 124, 123, 0.12);
 }
 
+.metric-option.is-updated {
+  border-color: rgba(14, 124, 123, 0.24);
+  background: linear-gradient(180deg, rgba(234, 247, 244, 0.92), #fff);
+}
+
 .metric-option input {
   width: 18px;
   height: 18px;
@@ -2088,6 +2119,23 @@ input[type="file"] {
 .metric-option strong,
 .metric-option small {
   display: block;
+}
+
+.metric-option strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.metric-option mark {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .compact-link-button {
@@ -2260,8 +2308,26 @@ input[type="file"] {
 
 .lab-values {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.lab-value-group {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.lab-value-group + .lab-value-group {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.lab-value-group-heading {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .lab-value {
@@ -2270,11 +2336,29 @@ input[type="file"] {
   background: var(--surface-alt);
 }
 
+.lab-value.is-updated {
+  background: linear-gradient(180deg, rgba(234, 247, 244, 0.92), var(--surface-alt));
+  box-shadow: inset 0 0 0 1px rgba(14, 124, 123, 0.18);
+}
+
 .lab-value span {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
+}
+
+.lab-value mark {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .lab-value strong {
@@ -2767,11 +2851,12 @@ button {
   .profile-actions,
   .file-row,
   .chart-toolbar,
-  .result-title,
-  .fact-grid,
-  .lab-values,
-  .lab-collection-grid,
-  .confirm-actions {
+	  .result-title,
+	  .fact-grid,
+	  .lab-values,
+	  .lab-value-group,
+	  .lab-collection-grid,
+	  .confirm-actions {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
