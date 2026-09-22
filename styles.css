@@ -2049,7 +2049,7 @@ input[type="file"] {
 
 .metric-list {
   display: grid;
-  gap: 7px;
+  gap: 4px;
   max-height: 266px;
   overflow-y: auto;
   padding-right: 4px;
@@ -2063,7 +2063,7 @@ input[type="file"] {
 
 .metric-group {
   display: grid;
-  gap: 6px;
+  gap: 2px;
 }
 
 .metric-group + .metric-group {
@@ -2120,30 +2120,31 @@ input[type="file"] {
 .metric-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
+  gap: 9px;
   align-items: center;
   margin: 0;
-  padding: 9px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
+  padding: 6px 2px 7px;
+  border: 0;
+  border-bottom: 1px solid rgba(217, 224, 221, 0.72);
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
   cursor: pointer;
 }
 
 .metric-option:has(input:checked) {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(14, 124, 123, 0.12);
+  color: var(--accent-strong);
+  box-shadow: none;
 }
 
 .metric-option.is-updated {
-  border-color: rgba(14, 124, 123, 0.24);
-  background: linear-gradient(180deg, rgba(234, 247, 244, 0.92), #fff);
+  background: transparent;
 }
 
 .metric-option input {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
 }
 
 .metric-option strong,
@@ -2181,10 +2182,10 @@ input[type="file"] {
 }
 
 .metric-option small {
-  margin-top: 3px;
+  margin-top: 1px;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.28;
 }
 
 .lab-details {
