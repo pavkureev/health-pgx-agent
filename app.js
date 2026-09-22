@@ -4,6 +4,7 @@ const PROFILE_STORAGE_KEY = "pgx-agent-profiles";
 const ACTIVE_PROFILE_KEY = "pgx-agent-active-profile";
 const PARSER_VERSION = "2026-07-20.1";
 const DOCTOR_CONCLUSION_PARSER_VERSION = "2026-05-21.14";
+const SUPABASE_PAGE_SIZE = 1000;
 const KNOWN_BIRTH_DATES = new Set(["1981-06-06"]);
 const supabaseClient = window.supabase && window.PGX_SUPABASE
   ? window.supabase.createClient(window.PGX_SUPABASE.url, window.PGX_SUPABASE.anonKey)
@@ -587,11 +588,7 @@ async function loadCloudProfileDetails(profileId) {
   const profile = profiles.find((item) => item.id === profileId);
   if (!profile) return;
 
-  const { data, error } = await supabaseClient
-    .from("lab_observations")
-    .select("id, document_id, analyte_key, analyte_label, observed_on, value, unit, reference_low, reference_high, source_line, source_documents(file_name, status, created_at, updated_at)")
-    .eq("profile_id", profileId)
-    .order("observed_on", { ascending: true });
+  const { data, error } = await fetchCloudLabObservations(profileId);
 
   if (error) {
     profileStatus.textContent = `Не удалось загрузить анализы из Supabase: ${error.message}`;
@@ -629,6 +626,24 @@ async function loadCloudProfileDetails(profileId) {
 
       profile.patientData = geneticDocumentsToPatientData(geneticDocuments || []);
     }
+  }
+}
+
+async function fetchCloudLabObservations(profileId, pageSize = SUPABASE_PAGE_SIZE) {
+  const rows = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabaseClient
+      .from("lab_observations")
+      .select("id, document_id, analyte_key, analyte_label, observed_on, value, unit, reference_low, reference_high, source_line, source_documents(file_name, status, created_at, updated_at)")
+      .eq("profile_id", profileId)
+      .order("observed_on", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) return { data: rows, error };
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) return { data: rows, error: null };
   }
 }
 

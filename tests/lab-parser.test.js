@@ -15,6 +15,24 @@ function createHarness(options = {}) {
   const store = new Map();
   const prompts = [];
   const confirms = [];
+  const windowMock = {
+    prompt(message, defaultValue) {
+      prompts.push({ message, defaultValue });
+      return options.promptResponse ?? null;
+    },
+    confirm(message) {
+      confirms.push(message);
+      return options.confirmResponse ?? false;
+    }
+  };
+  if (options.supabaseClient) {
+    windowMock.PGX_SUPABASE = { url: "https://example.supabase.co", anonKey: "test-key" };
+    windowMock.supabase = {
+      createClient() {
+        return options.supabaseClient;
+      }
+    };
+  }
   const context2d = new Proxy(
     {},
     {
@@ -51,16 +69,7 @@ function createHarness(options = {}) {
   }
 
   const context = {
-    window: {
-      prompt(message, defaultValue) {
-        prompts.push({ message, defaultValue });
-        return options.promptResponse ?? null;
-      },
-      confirm(message) {
-        confirms.push(message);
-        return options.confirmResponse ?? false;
-      }
-    },
+    window: windowMock,
     document: { querySelector: el },
     localStorage: {
       getItem(key) {
@@ -429,4 +438,53 @@ deleteConfirmHarness.el("#clearLabs").onclick();
 assert.match(deleteConfirmHarness.el("#labStatus").textContent, /История анализов очищена/, "confirmed deletion should clear lab history");
 assert.doesNotMatch(deleteConfirmHarness.el("#labResults").innerHTML, /ТТГ/, "confirmed deletion should remove lab result");
 
-console.log("lab parser tests passed");
+function createPagedSupabaseClient(rows) {
+  return {
+    auth: {
+      async getSession() {
+        return { data: { session: null } };
+      },
+      onAuthStateChange() {}
+    },
+    from(table) {
+      assert.strictEqual(table, "lab_observations", "paged lab fetch should query lab_observations");
+      const builder = {
+        select() { return builder; },
+        eq() { return builder; },
+        order() { return builder; },
+        async range(from, to) {
+          return { data: rows.slice(from, to + 1), error: null };
+        }
+      };
+      return builder;
+    }
+  };
+}
+
+(async () => {
+  const pagedRows = Array.from({ length: 1001 }, (_, index) => ({
+    id: `observation-${index}`,
+    document_id: `document-${index}`,
+    analyte_key: "ldl",
+    analyte_label: "ЛПНП",
+    observed_on: "2026-01-01",
+    value: index,
+    unit: "ммоль/л",
+    source_line: `ЛПНП ${index} ммоль/л`,
+    source_documents: {
+      file_name: `analysis-${index}.pdf`,
+      status: "parsed",
+      created_at: "2026-09-16T10:00:00Z",
+      updated_at: "2026-09-16T10:00:00Z"
+    }
+  }));
+  const pagedHarness = createHarness({ supabaseClient: createPagedSupabaseClient(pagedRows) });
+  const fetched = await pagedHarness.context.fetchCloudLabObservations("profile-1");
+  assert.strictEqual(fetched.error, null, "paged cloud lab fetch should finish without error");
+  assert.strictEqual(fetched.data.length, 1001, "cloud lab fetch should read rows after Supabase's first 1000-row page");
+
+  console.log("lab parser tests passed");
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
