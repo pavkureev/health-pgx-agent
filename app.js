@@ -3571,8 +3571,8 @@ function labRecordTimestamp(record = {}) {
 }
 
 function labMetricCounts() {
-  return labRecords.reduce((acc, record) => {
-    for (const value of record.values) acc[value.key] = (acc[value.key] || 0) + 1;
+  return uniqueLabValues().reduce((acc, value) => {
+    acc[value.key] = (acc[value.key] || 0) + 1;
     return acc;
   }, {});
 }
@@ -3626,21 +3626,19 @@ function renderLabCollectionSummary() {
 
 function labMetricCollectionGroups() {
   const byMetric = new Map();
-  for (const record of labRecords) {
-    const year = record.date.slice(0, 4);
-    for (const value of record.values || []) {
-      if (!byMetric.has(value.key)) {
-        byMetric.set(value.key, {
-          key: value.key,
-          label: value.label,
-          years: new Set(),
-          count: 0
-        });
-      }
-      const group = byMetric.get(value.key);
-      group.years.add(year);
-      group.count += 1;
+  for (const value of uniqueLabValues()) {
+    const year = value.date.slice(0, 4);
+    if (!byMetric.has(value.key)) {
+      byMetric.set(value.key, {
+        key: value.key,
+        label: value.label,
+        years: new Set(),
+        count: 0
+      });
     }
+    const group = byMetric.get(value.key);
+    group.years.add(year);
+    group.count += 1;
   }
 
   return [...byMetric.values()]
@@ -3872,7 +3870,7 @@ function addChronologicalLabSignal(signals, metricKey, predicate, template) {
 }
 
 function labMetricHistory(metricKey) {
-  return labRecords
+  return dedupeLabValueEntries(labRecords
     .flatMap((record) => (record.values || [])
       .filter((value) => value.key === metricKey)
       .map((value) => ({
@@ -3881,7 +3879,36 @@ function labMetricHistory(metricKey) {
         uploadedAt: record.uploadedAt || "",
         updatedAt: record.updatedAt || ""
       })))
-    .sort(compareLabValuesChronologically);
+    .sort(compareLabValuesChronologically));
+}
+
+function uniqueLabValues() {
+  return dedupeLabValueEntries(labRecords
+    .flatMap((record) => (record.values || []).map((value) => ({
+      ...value,
+      date: record.date,
+      uploadedAt: record.uploadedAt || "",
+      updatedAt: record.updatedAt || ""
+    })))
+    .sort(compareLabValuesChronologically));
+}
+
+function dedupeLabValueEntries(values) {
+  const unique = new Map();
+  for (const value of values) {
+    const key = labValueIdentity(value);
+    if (!unique.has(key)) unique.set(key, value);
+  }
+  return [...unique.values()];
+}
+
+function labValueIdentity(value = {}) {
+  return [
+    value.date || "",
+    value.key || "",
+    Number(value.value),
+    normalizeText(value.unit || "")
+  ].join("|");
 }
 
 function countTrailingLabMatches(history, predicate) {
@@ -5632,13 +5659,12 @@ function drawLabChart(metricKey) {
     return;
   }
 
-  const points = labRecords
-    .map((record) => {
-      const value = record.values.find((item) => item.key === metricKey);
-      return value ? { date: record.date, timestamp: new Date(`${record.date}T00:00:00`).getTime(), value: value.value } : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.timestamp - b.timestamp);
+  const points = labMetricHistory(metricKey)
+    .map((value) => ({
+      date: value.date,
+      timestamp: new Date(`${value.date}T00:00:00`).getTime(),
+      value: value.value
+    }));
 
   if (!points.length) {
     drawEmptyChart(context, width, height, "Нет данных для выбранного показателя");

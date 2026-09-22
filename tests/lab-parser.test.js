@@ -375,6 +375,27 @@ assert.match(
   "persistent abnormal LDL should mention repeated abnormal measurements"
 );
 
+const duplicateMetricHarness = createHarness();
+duplicateMetricHarness.el("#labText").value = "Дата анализа: 01.02.2026\nЛПНП 1.5 ммоль/л";
+duplicateMetricHarness.el("#parseLabText").onclick();
+duplicateMetricHarness.el("#labText").value = "Дата анализа: 01.02.2026\nЛПНП 1.5 ммоль/л";
+duplicateMetricHarness.el("#parseLabText").onclick();
+assert.strictEqual(
+  duplicateMetricHarness.context.labMetricCounts().ldl,
+  1,
+  "duplicate lab uploads with the same date, metric and value should count as one metric value"
+);
+assert.strictEqual(
+  duplicateMetricHarness.context.labMetricHistory("ldl").length,
+  1,
+  "duplicate lab uploads should produce one chart point"
+);
+assert.match(
+  duplicateMetricHarness.el("#labMetricList").innerHTML,
+  /ЛПНП[\s\S]*1 значение/,
+  "metric list should show unique values, not duplicate uploaded rows"
+);
+
 const olderUploadHarness = createHarness();
 olderUploadHarness.el("#labText").value = "Дата анализа: 01.09.2026\nЛПНП 1.5 ммоль/л";
 olderUploadHarness.el("#parseLabText").onclick();
